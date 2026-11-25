@@ -88,7 +88,7 @@ class PanelSettings:
         active=self.ssid=="FMI-RC-Printstation" and bool(self.ip)
         ap=Network("hotspot-stop" if active else "hotspot-start",
                    b"Hotspot beenden" if active else b"FMI Hotspot starten",0,"AP","")
-        return [ap]+([] if active else self.networks)
+        return [ap] if active else self.networks+[ap]
 
     def draw(self):
         t=self.ui.text
@@ -110,7 +110,7 @@ class PanelSettings:
             c(f"wPrev.val={int(self.offset>0)}")
             total=(len(choices)+ROWS-1)//ROWS
             t("wIndex",f"{self.offset//ROWS+1} / {total}" if total else "",16)
-            t("wStatus",f"Hotspot-Passwort: {self.hotspot_password}" if self.hotspot_password and self.ssid=="FMI-RC-Printstation" and not self.job else self.status,76)
+            t("wStatus",f"Hotspot-Passwort: {self.hotspot_password}" if self.hotspot_password and self.ssid=="FMI-RC-Printstation" and (not self.job or self.job[0]=="status") else self.status,76)
         elif p=="wjoin":
             net=self.selected
             t("jName",net.name if net else "Netz nicht verfügbar",42)
