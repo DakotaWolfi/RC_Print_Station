@@ -27,3 +27,7 @@ python3 station.py display-test --port /dev/ttyUSB0 --baud 9600
 ```
 
 All reports in this prototype are simulated; no actual safety certification is produced. Real tester protocol and Nextion HMI firmware are not implemented yet. Printer TCP port 9100 is a configurable assumption. Keep the printer and development Pi on an isolated link. Use separate power supplies during testing.
+
+## Project progress
+
+See the [living project roadmap and checklist](ROADMAP.md) for completed tasks, outstanding work, hardware validation and current blockers.
