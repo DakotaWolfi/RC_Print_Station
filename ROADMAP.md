@@ -117,3 +117,14 @@ Status: working legacy hybrid prototype plus separate native HMI v0.3 candidate.
 - [ ] Scan actual PDF link on a phone on the same LAN; verify simulation marking
 - [ ] Test cable disconnect, printer timeout and rollback on the bench
 - [ ] Only then adopt/merge the native candidate as the working installation
+
+## Pi 4 event deployment and local settings
+- [x] Add systemd installer for native backend and loopback admin (installation and cold boot not yet verified)
+- [x] Correct keyboard page name in generator after user confirmed official Editor compile
+- [x] User confirmed native screen appearance and phone QR download
+- [ ] Commit corrected Editor HMI and reconcile generated source/archive
+- [ ] Add native WLAN scan, selection, masked password entry and connect feedback
+- [ ] Add native receipt header toggle, feed adjustment and test print
+- [ ] Validate memory budget, official Editor compile, and physical offline configuration
+- [ ] Keep Raspberry Pi 4 for first event; defer Orange Pi migration
+- [ ] Verify NetworkManager permissions and permanent dedicated printer Ethernet configuration
