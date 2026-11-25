@@ -6,6 +6,8 @@ from ipaddress import IPv4Address
 import json
 import subprocess
 import time
+import secrets
+from dataclasses import replace
 
 NM = "org.freedesktop.NetworkManager"
 ROOT = "/org/freedesktop/NetworkManager"
@@ -27,6 +29,7 @@ class Network:
     signal: int
     security: str
     key_mgmt: str | None
+    saved: str = ""
 
     @property
     def name(self):
@@ -91,6 +94,22 @@ class NetworkManager:
         props = dbus.Interface(bus.get_object(NM,path,introspect=False),PROPS)
         return access_point(path,props.GetAll(AP,signature="s",timeout=2))
 
+    def _saved(self, dbus, bus, net):
+        manager=dbus.Interface(bus.get_object(NM,ROOT+"/Settings",introspect=False),NM+".Settings")
+        for path in manager.ListConnections(signature="",timeout=4):
+            try:
+                connection=dbus.Interface(bus.get_object(NM,path,introspect=False),NM+".Settings.Connection")
+                s=connection.GetSettings(signature="",timeout=2)
+                wifi=s.get("802-11-wireless",{})
+                sec=s.get("802-11-wireless-security",{})
+                iface=s.get("connection",{}).get("interface-name","")
+                if (bytes(wifi.get("ssid",[]))==net.ssid and wifi.get("mode","infrastructure")=="infrastructure"
+                        and iface in ("",self.interface) and str(sec.get("key-mgmt",""))==net.key_mgmt):
+                    return str(path)
+            except dbus.DBusException:
+                continue
+        return ""
+
     def scan(self, rescan=True):
         dbus,bus=self._open()
         try:
@@ -126,7 +145,7 @@ class NetworkManager:
                 key=(net.ssid,net.security)
                 if net.ssid and (key not in best or net.signal>best[key].signal):
                     best[key]=net
-            return sorted(best.values(),key=lambda n:(-n.signal,n.ssid))
+            return [replace(n,saved=self._saved(dbus,bus,n)) for n in sorted(best.values(),key=lambda n:(-n.signal,n.ssid))]
         except dbus.DBusException:
             raise NetworkError("WLAN-Suche fehlgeschlagen. WLAN und Rechte prüfen.") from None
         finally:
@@ -136,6 +155,14 @@ class NetworkManager:
         dbus,bus=self._open()
         try:
             _,_,_,props=self._device(dbus,bus)
+            active=props.Get(DEVICE,"ActiveConnection",signature="ss",timeout=2)
+            if active!="/":
+                ap=dbus.Interface(bus.get_object(NM,active,introspect=False),PROPS)
+                profile=ap.Get(ACTIVE,"Connection",signature="ss",timeout=2)
+                conn=dbus.Interface(bus.get_object(NM,profile,introspect=False),NM+".Settings.Connection")
+                wifi=conn.GetSettings(signature="",timeout=2).get("802-11-wireless",{})
+                if wifi.get("mode")=="ap":
+                    return bytes(wifi.get("ssid",[])).decode("utf-8","replace"),wifi_address(self.interface)
             path=props.Get(WIFI,"ActiveAccessPoint",signature="ss",timeout=2)
             return (self._ap(dbus,bus,path).name,wifi_address(self.interface)) if path!="/" else ("","")
         except dbus.DBusException:
@@ -146,7 +173,7 @@ class NetworkManager:
     def connect(self, net, password):
         if net.key_mgmt is None:
             raise NetworkError("Netztyp nicht unterstützt. Bestehendes Profil verwenden.")
-        if net.key_mgmt:
+        if net.key_mgmt and not (net.saved and not password):
             ascii_ok=password.isascii() and password.isprintable()
             hex_psk=len(password)==64 and all(c in "0123456789abcdefABCDEF" for c in password)
             if not (ascii_ok and (8<=len(password)<=63 or (hex_psk and net.key_mgmt=="wpa-psk"))):
@@ -187,7 +214,12 @@ class NetworkManager:
             if net.key_mgmt:
                 settings["802-11-wireless-security"]={"key-mgmt":net.key_mgmt,"psk":password}
             attempted=True
-            profile,active,_=root.AddAndActivateConnection2(
+            if net.saved and not password:
+                if self._saved(dbus,bus,current)!=net.saved:
+                    raise NetworkError("Gespeichertes Profil geändert. Bitte neu suchen.")
+                active=root.ActivateConnection(net.saved,path,net.path,signature="ooo",timeout=12)
+            else:
+                profile,active,_=root.AddAndActivateConnection2(
                 settings,path,net.path,{"persist":"volatile"},signature="a{sa{sv}}ooa{sv}",timeout=12)
             p=dbus.Interface(bus.get_object(NM,active,introspect=False),PROPS)
             deadline=time.monotonic()+35
@@ -198,6 +230,9 @@ class NetworkManager:
                     if ip:
                         # Save validated profiles through NetworkManager. The app
                         # keeps no credential file and never touches Ethernet.
+                        if net.saved and not password:
+                            ok=True
+                            return net.name,ip
                         saved=dbus.Interface(bus.get_object(NM,profile,introspect=False),NM+".Settings.Connection")
                         saved.Update2({"connection":dict(settings["connection"],autoconnect=True),
                                        **{k:v for k,v in settings.items() if k!="connection"}},
@@ -223,4 +258,76 @@ class NetworkManager:
                         root.ActivateConnection(previous_profile,path,"/",signature="ooo",timeout=3)
                     except dbus.DBusException:
                         pass
+            bus.close()
+
+    def hotspot(self):
+        """Explicit temporary WPA2 access point; no password in argv or logs."""
+        directory=Path.home()/".config"/"rc-printstation"
+        directory.mkdir(parents=True,exist_ok=True)
+        with (directory/"wifi.lock").open("a") as lock:
+            try:
+                fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            except BlockingIOError:
+                raise NetworkError("Eine WLAN-Aktion läuft bereits.") from None
+            return self._hotspot()
+
+    def _hotspot(self):
+        dbus,bus=self._open()
+        active=None
+        previous_profile="/"
+        ok=False
+        password=secrets.token_hex(5)
+        ssid="FMI-RC-Printstation"
+        try:
+            root,path,_,props=self._device(dbus,bus)
+            previous=props.Get(DEVICE,"ActiveConnection",signature="ss",timeout=3)
+            if previous!="/":
+                old=dbus.Interface(bus.get_object(NM,previous,introspect=False),PROPS)
+                previous_profile=old.Get(ACTIVE,"Connection",signature="ss",timeout=3)
+            settings={
+                "connection":{"id":ssid,"type":"802-11-wireless","interface-name":self.interface,"autoconnect":False},
+                "802-11-wireless":{"ssid":dbus.ByteArray(ssid.encode()),"mode":"ap","band":"bg"},
+                "802-11-wireless-security":{"key-mgmt":"wpa-psk","psk":password,"proto":dbus.Array(["rsn"],signature="s")},
+                "ipv4":{"method":"shared","never-default":True,"address-data":dbus.Array([{"address":"10.42.0.1","prefix":dbus.UInt32(24)}],signature="a{sv}")},
+                "ipv6":{"method":"disabled"},
+            }
+            _,active,_=root.AddAndActivateConnection2(settings,path,"/",{"persist":"volatile"},signature="a{sa{sv}}ooa{sv}",timeout=12)
+            p=dbus.Interface(bus.get_object(NM,active,introspect=False),PROPS)
+            deadline=time.monotonic()+25
+            while time.monotonic()<deadline:
+                state=int(p.Get(ACTIVE,"State",signature="ss",timeout=3))
+                if state==2 and wifi_address(self.interface):
+                    ok=True
+                    return ssid,wifi_address(self.interface),password
+                if state>=3: break
+                time.sleep(.4)
+            raise NetworkError("Hotspot konnte nicht gestartet werden.")
+        except dbus.DBusException:
+            raise NetworkError("Hotspot fehlgeschlagen. WLAN und Freigaberechte prüfen.") from None
+        finally:
+            if not ok:
+                if active:
+                    try: root.DeactivateConnection(active,signature="o",timeout=3)
+                    except dbus.DBusException: pass
+                if previous_profile!="/":
+                    try: root.ActivateConnection(previous_profile,path,"/",signature="ooo",timeout=3)
+                    except dbus.DBusException: pass
+            bus.close()
+
+    def stop_hotspot(self):
+        dbus,bus=self._open()
+        try:
+            root,path,_,props=self._device(dbus,bus)
+            active=props.Get(DEVICE,"ActiveConnection",signature="ss",timeout=3)
+            if active!="/":
+                p=dbus.Interface(bus.get_object(NM,active,introspect=False),PROPS)
+                profile=p.Get(ACTIVE,"Connection",signature="ss",timeout=3)
+                conn=dbus.Interface(bus.get_object(NM,profile,introspect=False),NM+".Settings.Connection")
+                s=conn.GetSettings(signature="",timeout=3)
+                if s.get("connection",{}).get("id")=="FMI-RC-Printstation" and s.get("802-11-wireless",{}).get("mode")=="ap":
+                    root.DeactivateConnection(active,signature="o",timeout=5)
+            return "",""
+        except dbus.DBusException:
+            raise NetworkError("Hotspot konnte nicht beendet werden.") from None
+        finally:
             bus.close()
