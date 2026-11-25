@@ -15,6 +15,10 @@ class UI:
         self.ticket = ""
         self.device = ""
         self.field = "ticket"
+        self.shift = False
+        self.caps = False
+        self.symbols = False
+        self.original = ""
         self.report = None
         self.status = ""
         self.buttons = []
@@ -57,12 +61,21 @@ class UI:
             self.button(24,440,432,80,"Demo-Bericht erstellen",self.create,GREEN)
         elif p == "keyboard":
             self.text(24,125,432,55,getattr(self,self.field) or "_")
-            for row,keys in enumerate(("1234567890","QWERTZUIOP","ASDFGHJKL","YXCVBNM-")):
+            rows = ("1234567890","!@#$%&*()+",".,:;/?=_","-[]{}") if self.symbols else ("1234567890","qwertzuiop","asdfghjkl","yxcvbnm")
+            for row,keys in enumerate(rows):
                 for i,k in enumerate(keys):
-                    self.button(15+i*45,205+row*65,42,58,k,lambda k=k:self.key(k))
-            self.button(15,475,140,65,"Leer",lambda:self.key(" "))
-            self.button(165,475,140,65,"Loeschen",lambda:self.key(None))
-            self.button(315,475,150,65,"OK",lambda:self.go("entry"),GREEN)
+                    if not self.symbols and (self.shift != self.caps): k=k.upper()
+                    self.button(15+i*45,200+row*62,42,56,k,lambda k=k:self.key(k))
+            for i,k in enumerate("äöüß"):
+                if self.shift != self.caps: k=k.upper()
+                self.button(15+i*60,452,56,50,k,lambda k=k:self.key(k))
+            self.button(260,452,95,50,"Shift",self.toggle_shift,GREEN if self.shift else PANEL)
+            self.button(360,452,105,50,"Caps",self.toggle_caps,GREEN if self.caps else PANEL)
+            self.button(15,515,105,60,"123/ABC",self.toggle_symbols)
+            self.button(125,515,205,60,"Leer",lambda:self.key(" "))
+            self.button(335,515,130,60,"Zurueck",lambda:self.key(None))
+            self.button(15,590,215,60,"Abbruch",self.cancel_keyboard)
+            self.button(240,590,225,60,"OK",lambda:self.go("entry"),GREEN)
         elif p in ("report","test"):
             self.text(24,140,432,45,"SIMULATION - KEINE PRUEFUNG",AMBER)
             if p == "report" and self.report:
@@ -87,12 +100,31 @@ class UI:
         else:self.text(24,735,432,40,"v0.1 | OFFLINE",MUTED,1)
     def keyboard(self,field):
         self.field=field
+        self.original=getattr(self,field)
+        self.shift=False
+        self.caps=False
+        self.symbols=False
         self.go("keyboard")
+    def toggle_shift(self):
+        self.shift=not self.shift
+        self.draw()
+    def toggle_caps(self):
+        self.caps=not self.caps
+        self.draw()
+    def toggle_symbols(self):
+        self.symbols=not self.symbols
+        self.draw()
+    def cancel_keyboard(self):
+        setattr(self,self.field,self.original)
+        self.go("entry")
     def key(self,k):
         v=getattr(self,self.field)
         setattr(self,self.field,v[:-1] if k is None else (v+k)[:30])
         self.cmd(f"fill 24,125,432,55,{BG}")
         self.text(24,125,432,55,getattr(self,self.field) or "_")
+        if self.shift and k is not None:
+            self.shift=False
+            self.draw()
     def create(self):
         if not self.ticket.strip() or not self.device.strip():
             self.status="Bitte beide Felder ausfuellen"
@@ -110,7 +142,8 @@ class UI:
             r=self.report if self.page=="report" else simulate("TEST","Druckertest")
             send(self.host,9100,receipt(r))
             self.status="Druckdaten gesendet"
-        except OSError:
+        except OSError as exc:
+            print("Printer error:", exc, flush=True)
             self.status="Drucker nicht erreichbar"
         self.draw()
     def run(self):
@@ -144,7 +177,20 @@ def main():
     p.add_argument("--baud",type=int,default=9600)
     p.add_argument("--host",default="169.254.223.252")
     p.add_argument("--db",default="reports.sqlite3")
+    p.add_argument("--fast",action="store_true",help="Switch display from specified baud to 115200 for this session")
     a=p.parse_args()
     with serial.Serial(a.port,a.baud,timeout=.2,write_timeout=3) as ser:
+        if a.fast and a.baud != 115200:
+            ser.write(b"baud=115200"+END)
+            ser.flush()
+            time.sleep(.3)
+            ser.baudrate=115200
+            ser.reset_input_buffer()
+            ser.write(b"connect"+END)
+            ser.flush()
+            time.sleep(.3)
+            response=ser.read(256)
+            if b"comok" not in response:
+                raise SystemExit("Fast baud handshake failed; power-cycle Nextion and retry without --fast")
         UI(ser,a.host,a.db).run()
 if __name__=="__main__":main()
