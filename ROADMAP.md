@@ -15,7 +15,7 @@ Status: initial development prototype (v0.1.0 target). Checked means implemented
 
 ## 2. Raspberry Pi bring-up
 - [ ] Finish and verify PT35 SD card backup (in progress)
-- [ ] Boot existing installation and connect over SSH
+- [x] Boot existing installation and connect over SSH
 - [ ] Clone repository and run diagnostic command
 - [ ] Identify and disable conflicting PT35 services only
 - [ ] Verify Python dependencies and serial permissions
@@ -23,10 +23,11 @@ Status: initial development prototype (v0.1.0 target). Checked means implemented
 
 ## 3. Epson thermal printer
 - [x] Implement initial raw TCP ESC/POS test receipt
-- [ ] Connect Epson Gen 3 via dedicated Ethernet
-- [ ] Identify printer IP and verify TCP port
+- [x] Connect Epson Gen 3 via dedicated Ethernet
+- [x] Identify printer IP and verify TCP port (169.254.223.252:9100, link-local)
 - [ ] Implement isolated, configurable DHCP if required; never enable on shared network
-- [ ] Verify physical test receipt, cutter and paper width
+- [x] Verify physical text printing and cutter; ESC J 240 pre-cut feed confirmed working
+- [ ] Verify paper width and final receipt layout
 - [ ] Add printer discovery/status, error handling and reprint support
 - [ ] Add Repair Café logo (confirm permission) and final receipt layout
 
@@ -84,6 +85,6 @@ Status: initial development prototype (v0.1.0 target). Checked means implemented
 ## Current blockers / open decisions
 - Tester make/model and protocol unknown (red enclosure is the only known clue).
 - Pi SD card backup not yet confirmed complete.
-- Printer IP, Nextion baud and wiring not yet verified.
+- Printer link-local IP and raw printing verified; permanent DHCP setup outstanding. Nextion baud and wiring not yet verified.
 - Initial code committed; tests and hardware functionality not yet verified.
 - Final receipt layout, report retention and shared power budget undecided.
