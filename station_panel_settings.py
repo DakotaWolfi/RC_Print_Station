@@ -9,7 +9,7 @@ import subprocess
 import time
 
 import station_config as config
-from station_network import NetworkError, NetworkManager
+from station_network import Network, NetworkError, NetworkManager
 
 PAGES = ("home","entry","keyboard","report","qrpage","history","settings",
          "wifi","wjoin","printer","receipt","system","power")
@@ -42,6 +42,7 @@ class PanelSettings:
         self.selected=None
         self.joined=False
         self.networks=[]
+        self.hotspot_password=""
         self.offset=0
         self.ssid=self.ip=""
         self.status="Netzwerke suchen, um WLAN einzurichten."
@@ -83,32 +84,39 @@ class PanelSettings:
             self.armed_until=0
         self.draw()
 
+    def choices(self):
+        active=self.ssid=="FMI-RC-Printstation" and bool(self.ip)
+        ap=Network("hotspot-stop" if active else "hotspot-start",
+                   b"Hotspot beenden" if active else b"FMI Hotspot starten",0,"AP","")
+        return [ap]+([] if active else self.networks)
+
     def draw(self):
         t=self.ui.text
         c=self.ui.cmd
         p=self.page
         if p=="wifi":
             t("wCurrent",f"{self.ssid or 'Nicht verbunden'} / {self.ip or 'keine IPv4'}",56)
-            page=self.networks[self.offset:self.offset+ROWS]
+            choices=self.choices()
+            page=choices[self.offset:self.offset+ROWS]
             for i in range(ROWS):
                 label="-"
                 if i<len(page):
                     net=page[i]
-                    label=f"{net.signal:3d}% {net.security} | {net.name}"
+                    label=net.name if net.path.startswith("hotspot-") else f"{net.signal:3d}% {net.security} | {net.name}"+(" [gesp.]" if getattr(net,"saved","") else "")
                 t(f"wRow{i}",label,54)
             c(f"wCount.val={len(page)}")
             c(f"wBusy.val={int(self.job is not None and self.job[0]!='status')}")
-            c(f"wNext.val={int(self.offset+ROWS<len(self.networks))}")
+            c(f"wNext.val={int(self.offset+ROWS<len(choices))}")
             c(f"wPrev.val={int(self.offset>0)}")
-            total=(len(self.networks)+ROWS-1)//ROWS
+            total=(len(choices)+ROWS-1)//ROWS
             t("wIndex",f"{self.offset//ROWS+1} / {total}" if total else "",16)
-            t("wStatus",self.status,76)
+            t("wStatus",f"Hotspot-Passwort: {self.hotspot_password}" if self.hotspot_password and self.ssid=="FMI-RC-Printstation" and not self.job else self.status,76)
         elif p=="wjoin":
             net=self.selected
             t("jName",net.name if net else "Netz nicht verfügbar",42)
             t("jStatus",self.status,86)
-            supported=(1 if net.key_mgmt=="" else 2) if net and net.key_mgmt is not None else 0
-            c(f"jMode.val={0 if self.joined or (self.job and self.job[0]=='connect') else supported}")
+            supported=(1 if net.key_mgmt=="" or getattr(net,"saved","") else 2) if net and net.key_mgmt is not None else 0
+            c(f"jMode.val={0 if self.joined or (self.job and self.job[0] in ('connect','hotspot','hotspot-stop')) else supported}")
         elif p=="printer":
             host,port=self.endpoint(self.cfg())
             t("pHost",host,16)
@@ -163,6 +171,20 @@ class PanelSettings:
                 if kind=="scan":
                     self.networks=result
                     self.status=f"{len(result)} Netze gefunden." if result else "Keine WLAN-Netze gefunden."
+                elif kind=="hotspot":
+                    ssid,ip,password=result
+                    self.hotspot_password=password
+                    self.set_status(ssid,ip)
+                    self.offset=0
+                    self.status=f"Hotspot aktiv. Passwort: {password} / IP: {ip}"
+                    self.joined=True
+                elif kind=="hotspot-stop":
+                    self.hotspot_password=""
+                    self.set_status(*result)
+                    self.offset=0
+                    self.networks=[]
+                    self.status="Hotspot beendet. WLAN erneut suchen."
+                    self.joined=True
                 else:
                     self.set_status(*result)
                     if kind=="connect":
@@ -215,7 +237,9 @@ class PanelSettings:
         page=self.page
         try:
             if page=="wifi" and action==b"RC4:SCAN":
-                if self.start_network("scan",self.network.scan):
+                if self.ssid=="FMI-RC-Printstation" and self.ip:
+                    self.status="Hotspot zuerst beenden."
+                elif self.start_network("scan",self.network.scan):
                     self.offset=0
                     self.networks=[]
                     self.selected=None
@@ -223,17 +247,27 @@ class PanelSettings:
                     self.status="WLAN-Suche läuft ..."
             elif page=="wifi" and action in (b"RC4:NEXT",b"RC4:PREV"):
                 self.offset=min(max(0,self.offset+(ROWS if action.endswith(b"NEXT") else -ROWS)),
-                                max(0,(len(self.networks)-1)//ROWS*ROWS))
+                                max(0,(len(self.choices())-1)//ROWS*ROWS))
             elif page=="wifi" and action in (b"RC4:SEL:0",b"RC4:SEL:1",b"RC4:SEL:2",b"RC4:SEL:3"):
                 index=self.offset+int(action[-1:])
-                self.selected=self.networks[index] if index<len(self.networks) else None
+                choices=self.choices()
+                self.selected=choices[index] if index<len(choices) else None
                 net=self.selected
                 self.joined=False
                 self.status=(f"{net.security} / {net.signal}% · Verbindung bestätigen."
                              if net and net.key_mgmt is not None else "Netztyp nicht unterstützt oder Netz nicht verfügbar.")
+                if net and net.path.startswith("hotspot-"):
+                    self.status="WLAN wird getrennt. Hotspot starten?" if net.path=="hotspot-start" else "Hotspot beenden und WLAN wieder nutzen?"
+                elif net and getattr(net,"saved",""):
+                    self.status="Gespeichertes WLAN. Ohne Passworteingabe verbinden."
                 return  # Next event is wjoin's page ID; no stale writes.
             elif page=="wjoin" and action==b"RC4:JOIN":
-                if self.selected and self.selected.key_mgmt=="":
+                if self.selected and self.selected.path.startswith("hotspot-"):
+                    starting=self.selected.path=="hotspot-start"
+                    if self.start_network("hotspot" if starting else "hotspot-stop", self.network.hotspot if starting else self.network.stop_hotspot):
+                        self.status="Hotspot wird gestartet ..." if starting else "Hotspot wird beendet ..."
+                        self.draw()
+                elif self.selected and (self.selected.key_mgmt=="" or getattr(self.selected,"saved","")):
                     self.connect("")
                 return
             elif page=="keyboard" and action==b"RC4:PASS":
