@@ -1,5 +1,6 @@
 import unittest
 import tempfile
+from unittest.mock import patch
 from pathlib import Path
 from station import simulate, receipt, database
 
@@ -8,13 +9,16 @@ class StationTests(unittest.TestCase):
         r = simulate("T1", "Lamp")
         self.assertEqual(r["verdict"], "NOT TESTED")
         self.assertEqual(r["source"], "SIMULATOR")
-    def test_receipt(self):
+    @patch('station.receipt_settings', return_value={'graphic': True, 'feed_mm':45})
+    def test_receipt(self, settings):
         data = receipt(simulate("T1", "Lamp"))
         self.assertIn(b"SIMULATION ONLY", data)
         self.assertIn(b"NOT TESTED", data)
         self.assertIn(b"\x1b\x4a\xf0\x1bJ\x78\x1dV\x00", data)
         self.assertIn("Gerät".encode("cp850"), data)
-    def test_control_characters(self):
+        self.assertIn(b"\x1dv0\x00\x3f\x00\xa8\x00", data)
+    @patch('station.receipt_settings', return_value={'graphic': False, 'feed_mm':45})
+    def test_control_characters(self, settings):
         self.assertNotIn(b"\x1bX", receipt(simulate("T1", "\x1bX")))
     def test_database(self):
         with tempfile.TemporaryDirectory() as tmp:
