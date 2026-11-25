@@ -34,16 +34,20 @@ def receipt(report):
     bold=b"\x1bE\x01"
     normal=b"\x1bE\x00"
     rule=line("-"*42)
+    heavy=line("="*42)
+    # Epson 203 dpi: 120 dots ~= 15 mm. Keep the proven 240-dot feed.
+    feed_and_cut=b"\x1b\x4a\xf0\x1b\x4a\x78\x1dV\x00"
     return (b"\x1b@\x1bt\x02"+center+bold+b"\x1d!\x11"+
-            line("REPAIR CAFÉ")+b"\x1d!\x00"+line("RIEHEN")+normal+
-            line("Elektrisches Prüfprotokoll")+rule+bold+
+            line("REPAIR CAFÉ")+b"\x1d!\x00"+line("R I E H E N")+normal+
+            line("Reparieren statt wegwerfen.")+heavy+
+            bold+line("ELEKTRISCHES PRÜFPROTOKOLL")+normal+line()+bold+
             line("DEMO / SIMULATION ONLY")+line("KEINE ELEKTRISCHE PRÜFUNG")+normal+
-            rule+left+field("Datum",stamp)+field("Ticket",report["ticket"])+
-            field("Gerät",report["device"])+rule+bold+line("Prüfergebnis")+
+            rule+left+field("Datum",stamp)+line()+bold+line("REPARATURDATEN")+normal+
+            field("Ticket",report["ticket"])+field("Gerät",report["device"])+line()+rule+
+            bold+line("PRÜFERGEBNIS")+
             line("NICHT GEPRÜFT / NOT TESTED")+normal+
-            line("Keine Messwerte vorhanden.")+rule+center+
-            line("Reparieren statt wegwerfen.")+bold+line("FMI Printstation")+normal+
-            left+b"\x1b\x4a\xf0\x1dV\x00")
+            line("Keine Messwerte vorhanden.")+line()+heavy+center+
+            bold+line("FMI Printstation")+normal+line("Repair Café Riehen | Entwicklung")+left+feed_and_cut)
 
 def send(host, port, data):
     with socket.create_connection((host, port), timeout=5) as conn:
