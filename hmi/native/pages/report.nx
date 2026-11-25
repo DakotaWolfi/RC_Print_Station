@@ -1,0 +1,40 @@
+on bPrint.up:
+  if(home.online.val==1&&ready.val==1&&printing.val==0)
+  {
+  printing.val=1
+  tStatus.txt="Druckdaten werden gesendet ..."
+  prints "RC3:PRINT",0
+  printh ff ff ff
+  }else if(home.online.val==0)
+  {
+  tStatus.txt="Host nicht verbunden. Druck nicht gesendet."
+  }else if(ready.val==0)
+  {
+  tStatus.txt="Bitte Bericht erneut im Verlauf öffnen."
+  }
+
+on bQR.up:
+  if(ready.val==1)
+  {
+  qrpage.qReady.val=0
+  page qrpage
+  }
+
+on bHome.up:
+  page home
+
+on tmFlow.timer:
+  if(printing.val==1&&home.online.val==0)
+  {
+  printing.val=0
+  tStatus.txt="Verbindung verloren. Beleg vor erneutem Druck prüfen."
+  }
+
+on tmLink.timer:
+  home.age.val++
+  if(home.age.val>6)
+  {
+  home.online.val=0
+  home.tLink.txt="Host nicht verbunden"
+  }
+

@@ -48,3 +48,4 @@ def start_server(db, port):
             self.wfile.write(data)
     server=ThreadingHTTPServer(("0.0.0.0",port),Handler)
     threading.Thread(target=server.serve_forever,daemon=True).start()
+    return server

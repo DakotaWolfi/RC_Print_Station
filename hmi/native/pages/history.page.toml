@@ -1,0 +1,172 @@
+[page]
+name = "history"
+type = "page"
+x = 0
+y = 0
+w = 480
+h = 800
+bco = "#101923"
+
+[[component]]
+name = "pBg"
+type = "picture"
+x = 0
+y = 0
+w = 480
+h = 800
+pic = "history"
+
+[[component]]
+name = "pending"
+type = "variable"
+val = 0
+vscope = 1
+
+[[component]]
+name = "bRow0"
+type = "button"
+x = 24
+y = 275
+w = 432
+h = 60
+sta = 0
+picc = "history"
+picc2 = "history_press"
+style = 0
+borderw = 0
+font = "UI20"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Laden ..."
+txt_maxl = 40
+isbr = 0
+vscope = 1
+
+[[component]]
+name = "bRow1"
+type = "button"
+x = 24
+y = 347
+w = 432
+h = 60
+sta = 0
+picc = "history"
+picc2 = "history_press"
+style = 0
+borderw = 0
+font = "UI20"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Laden ..."
+txt_maxl = 40
+isbr = 0
+vscope = 1
+
+[[component]]
+name = "bRow2"
+type = "button"
+x = 24
+y = 419
+w = 432
+h = 60
+sta = 0
+picc = "history"
+picc2 = "history_press"
+style = 0
+borderw = 0
+font = "UI20"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Laden ..."
+txt_maxl = 40
+isbr = 0
+vscope = 1
+
+[[component]]
+name = "bRow3"
+type = "button"
+x = 24
+y = 491
+w = 432
+h = 60
+sta = 0
+picc = "history"
+picc2 = "history_press"
+style = 0
+borderw = 0
+font = "UI20"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Laden ..."
+txt_maxl = 40
+isbr = 0
+vscope = 1
+
+[[component]]
+name = "bRow4"
+type = "button"
+x = 24
+y = 563
+w = 432
+h = 60
+sta = 0
+picc = "history"
+picc2 = "history_press"
+style = 0
+borderw = 0
+font = "UI20"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Laden ..."
+txt_maxl = 40
+isbr = 0
+vscope = 1
+
+[[component]]
+name = "tStatus"
+type = "text"
+x = 24
+y = 643
+w = 432
+h = 48
+txt = ""
+txt_maxl = 80
+font = "UI20"
+pco = "#ffd08a"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 1
+isbr = 1
+
+[[component]]
+name = "bBack"
+type = "button"
+x = 24
+y = 715
+w = 432
+h = 52
+sta = 0
+picc = "history"
+picc2 = "history_press"
+style = 0
+borderw = 0
+font = "UI20"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Hauptmenü"
+txt_maxl = 9
+isbr = 0
+
+[[component]]
+name = "tmFlow"
+type = "timer"
+tim = 200
+en = 1
+
+[[component]]
+name = "tmLink"
+type = "timer"
+tim = 1000
+en = 1

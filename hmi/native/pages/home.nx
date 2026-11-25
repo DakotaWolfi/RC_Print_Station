@@ -1,0 +1,45 @@
+on bNew.up:
+  entry.tTicket.txt=""
+  entry.tDevice.txt=""
+  entry.tStatus.txt=""
+  entry.busy.val=0
+  page entry
+
+on bHistory.up:
+  page history
+
+on bSettings.up:
+  page settings
+
+on bLast.up:
+  if(home.online.val==1)
+  {
+  report.ready.val=0
+  pending.val=1
+  prints "RC3:LAST",0
+  printh ff ff ff
+  }else
+  {
+  tHint.txt="Bitte Host-Verbindung prüfen."
+  }
+
+on tmFlow.timer:
+  if(pending.val==1&&report.ready.val==1)
+  {
+  pending.val=0
+  page report
+  }
+  if(pending.val==1&&online.val==0)
+  {
+  pending.val=0
+  tHint.txt="Host nicht verbunden. Bitte erneut versuchen."
+  }
+
+on tmLink.timer:
+  home.age.val++
+  if(home.age.val>6)
+  {
+  home.online.val=0
+  home.tLink.txt="Host nicht verbunden"
+  }
+

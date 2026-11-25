@@ -1,0 +1,91 @@
+[page]
+name = "qrpage"
+type = "page"
+x = 0
+y = 0
+w = 480
+h = 800
+bco = "#101923"
+
+[[component]]
+name = "pBg"
+type = "picture"
+x = 0
+y = 0
+w = 480
+h = 800
+pic = "qrpage"
+
+[[component]]
+name = "qReady"
+type = "variable"
+val = 0
+vscope = 1
+
+[[component]]
+name = "shown"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "qrReport"
+type = "qr-code"
+x = 90
+y = 300
+w = 300
+h = 300
+txt = ""
+txt_maxl = 78
+vscope = 1
+bco = "#ffffff"
+pco = "#000000"
+
+[[component]]
+name = "tNote"
+type = "text"
+x = 24
+y = 634
+w = 432
+h = 64
+txt = "PDF-Link wird vorbereitet ..."
+txt_maxl = 100
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#101923"
+borderw = 0
+xcen = 1
+ycen = 1
+vscope = 1
+isbr = 1
+
+[[component]]
+name = "bBack"
+type = "button"
+x = 24
+y = 733
+w = 432
+h = 34
+sta = 0
+picc = "qrpage"
+picc2 = "qrpage_press"
+style = 0
+borderw = 0
+font = "UI20"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Zurück zum Bericht"
+txt_maxl = 18
+isbr = 0
+
+[[component]]
+name = "tmFlow"
+type = "timer"
+tim = 200
+en = 1
+
+[[component]]
+name = "tmLink"
+type = "timer"
+tim = 1000
+en = 1

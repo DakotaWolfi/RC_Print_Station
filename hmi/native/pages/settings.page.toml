@@ -1,0 +1,114 @@
+[page]
+name = "settings"
+type = "page"
+x = 0
+y = 0
+w = 480
+h = 800
+bco = "#101923"
+
+[[component]]
+name = "pBg"
+type = "picture"
+x = 0
+y = 0
+w = 480
+h = 800
+pic = "settings"
+
+[[component]]
+name = "tPrinter"
+type = "text"
+x = 38
+y = 311
+w = 404
+h = 60
+txt = ""
+txt_maxl = 64
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#1d2c3a"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 1
+isbr = 1
+
+[[component]]
+name = "tUart"
+type = "text"
+x = 38
+y = 418
+w = 404
+h = 60
+txt = "115200 Baud · 480 × 800 · 270°"
+txt_maxl = 64
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#1d2c3a"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 1
+isbr = 1
+
+[[component]]
+name = "tUrl"
+type = "text"
+x = 38
+y = 525
+w = 404
+h = 60
+txt = "Deaktiviert"
+txt_maxl = 100
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#1d2c3a"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 1
+isbr = 1
+
+[[component]]
+name = "tStatus"
+type = "text"
+x = 24
+y = 618
+w = 432
+h = 66
+txt = "Prüfgerät: Simulator. Keine Messwerte."
+txt_maxl = 80
+font = "UI20"
+pco = "#ffd08a"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 1
+
+[[component]]
+name = "bBack"
+type = "button"
+x = 24
+y = 715
+w = 432
+h = 52
+sta = 0
+picc = "settings"
+picc2 = "settings_press"
+style = 0
+borderw = 0
+font = "UI20"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Hauptmenü"
+txt_maxl = 9
+isbr = 0
+
+[[component]]
+name = "tmLink"
+type = "timer"
+tim = 1000
+en = 1

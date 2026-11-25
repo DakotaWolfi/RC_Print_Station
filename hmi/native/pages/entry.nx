@@ -1,0 +1,63 @@
+on hEdit0.up:
+  if(busy.val==0)
+  {
+  field.val=0
+  page keybdA
+  }
+
+on hEdit1.up:
+  if(busy.val==0)
+  {
+  field.val=1
+  page keybdA
+  }
+
+on bCreate.up:
+  if(busy.val==0)
+  {
+  if(tTicket.txt==""||tDevice.txt=="")
+  {
+  tStatus.txt="Bitte beide Felder ausfüllen."
+  }else if(home.online.val==0)
+  {
+  tStatus.txt="Host nicht verbunden. Eingaben bleiben erhalten."
+  }else
+  {
+  busy.val=1
+  report.ready.val=0
+  tStatus.txt="Simulationsbericht wird erstellt ..."
+  prints "RC3:CREATE",0
+  printh 00
+  prints tTicket.txt,0
+  printh 00
+  prints tDevice.txt,0
+  printh ff ff ff
+  }
+  }
+
+on bBack.up:
+  if(busy.val==0)
+  {
+  page home
+  }
+
+on tmFlow.timer:
+  if(busy.val==1&&report.ready.val==1)
+  {
+  busy.val=0
+  page report
+  }
+  if(busy.val==1&&home.online.val==0)
+  {
+  busy.val=0
+  tStatus.txt="Host-Verbindung verloren. Bitte erneut versuchen."
+  }
+
+on tmLink.timer:
+  home.age.val++
+  if(home.age.val>6)
+  {
+  home.online.val=0
+  home.tLink.txt="Host nicht verbunden"
+  }
+

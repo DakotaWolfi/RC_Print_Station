@@ -1,0 +1,73 @@
+on bRow0.up:
+  if(home.online.val==1&&pending.val==0)
+  {
+  pending.val=1
+  report.ready.val=0
+  prints "RC3:OPEN:0",0
+  printh ff ff ff
+  }
+
+on bRow1.up:
+  if(home.online.val==1&&pending.val==0)
+  {
+  pending.val=1
+  report.ready.val=0
+  prints "RC3:OPEN:1",0
+  printh ff ff ff
+  }
+
+on bRow2.up:
+  if(home.online.val==1&&pending.val==0)
+  {
+  pending.val=1
+  report.ready.val=0
+  prints "RC3:OPEN:2",0
+  printh ff ff ff
+  }
+
+on bRow3.up:
+  if(home.online.val==1&&pending.val==0)
+  {
+  pending.val=1
+  report.ready.val=0
+  prints "RC3:OPEN:3",0
+  printh ff ff ff
+  }
+
+on bRow4.up:
+  if(home.online.val==1&&pending.val==0)
+  {
+  pending.val=1
+  report.ready.val=0
+  prints "RC3:OPEN:4",0
+  printh ff ff ff
+  }
+
+on bBack.up:
+  page home
+
+on history.loadend:
+  pending.val=0
+  prints "RC3:HISTORY",0
+  printh ff ff ff
+
+on tmFlow.timer:
+  if(pending.val==1&&report.ready.val==1)
+  {
+  pending.val=0
+  page report
+  }
+  if(pending.val==1&&home.online.val==0)
+  {
+  pending.val=0
+  tStatus.txt="Host nicht verbunden. Bitte erneut versuchen."
+  }
+
+on tmLink.timer:
+  home.age.val++
+  if(home.age.val>6)
+  {
+  home.online.val=0
+  home.tLink.txt="Host nicht verbunden"
+  }
+

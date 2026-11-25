@@ -1,5 +1,14 @@
 __pycache__/
-*.pyc
-*.sqlite3*
+*.py[cod]
 .venv/
+*.sqlite3*
 config.toml
+*.db
+*.bak
+# TFT files contain Nextion's firmware. Build locally; distribute as candidates
+# separately from the source repository.
+*.tft
+*.TFT
+# Editable HMI binaries are distributed in ZIPs to fit the upload size limit.
+hmi/build/*.HMI
+hmi/reference/*.HMI

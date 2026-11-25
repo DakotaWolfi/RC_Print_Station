@@ -1,6 +1,6 @@
 # Repair Café Print Station — living checklist
 
-Status: initial development prototype (v0.1.0 target). Checked means implemented or confirmed, not necessarily hardware-tested. Update this file as milestones are verified.
+Status: working legacy hybrid prototype plus separate native HMI v0.3 candidate. Checked means implemented or confirmed, not necessarily hardware-tested. The candidate is not approved for replacing the working installation. See [validation evidence](hmi/VALIDATION.md).
 
 ## 1. Project foundation
 - [x] Create GitHub repository
@@ -37,15 +37,17 @@ Status: initial development prototype (v0.1.0 target). Checked means implemented
 - [ ] Verify power supply headroom and UART signal levels
 - [x] Confirm functional UART wiring and 9600 baud
 - [x] Verify physical serial communication (PL011 /dev/serial0, 9600 baud, comok NX8048T070_011R)
-- [ ] Commit editable Nextion HMI template and font resources
+- [x] Preserve original compiling HMI and add separate editable native candidate with font resources
 - [x] Implement Pi-driven runtime HMI
 - [x] Implement home/status, ticket and device entry and demo report preview
-- [ ] Validate polished v0.2 screen layout
+- [x] Create and render polished native home, input, report, QR, history and station pages
+- [ ] Validate native layout on the physical portrait display
 - [x] Native keyboard text return and physical receipt confirmed by user
-- [ ] Reskin native QWERTZ keyboard; validate case switching and umlauts
+- [x] Implement native Swiss QWERTZ keyboard, Shift/Caps, umlauts, accents, symbols and euro; pass simulator tests
+- [ ] Validate native keyboard on resistive touch hardware
 - [x] Test HMI/backend integration (runtime UI and physical printing confirmed)
 - [ ] Verify 270-degree portrait orientation and touch alignment
-- [ ] Validate mixed-case keyboard and high-speed UART separately
+- [ ] Validate physical mixed-case/umlaut entry and candidate UART at 115200 separately
 
 ## 5. Electrical safety tester — BLOCKED on identification
 - [ ] Obtain manufacturer, model and firmware from colleague
@@ -63,7 +65,7 @@ Status: initial development prototype (v0.1.0 target). Checked means implemented
 - [ ] Store genuine reports and support history/reprinting
 - [ ] Add local administration and configuration interface
 - [ ] Handle disconnected hardware and interrupted print jobs
-- [ ] Add automated integration tests
+- [x] Add native-event/serial/backend integration tests, printing failure tests and HTTP PDF download test
 - [ ] Verify full offline workflow on Raspberry Pi 4
 - [ ] Review data retention and access with Repair Café
 
@@ -91,6 +93,27 @@ Status: initial development prototype (v0.1.0 target). Checked means implemented
 ## Current blockers / open decisions
 - Tester make/model and protocol unknown (red enclosure is the only known clue).
 - Pi SD card backup completed and archive integrity verified.
-- Printer link-local IP and raw printing verified; permanent DHCP setup outstanding. Nextion serial communication verified at 9600 baud. Runtime HMI and touchscreen-triggered printing confirmed; rotation and detailed keyboard testing outstanding.
-- Four initial unit tests passed. Hybrid keyboard-to-receipt workflow confirmed; v0.2 changes and PDF/QR downloads still require testing.
+- Printer link-local IP and raw printing verified; permanent DHCP setup outstanding. Legacy Nextion communication and touchscreen printing confirmed at 9600; physical native portrait touch, 115200 and keyboard checks remain outstanding.
+- Native v0.3 candidate: editable HMI built, TFT compiled, 19 automated tests pass, source/HMI round trip and TFT format/recompile checks pass. Official Editor open/compile and physical receipt/phone QR acceptance are still required. Working HMI and `nextion_ui.py` remain preserved.
 - Final receipt layout, report retention and shared power budget undecided.
+
+## Native v0.3 candidate acceptance
+- [x] Investigate HMI generation and reverse-engineering tools; record choices and limits
+- [x] Extract the latest compiling user HMI without unknown-format warnings
+- [x] Preserve its bytes and hash under `hmi/reference/`
+- [x] Build unlocked, editable `FMI_RC_native_v0_3.HMI`; distribute exact bytes in `hmi/build/FMI_RC_native_v0_3.zip`
+- [x] Compile a separate Basic-series TFT within 16 MB flash
+- [x] Keep page rendering, keyboard and transitions native; use protocol v3 for backend actions
+- [x] Fit all page/global memory and QR temporary memory within 3584 bytes
+- [x] Preserve existing German receipt/cutter bytes; render euro as EUR for PC850
+- [x] Keep simulations visibly labelled on home, report, QR, receipts and PDFs
+- [x] Add host heartbeat, preserved drafts, print duplicate suppression and no automatic print retry
+- [x] Document startup, protocol, editing and rollback; add CI checks
+- [ ] Open/save/recompile candidate in official Nextion Editor 1.68.2
+- [ ] Verify 270° orientation and touch alignment on NX8048T070_011R
+- [ ] Verify 115200 after cold boots and host restarts
+- [ ] Verify all keyboard banks, Shift/Caps, cancel/commit and maximum field lengths physically
+- [ ] Print a simulation through the complete native workflow; compare umlauts, feed and cutter
+- [ ] Scan actual PDF link on a phone on the same LAN; verify simulation marking
+- [ ] Test cable disconnect, printer timeout and rollback on the bench
+- [ ] Only then adopt/merge the native candidate as the working installation

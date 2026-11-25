@@ -1,0 +1,180 @@
+[page]
+name = "home"
+type = "page"
+x = 0
+y = 0
+w = 480
+h = 800
+bco = "#101923"
+
+[[component]]
+name = "pBg"
+type = "picture"
+x = 0
+y = 0
+w = 480
+h = 800
+pic = "home"
+
+[[component]]
+name = "proto"
+type = "variable"
+val = 3
+vscope = 1
+
+[[component]]
+name = "online"
+type = "variable"
+val = 0
+vscope = 1
+
+[[component]]
+name = "age"
+type = "variable"
+val = 0
+vscope = 1
+
+[[component]]
+name = "pending"
+type = "variable"
+val = 0
+vscope = 1
+
+[[component]]
+name = "tLink"
+type = "text"
+x = 40
+y = 348
+w = 400
+h = 27
+txt = "Host nicht verbunden"
+txt_maxl = 32
+font = "UI20"
+pco = "#afc2d0"
+bco = "#1d2c3a"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 1
+
+[[component]]
+name = "bNew"
+type = "button"
+x = 24
+y = 412
+w = 432
+h = 82
+sta = 0
+picc = "home"
+picc2 = "home_press"
+style = 0
+borderw = 0
+font = "UI28"
+pco = "#101923"
+pco2 = "#101923"
+txt = "Neues Protokoll"
+txt_maxl = 15
+isbr = 0
+
+[[component]]
+name = "bHistory"
+type = "button"
+x = 24
+y = 510
+w = 210
+h = 72
+sta = 0
+picc = "home"
+picc2 = "home_press"
+style = 0
+borderw = 0
+font = "UI24"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Verlauf"
+txt_maxl = 7
+isbr = 0
+
+[[component]]
+name = "bSettings"
+type = "button"
+x = 246
+y = 510
+w = 210
+h = 72
+sta = 0
+picc = "home"
+picc2 = "home_press"
+style = 0
+borderw = 0
+font = "UI24"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Station"
+txt_maxl = 7
+isbr = 0
+
+[[component]]
+name = "bLast"
+type = "button"
+x = 24
+y = 598
+w = 432
+h = 68
+sta = 0
+picc = "home"
+picc2 = "home_press"
+style = 0
+borderw = 0
+font = "UI24"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Letztes Protokoll öffnen"
+txt_maxl = 24
+isbr = 0
+
+[[component]]
+name = "tHint"
+type = "text"
+x = 24
+y = 680
+w = 432
+h = 40
+txt = ""
+txt_maxl = 64
+font = "UI20"
+pco = "#ffd08a"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 1
+
+[[component]]
+name = "tClock"
+type = "text"
+x = 24
+y = 733
+w = 432
+h = 28
+txt = ""
+txt_maxl = 24
+font = "UI20"
+pco = "#afc2d0"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 1
+
+[[component]]
+name = "tmFlow"
+type = "timer"
+tim = 200
+en = 1
+
+[[component]]
+name = "tmLink"
+type = "timer"
+tim = 1000
+en = 1

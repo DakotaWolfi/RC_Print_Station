@@ -1,0 +1,2 @@
+# nxwright 0.5.6, pinned to the reviewed upstream commit.
+nxwright @ git+https://github.com/nixiewright/nxwright.git@e9443a409cc9deb866db7486854fa962d382accc

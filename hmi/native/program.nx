@@ -1,0 +1,9 @@
+int sys0=0,sys1=0,sys2=0
+baud=115200
+dim=100
+recmod=0
+sendxy=0
+printh 00 00 00 ff ff ff 88 ff ff ff
+prints "RC3:BOOT",0
+printh ff ff ff
+page home

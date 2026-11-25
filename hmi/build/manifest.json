@@ -1,0 +1,41 @@
+{
+  "candidate": "v0.3",
+  "target": "NX8048T070_011R",
+  "rotation": 270,
+  "resolution": [
+    480,
+    800
+  ],
+  "baud": 115200,
+  "encoding": "iso-8859-15",
+  "protocol": 3,
+  "nxwright_commit": "e9443a409cc9deb866db7486854fa962d382accc",
+  "vendor_firmware_editor": "1.68.2",
+  "files": [
+    {
+      "name": "FMI_RC_Printstation_working.HMI",
+      "size_bytes": 14531498,
+      "sha256": "a8c8f53e1fa99f675c8aa562a95ea5dcb5d9ff88483d3ed6f9c9dde0084d0308"
+    },
+    {
+      "name": "FMI_RC_native_v0_3.HMI",
+      "size_bytes": 19969618,
+      "sha256": "efce62e64e17e787890561e1930c5232642358ff4420a8851e9db8d52d8f1f28"
+    },
+    {
+      "name": "FMI_RC_native_v0_3.tft",
+      "size_bytes": 11366244,
+      "sha256": "3cd548c38aaf9f6228c1e12e96a56530141a0d8b93841a215b8988182ae97217"
+    },
+    {
+      "name": "FMI_RC_Printstation_working.zip",
+      "size_bytes": 671595,
+      "sha256": "e8d163028f5b4be0054e0cb078bf5579a768d72def669636e9523bfe7e9ba9fb"
+    },
+    {
+      "name": "FMI_RC_native_v0_3.zip",
+      "size_bytes": 2483129,
+      "sha256": "9f8add0b5230f0571bdb2b0d4f3d6a2757a1b074cebfb409af0321a40954bf6b"
+    }
+  ]
+}

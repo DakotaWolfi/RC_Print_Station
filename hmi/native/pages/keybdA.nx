@@ -1,0 +1,1133 @@
+on k0.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k0.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k1.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k1.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k2.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k2.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k3.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k3.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k4.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k4.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k5.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k5.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k6.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k6.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k7.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k7.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k8.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k8.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k9.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k9.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k10.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k10.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k11.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k11.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k12.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k12.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k13.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k13.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k14.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k14.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k15.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k15.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k16.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k16.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k17.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k17.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k18.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k18.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k19.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k19.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k20.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k20.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k21.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k21.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k22.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k22.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k23.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k23.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k24.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k24.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k25.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k25.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k26.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k26.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k27.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k27.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k28.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k28.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k29.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k29.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k30.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k30.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k31.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k31.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k32.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k32.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k33.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k33.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k34.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k34.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k35.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k35.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k36.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k36.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k37.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k37.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k38.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k38.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k39.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k39.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k40.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k40.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k41.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k41.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k42.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k42.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k43.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k43.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k44.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k44.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on k45.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=k45.txt
+  }
+  if(shift.val==1)
+  {
+  shift.val=0
+  click hLayout,0
+  }
+  click hCount,0
+
+on hLayout.up:
+  if(mode.val==0)
+  {
+  if(shift.val==1)
+  {
+  k0.txt="+"
+  }else
+  {
+  k0.txt="1"
+  }
+  if(shift.val==1)
+  {
+  k1.txt="\""
+  }else
+  {
+  k1.txt="2"
+  }
+  if(shift.val==1)
+  {
+  k2.txt="*"
+  }else
+  {
+  k2.txt="3"
+  }
+  if(shift.val==1)
+  {
+  k3.txt="ç"
+  }else
+  {
+  k3.txt="4"
+  }
+  if(shift.val==1)
+  {
+  k4.txt="%"
+  }else
+  {
+  k4.txt="5"
+  }
+  if(shift.val==1)
+  {
+  k5.txt="&"
+  }else
+  {
+  k5.txt="6"
+  }
+  if(shift.val==1)
+  {
+  k6.txt="/"
+  }else
+  {
+  k6.txt="7"
+  }
+  if(shift.val==1)
+  {
+  k7.txt="("
+  }else
+  {
+  k7.txt="8"
+  }
+  if(shift.val==1)
+  {
+  k8.txt=")"
+  }else
+  {
+  k8.txt="9"
+  }
+  if(shift.val==1)
+  {
+  k9.txt="="
+  }else
+  {
+  k9.txt="0"
+  }
+  if(shift.val==1)
+  {
+  k10.txt="?"
+  }else
+  {
+  k10.txt="'"
+  }
+  if(shift.val==1)
+  {
+  k11.txt="`"
+  }else
+  {
+  k11.txt="^"
+  }
+  if(shift.val!=caps.val)
+  {
+  k12.txt="Q"
+  }else
+  {
+  k12.txt="q"
+  }
+  if(shift.val!=caps.val)
+  {
+  k13.txt="W"
+  }else
+  {
+  k13.txt="w"
+  }
+  if(shift.val!=caps.val)
+  {
+  k14.txt="E"
+  }else
+  {
+  k14.txt="e"
+  }
+  if(shift.val!=caps.val)
+  {
+  k15.txt="R"
+  }else
+  {
+  k15.txt="r"
+  }
+  if(shift.val!=caps.val)
+  {
+  k16.txt="T"
+  }else
+  {
+  k16.txt="t"
+  }
+  if(shift.val!=caps.val)
+  {
+  k17.txt="Z"
+  }else
+  {
+  k17.txt="z"
+  }
+  if(shift.val!=caps.val)
+  {
+  k18.txt="U"
+  }else
+  {
+  k18.txt="u"
+  }
+  if(shift.val!=caps.val)
+  {
+  k19.txt="I"
+  }else
+  {
+  k19.txt="i"
+  }
+  if(shift.val!=caps.val)
+  {
+  k20.txt="O"
+  }else
+  {
+  k20.txt="o"
+  }
+  if(shift.val!=caps.val)
+  {
+  k21.txt="P"
+  }else
+  {
+  k21.txt="p"
+  }
+  if(shift.val!=caps.val)
+  {
+  k22.txt="Ü"
+  }else
+  {
+  k22.txt="ü"
+  }
+  if(shift.val!=caps.val)
+  {
+  k23.txt="È"
+  }else
+  {
+  k23.txt="è"
+  }
+  if(shift.val!=caps.val)
+  {
+  k24.txt="A"
+  }else
+  {
+  k24.txt="a"
+  }
+  if(shift.val!=caps.val)
+  {
+  k25.txt="S"
+  }else
+  {
+  k25.txt="s"
+  }
+  if(shift.val!=caps.val)
+  {
+  k26.txt="D"
+  }else
+  {
+  k26.txt="d"
+  }
+  if(shift.val!=caps.val)
+  {
+  k27.txt="F"
+  }else
+  {
+  k27.txt="f"
+  }
+  if(shift.val!=caps.val)
+  {
+  k28.txt="G"
+  }else
+  {
+  k28.txt="g"
+  }
+  if(shift.val!=caps.val)
+  {
+  k29.txt="H"
+  }else
+  {
+  k29.txt="h"
+  }
+  if(shift.val!=caps.val)
+  {
+  k30.txt="J"
+  }else
+  {
+  k30.txt="j"
+  }
+  if(shift.val!=caps.val)
+  {
+  k31.txt="K"
+  }else
+  {
+  k31.txt="k"
+  }
+  if(shift.val!=caps.val)
+  {
+  k32.txt="L"
+  }else
+  {
+  k32.txt="l"
+  }
+  if(shift.val!=caps.val)
+  {
+  k33.txt="Ö"
+  }else
+  {
+  k33.txt="ö"
+  }
+  if(shift.val!=caps.val)
+  {
+  k34.txt="Ä"
+  }else
+  {
+  k34.txt="ä"
+  }
+  if(shift.val!=caps.val)
+  {
+  k35.txt="É"
+  }else
+  {
+  k35.txt="é"
+  }
+  if(shift.val!=caps.val)
+  {
+  k36.txt="Y"
+  }else
+  {
+  k36.txt="y"
+  }
+  if(shift.val!=caps.val)
+  {
+  k37.txt="X"
+  }else
+  {
+  k37.txt="x"
+  }
+  if(shift.val!=caps.val)
+  {
+  k38.txt="C"
+  }else
+  {
+  k38.txt="c"
+  }
+  if(shift.val!=caps.val)
+  {
+  k39.txt="V"
+  }else
+  {
+  k39.txt="v"
+  }
+  if(shift.val!=caps.val)
+  {
+  k40.txt="B"
+  }else
+  {
+  k40.txt="b"
+  }
+  if(shift.val!=caps.val)
+  {
+  k41.txt="N"
+  }else
+  {
+  k41.txt="n"
+  }
+  if(shift.val!=caps.val)
+  {
+  k42.txt="M"
+  }else
+  {
+  k42.txt="m"
+  }
+  if(shift.val==1)
+  {
+  k43.txt=";"
+  }else
+  {
+  k43.txt=","
+  }
+  if(shift.val==1)
+  {
+  k44.txt=":"
+  }else
+  {
+  k44.txt="."
+  }
+  if(shift.val==1)
+  {
+  k45.txt="_"
+  }else
+  {
+  k45.txt="-"
+  }
+  }
+  if(mode.val==1)
+  {
+  k0.txt="1"
+  k1.txt="2"
+  k2.txt="3"
+  k3.txt="4"
+  k4.txt="5"
+  k5.txt="6"
+  k6.txt="7"
+  k7.txt="8"
+  k8.txt="9"
+  k9.txt="0"
+  k10.txt="+"
+  k11.txt="-"
+  k12.txt="@"
+  k13.txt="#"
+  k14.txt="%"
+  k15.txt="&"
+  k16.txt="*"
+  k17.txt="("
+  k18.txt=")"
+  k19.txt="["
+  k20.txt="]"
+  k21.txt="{"
+  k22.txt="}"
+  k23.txt="="
+  k24.txt="/"
+  k25.txt="\\"
+  k26.txt="|"
+  k27.txt="<"
+  k28.txt=">"
+  k29.txt="_"
+  k30.txt="~"
+  k31.txt="^"
+  k32.txt="`"
+  k33.txt="'"
+  k34.txt="\""
+  k35.txt="+"
+  k36.txt="."
+  k37.txt=","
+  k38.txt=":"
+  k39.txt=";"
+  k40.txt="!"
+  k41.txt="?"
+  k42.txt="€"
+  k43.txt="$"
+  k44.txt="£"
+  k45.txt="§"
+  }
+  if(mode.val==2)
+  {
+  k0.txt="1"
+  k1.txt="2"
+  k2.txt="3"
+  k3.txt="4"
+  k4.txt="5"
+  k5.txt="6"
+  k6.txt="7"
+  k7.txt="8"
+  k8.txt="9"
+  k9.txt="0"
+  k10.txt="+"
+  k11.txt="-"
+  k12.txt="ä"
+  k13.txt="ö"
+  k14.txt="ü"
+  k15.txt="Ä"
+  k16.txt="Ö"
+  k17.txt="Ü"
+  k18.txt="é"
+  k19.txt="è"
+  k20.txt="à"
+  k21.txt="ç"
+  k22.txt="ê"
+  k23.txt="ô"
+  k24.txt="É"
+  k25.txt="È"
+  k26.txt="À"
+  k27.txt="Ç"
+  k28.txt="Ê"
+  k29.txt="Ô"
+  k30.txt="á"
+  k31.txt="í"
+  k32.txt="ó"
+  k33.txt="ú"
+  k34.txt="â"
+  k35.txt="û"
+  k36.txt="°"
+  k37.txt="²"
+  k38.txt="³"
+  k39.txt="µ"
+  k40.txt="©"
+  k41.txt="®"
+  k42.txt="«"
+  k43.txt="»"
+  k44.txt="!"
+  k45.txt="?"
+  }
+  if(shift.val==1)
+  {
+  bShift.bco=64675
+  bShift.pco=4292
+  }else
+  {
+  bShift.bco=6503
+  bShift.pco=63422
+  }
+  if(caps.val==1)
+  {
+  bCaps.bco=64675
+  bCaps.pco=4292
+  }else
+  {
+  bCaps.bco=6503
+  bCaps.pco=63422
+  }
+  if(mode.val==0)
+  {
+  bMode.txt="123"
+  }else if(mode.val==1)
+  {
+  bMode.txt="é / §"
+  }else
+  {
+  bMode.txt="ABC"
+  }
+
+on hCount.up:
+  strlen input.txt,count.val
+  covx count.val,tHint.txt,0,0
+  tHint.txt+=" Zeichen  /  max. "
+  covx limit.val,tLimit.txt,0,0
+  tHint.txt+=tLimit.txt
+
+on bShift.up:
+  shift.val=1-shift.val
+  mode.val=0
+  click hLayout,0
+
+on bDel.up:
+  input.txt-=1
+  click hCount,0
+
+on bMode.up:
+  mode.val++
+  if(mode.val>2)
+  {
+  mode.val=0
+  }
+  click hLayout,0
+
+on bCaps.up:
+  caps.val=1-caps.val
+  shift.val=0
+  mode.val=0
+  click hLayout,0
+
+on bSpace.up:
+  strlen input.txt,count.val
+  if(count.val<limit.val)
+  {
+  input.txt+=" "
+  }
+  click hCount,0
+
+on bClear.up:
+  input.txt=""
+  click hCount,0
+
+on bCancel.up:
+  page entry
+
+on bOK.up:
+  if(entry.field.val==0)
+  {
+  entry.tTicket.txt=input.txt
+  }else
+  {
+  entry.tDevice.txt=input.txt
+  }
+  entry.tStatus.txt=""
+  page entry
+
+on keybdA.loadend:
+  mode.val=0
+  shift.val=0
+  caps.val=0
+  if(entry.field.val==0)
+  {
+  input.txt=entry.tTicket.txt
+  tField.txt="Reparaturnummer"
+  limit.val=32
+  }else
+  {
+  input.txt=entry.tDevice.txt
+  tField.txt="Gerätebezeichnung"
+  limit.val=64
+  }
+  click hLayout,0
+  click hCount,0
+
+on tmLink.timer:
+  home.age.val++
+  if(home.age.val>6)
+  {
+  home.online.val=0
+  home.tLink.txt="Host nicht verbunden"
+  }
+

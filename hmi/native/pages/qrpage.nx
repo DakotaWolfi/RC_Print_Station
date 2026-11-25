@@ -1,0 +1,34 @@
+on bBack.up:
+  page report
+
+on qrpage.loadend:
+  shown.val=0
+  vis qrReport,0
+  prints "RC3:QR",0
+  printh ff ff ff
+
+on tmFlow.timer:
+  if(qReady.val==1&&shown.val==0)
+  {
+  vis qrReport,1
+  shown.val=1
+  }
+  if(qReady.val!=1&&shown.val==1)
+  {
+  vis qrReport,0
+  shown.val=0
+  }
+  if(home.online.val==0)
+  {
+  qReady.val=2
+  tNote.txt="Host nicht verbunden. Bitte Verbindung prüfen."
+  }
+
+on tmLink.timer:
+  home.age.val++
+  if(home.age.val>6)
+  {
+  home.online.val=0
+  home.tLink.txt="Host nicht verbunden"
+  }
+

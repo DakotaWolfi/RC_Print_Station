@@ -1,0 +1,149 @@
+[page]
+name = "entry"
+type = "page"
+x = 0
+y = 0
+w = 480
+h = 800
+bco = "#101923"
+
+[[component]]
+name = "pBg"
+type = "picture"
+x = 0
+y = 0
+w = 480
+h = 800
+pic = "entry"
+
+[[component]]
+name = "field"
+type = "variable"
+val = 0
+vscope = 1
+
+[[component]]
+name = "busy"
+type = "variable"
+val = 0
+vscope = 1
+
+[[component]]
+name = "tTicket"
+type = "text"
+x = 38
+y = 325
+w = 404
+h = 50
+txt = ""
+txt_maxl = 32
+font = "UI24"
+pco = "#f5f6f7"
+bco = "#1d2c3a"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 1
+isbr = 1
+
+[[component]]
+name = "tDevice"
+type = "text"
+x = 38
+y = 460
+w = 404
+h = 66
+txt = ""
+txt_maxl = 64
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#1d2c3a"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 1
+isbr = 1
+
+[[component]]
+name = "hEdit0"
+type = "hotspot"
+x = 24
+y = 315
+w = 432
+h = 72
+
+[[component]]
+name = "hEdit1"
+type = "hotspot"
+x = 24
+y = 450
+w = 432
+h = 86
+
+[[component]]
+name = "tStatus"
+type = "text"
+x = 24
+y = 548
+w = 432
+h = 51
+txt = "Felder antippen, um Text einzugeben."
+txt_maxl = 80
+font = "UI20"
+pco = "#ffd08a"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 1
+isbr = 1
+
+[[component]]
+name = "bCreate"
+type = "button"
+x = 24
+y = 615
+w = 432
+h = 72
+sta = 0
+picc = "entry"
+picc2 = "entry_press"
+style = 0
+borderw = 0
+font = "UI24"
+pco = "#101923"
+pco2 = "#101923"
+txt = "Simulation erstellen"
+txt_maxl = 20
+isbr = 0
+
+[[component]]
+name = "bBack"
+type = "button"
+x = 24
+y = 707
+w = 432
+h = 52
+sta = 0
+picc = "entry"
+picc2 = "entry_press"
+style = 0
+borderw = 0
+font = "UI24"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Zurück"
+txt_maxl = 6
+isbr = 0
+
+[[component]]
+name = "tmFlow"
+type = "timer"
+tim = 200
+en = 1
+
+[[component]]
+name = "tmLink"
+type = "timer"
+tim = 1000
+en = 1

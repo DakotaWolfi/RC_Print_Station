@@ -1,0 +1,17 @@
+name: Backend and native HMI
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: python -m pip install -r requirements.txt -r requirements-build.txt
+      - run: python -m unittest discover -s tests -v
+      - run: nxwright check hmi/native
+      - run: nxwright build hmi/native /tmp/candidate.HMI --no-lock
+      - run: nxwright extract /tmp/candidate.HMI /tmp/hmi-roundtrip
+      - run: nxwright diff hmi/native /tmp/hmi-roundtrip --no-lock

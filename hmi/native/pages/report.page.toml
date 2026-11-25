@@ -1,0 +1,169 @@
+[page]
+name = "report"
+type = "page"
+x = 0
+y = 0
+w = 480
+h = 800
+bco = "#101923"
+
+[[component]]
+name = "pBg"
+type = "picture"
+x = 0
+y = 0
+w = 480
+h = 800
+pic = "report"
+
+[[component]]
+name = "ready"
+type = "variable"
+val = 0
+vscope = 1
+
+[[component]]
+name = "printing"
+type = "variable"
+val = 0
+vscope = 1
+
+[[component]]
+name = "tTicket"
+type = "text"
+x = 24
+y = 395
+w = 432
+h = 44
+txt = ""
+txt_maxl = 32
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 1
+isbr = 1
+
+[[component]]
+name = "tDevice"
+type = "text"
+x = 24
+y = 471
+w = 432
+h = 70
+txt = ""
+txt_maxl = 64
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 1
+isbr = 1
+
+[[component]]
+name = "tDate"
+type = "text"
+x = 24
+y = 547
+w = 432
+h = 28
+txt = ""
+txt_maxl = 24
+font = "UI20"
+pco = "#afc2d0"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 1
+
+[[component]]
+name = "tStatus"
+type = "text"
+x = 24
+y = 581
+w = 432
+h = 46
+txt = "Keine Messwerte vorhanden."
+txt_maxl = 80
+font = "UI20"
+pco = "#ffd08a"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 1
+isbr = 1
+
+[[component]]
+name = "bPrint"
+type = "button"
+x = 24
+y = 641
+w = 210
+h = 64
+sta = 0
+picc = "report"
+picc2 = "report_press"
+style = 0
+borderw = 0
+font = "UI20"
+pco = "#101923"
+pco2 = "#101923"
+txt = "Beleg drucken"
+txt_maxl = 13
+isbr = 0
+
+[[component]]
+name = "bQR"
+type = "button"
+x = 246
+y = 641
+w = 210
+h = 64
+sta = 0
+picc = "report"
+picc2 = "report_press"
+style = 0
+borderw = 0
+font = "UI20"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "PDF / QR-Code"
+txt_maxl = 13
+isbr = 0
+
+[[component]]
+name = "bHome"
+type = "button"
+x = 24
+y = 719
+w = 432
+h = 42
+sta = 0
+picc = "report"
+picc2 = "report_press"
+style = 0
+borderw = 0
+font = "UI20"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Hauptmenü"
+txt_maxl = 9
+isbr = 0
+
+[[component]]
+name = "tmFlow"
+type = "timer"
+tim = 200
+en = 1
+
+[[component]]
+name = "tmLink"
+type = "timer"
+tim = 1000
+en = 1

@@ -17,7 +17,9 @@ def simulate(ticket, device):
 def receipt(report):
     """80 mm ESC/POS demo receipt, 42 columns, PC850."""
     def clean(value):
-        return "".join(c if c.isprintable() else " " for c in str(value))
+        # PC850 has no euro glyph; keep the new native keyboard's € legible.
+        value = str(value).replace("€", "EUR")
+        return "".join(c if c.isprintable() else " " for c in value)
     def line(value=""):
         return (clean(value)+"\n").encode("cp850","replace")
     def field(label,value):
