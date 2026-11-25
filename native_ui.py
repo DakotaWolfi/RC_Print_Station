@@ -15,6 +15,7 @@ from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
 from station import database, receipt, send, simulate
+from station_admin import wifi_address
 
 END = b"\xff\xff\xff"
 ENCODING = "iso-8859-15"
@@ -124,6 +125,8 @@ class NativeUI:
         self.print_job = None
         self.last_heartbeat = float("-inf")
         self.last_clock = ""
+        self.auto_port = None
+        self.last_network_check = float("-inf")
 
     def cmd(self, command):
         # Commands and text come from our fixed schema, never raw HMI input.
@@ -157,6 +160,16 @@ class NativeUI:
 
     def heartbeat(self, force=False):
         now = time.monotonic()
+        if self.auto_port is not None and (force or now-self.last_network_check >= 10):
+            self.last_network_check = now
+            ip = wifi_address()
+            base = f"http://{ip}:{self.auto_port}" if ip else ""
+            if base != self.base_url:
+                self.base_url = base
+                self.urls.clear()
+                self.cmd("qrpage.qReady.val=2")
+                self.text("qrpage.tNote", "Netzwerk geändert. PDF-Link erneut öffnen.", 100)
+            self.text("settings.tUrl", base or "WLAN nicht verbunden", 100)
         if force or now - self.last_heartbeat >= 2:
             self.cmd("home.age.val=0")
             self.cmd("home.online.val=1")
@@ -343,6 +356,7 @@ def main():
     parser.add_argument("--db", default="reports.sqlite3")
     parser.add_argument("--report-url", default="", help="Reachable LAN origin, e.g. http://192.168.1.42:8080")
     parser.add_argument("--web-port", type=int, default=8080)
+    parser.add_argument("--auto-report-url", action="store_true", help="Use wlan0 IPv4 for QR URLs")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
@@ -355,10 +369,12 @@ def main():
     with serial.Serial(args.port, args.baud, timeout=.1, write_timeout=3) as ser:
         verify_panel(ser)
         server = None
-        if args.report_url:
+        if args.report_url or args.auto_report_url:
             from report_web import start_server
             server = start_server(args.db, args.web_port)
         ui = NativeUI(ser,args.host,args.db,args.printer_port,args.report_url)
+        if args.auto_report_url:
+            ui.auto_port = args.web_port
         try:
             ui.run()
         except KeyboardInterrupt:
