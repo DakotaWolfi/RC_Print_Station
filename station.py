@@ -19,7 +19,7 @@ def receipt(report):
              "NOT A SAFETY TEST", "Ticket: " + clean(report["ticket"]),
              "Device: " + clean(report["device"]),
              "Result: NOT TESTED", clean(report["created"])]
-    return b"\x1b@" + "\n".join(lines).encode("ascii", "replace") + b"\n\n\n\x1dV\x00"
+    return b"\x1b@" + "\n".join(lines).encode("ascii", "replace") + b"\n\x1b\x4a\xf0\x1dV\x00"
 
 def send(host, port, data):
     with socket.create_connection((host, port), timeout=5) as conn:
