@@ -54,3 +54,9 @@ For PDF downloads, add `--report-url http://YOUR-PI-LAN-IP:8080`. The phone must
 ## Project progress
 
 See the [living project roadmap and checklist](ROADMAP.md) for completed tasks, outstanding work, hardware validation and current blockers.
+
+## Station administration (candidate)
+
+Run `python3 station_admin.py` as the same user as native_ui.py. The admin server binds to 127.0.0.1:8081 only. For remote access use an SSH tunnel, e.g. `ssh -L 8081:127.0.0.1:8081 jenna@192.168.200.241`, then open http://127.0.0.1:8081. Wi-Fi controls require NetworkManager and permission to use nmcli. Changing the Wi-Fi can disconnect SSH; arrange local access before doing so. Passwords are not logged by the app but are briefly passed in nmcli process arguments. Receipt options are saved in ~/.config/rc-printstation/receipt.json and read per print.
+
+Use `--auto-report-url` instead of a fixed `--report-url` to discover wlan0 IPv4 and update QR links automatically. Previously issued QR links still contain the old address. No native HMI firmware changes are included in this update. The graphical header and administration features require bench testing.
