@@ -56,7 +56,7 @@ class NativeBackendTests(unittest.TestCase):
         self.ui.finish_print()
         self.assertEqual(len(self.printed),1)
         self.assertEqual(self.printed[0],("printer",9100,receipt(self.ui.report)))
-        self.assertTrue(self.printed[0][2].endswith(b"\x1bJ\xf0\x1dV\x00"))
+        self.assertTrue(self.printed[0][2].endswith(b"\x1bJ\xf0\x1bJ\x78\x1dV\x00"))
         with database(self.ui.db) as db:
             stored = json.loads(db.execute("SELECT data FROM reports").fetchone()[0])
         self.assertEqual(stored["device"],'Mühle "gross" \\ 12 €')
