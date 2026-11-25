@@ -12,7 +12,7 @@ class StationTests(unittest.TestCase):
         data = receipt(simulate("T1", "Lamp"))
         self.assertIn(b"SIMULATION ONLY", data)
         self.assertIn(b"NOT TESTED", data)
-        self.assertIn(b"\x1b\x4a\xf0\x1dV\x00", data)
+        self.assertIn(b"\x1b\x4a\xf0\x1bJ\x78\x1dV\x00", data)
         self.assertIn("Gerät".encode("cp850"), data)
     def test_control_characters(self):
         self.assertNotIn(b"\x1bX", receipt(simulate("T1", "\x1bX")))
