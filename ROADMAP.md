@@ -27,7 +27,7 @@ Status: initial development prototype (v0.1.0 target). Checked means implemented
 - [x] Identify printer IP and verify TCP port (169.254.223.252:9100, link-local)
 - [ ] Implement isolated, configurable DHCP if required; never enable on shared network
 - [x] Verify physical text printing and cutter; ESC J 240 pre-cut feed confirmed working
-- [ ] Verify paper width and final receipt layout
+- [ ] Verify paper width, PC850 character encoding and polished v0.2 receipt layout
 - [ ] Add printer discovery/status, error handling and reprint support
 - [ ] Add Repair Café logo (confirm permission) and final receipt layout
 
@@ -39,8 +39,10 @@ Status: initial development prototype (v0.1.0 target). Checked means implemented
 - [x] Verify physical serial communication (PL011 /dev/serial0, 9600 baud, comok NX8048T070_011R)
 - [ ] Commit editable Nextion HMI template and font resources
 - [x] Implement Pi-driven runtime HMI
-- [ ] Build home/status screen, ticket and device entry, report preview and print confirmation
-- [ ] Add touchscreen keyboard and error/status feedback
+- [x] Implement home/status, ticket and device entry and demo report preview
+- [ ] Validate polished v0.2 screen layout
+- [x] Native keyboard text return and physical receipt confirmed by user
+- [ ] Reskin native QWERTZ keyboard; validate case switching and umlauts
 - [x] Test HMI/backend integration (runtime UI and physical printing confirmed)
 - [ ] Verify 270-degree portrait orientation and touch alignment
 - [ ] Validate mixed-case keyboard and high-speed UART separately
@@ -90,5 +92,5 @@ Status: initial development prototype (v0.1.0 target). Checked means implemented
 - Tester make/model and protocol unknown (red enclosure is the only known clue).
 - Pi SD card backup completed and archive integrity verified.
 - Printer link-local IP and raw printing verified; permanent DHCP setup outstanding. Nextion serial communication verified at 9600 baud. Runtime HMI and touchscreen-triggered printing confirmed; rotation and detailed keyboard testing outstanding.
-- Four initial unit tests passed. Epson printing and Nextion identification verified; runtime HMI not yet tested.
+- Four initial unit tests passed. Hybrid keyboard-to-receipt workflow confirmed; v0.2 changes and PDF/QR downloads still require testing.
 - Final receipt layout, report retention and shared power budget undecided.
