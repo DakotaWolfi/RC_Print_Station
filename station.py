@@ -6,6 +6,8 @@ import socket
 import sqlite3
 import subprocess
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+import textwrap
 
 def simulate(ticket, device):
     return {"ticket": ticket, "device": device, "source": "SIMULATOR",
@@ -13,13 +15,33 @@ def simulate(ticket, device):
             "measurements": [], "verdict": "NOT TESTED"}
 
 def receipt(report):
+    """80 mm ESC/POS demo receipt, 42 columns, PC850."""
     def clean(value):
         return "".join(c if c.isprintable() else " " for c in str(value))
-    lines = ["REPAIR CAFE RIEHEN", "DEMO / SIMULATION ONLY",
-             "NOT A SAFETY TEST", "Ticket: " + clean(report["ticket"]),
-             "Device: " + clean(report["device"]),
-             "Result: NOT TESTED", clean(report["created"])]
-    return b"\x1b@" + "\n".join(lines).encode("ascii", "replace") + b"\n\x1b\x4a\xf0\x1dV\x00"
+    def line(value=""):
+        return (clean(value)+"\n").encode("cp850","replace")
+    def field(label,value):
+        return b"".join(line(s) for s in textwrap.wrap(label+": "+clean(value),42) or [""])
+    try:
+        date=datetime.fromisoformat(report["created"]).astimezone(ZoneInfo("Europe/Zurich"))
+        stamp=date.strftime("%d.%m.%Y  %H:%M")
+    except (ValueError,KeyError):
+        stamp=clean(report.get("created","Unbekannt"))
+    center=b"\x1ba\x01"
+    left=b"\x1ba\x00"
+    bold=b"\x1bE\x01"
+    normal=b"\x1bE\x00"
+    rule=line("-"*42)
+    return (b"\x1b@\x1bt\x02"+center+bold+b"\x1d!\x11"+
+            line("REPAIR CAFÉ")+b"\x1d!\x00"+line("RIEHEN")+normal+
+            line("Elektrisches Prüfprotokoll")+rule+bold+
+            line("DEMO / SIMULATION ONLY")+line("KEINE ELEKTRISCHE PRÜFUNG")+normal+
+            rule+left+field("Datum",stamp)+field("Ticket",report["ticket"])+
+            field("Gerät",report["device"])+rule+bold+line("Prüfergebnis")+
+            line("NICHT GEPRÜFT / NOT TESTED")+normal+
+            line("Keine Messwerte vorhanden.")+rule+center+
+            line("Reparieren statt wegwerfen.")+bold+line("FMI Printstation")+normal+
+            left+b"\x1b\x4a\xf0\x1dV\x00")
 
 def send(host, port, data):
     with socket.create_connection((host, port), timeout=5) as conn:
