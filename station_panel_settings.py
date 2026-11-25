@@ -176,7 +176,7 @@ class PanelSettings:
                     self.hotspot_password=password
                     self.set_status(ssid,ip)
                     self.offset=0
-                    self.status=f"Hotspot aktiv. Passwort: {password} / IP: {ip}"
+                    self.status=f"Offener Hotspot aktiv. IP: {ip}"
                     self.joined=True
                 elif kind=="hotspot-stop":
                     self.hotspot_password=""
