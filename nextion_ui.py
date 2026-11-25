@@ -23,6 +23,10 @@ class UI:
         self.report = None
         self.status = ""
         self.native = False
+        self.entry_id = None
+        self.keyboard_seen = False
+        self.poll_at = 0.0
+        self.native_reading = False
         self.base_url = ""
         self.buttons = []
     def cmd(self, s):
@@ -103,23 +107,34 @@ class UI:
         if self.status:self.text(20,665,440,45,self.status,AMBER)
         if p!="home":self.button(24,725,432,55,"Hauptmenue",lambda:self.go("home"))
         else:self.text(24,735,432,40,"v0.1 | OFFLINE",MUTED,1)
+    def runtime_page(self):
+        self.cmd("page home" if self.native else "page page0")
+        if self.native:
+            self.cmd("vis 255,0")
+        self.cmd("sendxy=1")
     def show_qr(self):
         url=publish(self.db,self.report,self.base_url)
         self.page="qr"
         self.buttons=[]
         self.cmd("page qrpage")
+        self.cmd("sendxy=1")
         self.cmd(f'qrReport.txt="{url}"')
+        self.text(20,735,440,40,"Tippen zum Zurueckkehren",align=1)
     def keyboard(self,field):
         self.field=field
         self.original=getattr(self,field)
         if self.native:
             self.page="native_keyboard"
             self.buttons=[]
-            self.cmd("page page0")
+            self.cmd("page entry")
+            self.entry_id=None
+            self.keyboard_seen=False
+            self.native_reading=False
             value=self.original.replace(chr(34),chr(39)).replace(chr(92),"/")
             self.cmd(f'tInput.txt="{value}"')
-            self.cmd("click tInput,1")
-            self.cmd("click tInput,0")
+            self.cmd("sendme")
+            # Wait for the entry page ID before invoking its built-in keyboard.
+            self.poll_at=time.monotonic()+1
             return
         self.shift=False
         self.caps=False
@@ -172,8 +187,7 @@ class UI:
         self.cmd("bkcmd=3")
         self.cmd("sleep=0")
         self.cmd("dim=100")
-        self.cmd("page page0")
-        self.cmd("sendxy=1")
+        self.runtime_page()
         self.draw()
         print("Initial drawing sent; listening for responses and touch.", flush=True)
         buf=bytearray()
@@ -185,14 +199,28 @@ class UI:
                 buf=bytearray(rest)
                 print("RX:", frame.hex(" "), flush=True)
                 if frame==b"RCBACK" and self.page=="qr":
-                    self.cmd("page page0")
+                    self.runtime_page()
                     self.go("report")
-                elif frame==b"RCKEY" and self.page=="native_keyboard":
-                    self.cmd("get tInput.txt")
+                elif len(frame)==2 and frame[0]==0x66 and self.page=="native_keyboard":
+                    pid=frame[1]
+                    if self.entry_id is None:
+                        self.entry_id=pid
+                        self.cmd("click tInput,1")
+                        self.cmd("click tInput,0")
+                    elif pid!=self.entry_id:
+                        self.keyboard_seen=True
+                    elif self.keyboard_seen and not self.native_reading:
+                        self.native_reading=True
+                        self.cmd("get tInput.txt")
                 elif frame[:1]==b"\x70" and self.page=="native_keyboard":
                     setattr(self,self.field,bytes(frame[1:]).decode("latin-1")[:64])
+                    self.runtime_page()
                     self.go("entry")
                 elif len(frame)==6 and frame[0]==0x67 and frame[5]==0:
+                    if self.page=="qr":
+                        self.runtime_page()
+                        self.go("report")
+                        continue
                     x=int.from_bytes(frame[1:3],"big")
                     y=int.from_bytes(frame[3:5],"big")
                     for bx,by,w,h,action in self.buttons:
@@ -200,6 +228,9 @@ class UI:
                             action()
                             break
             if len(buf)>4096:buf.clear()
+            if self.page=="native_keyboard" and not self.native_reading and time.monotonic()>=self.poll_at:
+                self.cmd("sendme")
+                self.poll_at=time.monotonic()+.35
 def main():
     p=argparse.ArgumentParser()
     p.add_argument("--port",default="/dev/serial0")
