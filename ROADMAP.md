@@ -9,12 +9,12 @@ Status: initial development prototype (v0.1.0 target). Checked means implemented
 - [x] Add Python CLI and setup documentation
 - [x] Add simulated report storage in SQLite
 - [x] Add four initial unit tests (not yet executed)
-- [ ] Run unit tests and record results
+- [x] Run unit tests and record results (4 passed on Raspberry Pi 4)
 - [ ] Split backend into modular display, printer, tester and storage drivers
 - [ ] Add configurable hardware settings and versioning
 
 ## 2. Raspberry Pi bring-up
-- [ ] Finish and verify PT35 SD card backup (in progress)
+- [x] Finish PT35 SD card backup (7-Zip integrity test passed; boot restoration not tested)
 - [x] Boot existing installation and connect over SSH
 - [ ] Clone repository and run diagnostic command
 - [ ] Identify and disable conflicting PT35 services only
@@ -34,8 +34,9 @@ Status: initial development prototype (v0.1.0 target). Checked means implemented
 ## 4. Nextion touchscreen
 - [x] Identify available display: NX8048T070_011 (7 inch, 800 × 480)
 - [x] Implement serial identification probe
-- [ ] Verify power supply, UART signal levels, wiring and baud rate
-- [ ] Verify physical serial communication
+- [ ] Verify power supply headroom and UART signal levels
+- [x] Confirm functional UART wiring and 9600 baud
+- [x] Verify physical serial communication (PL011 /dev/serial0, 9600 baud, comok NX8048T070_011R)
 - [ ] Create Nextion Editor HMI project and commit source
 - [ ] Build home/status screen, ticket and device entry, report preview and print confirmation
 - [ ] Add touchscreen keyboard and error/status feedback
@@ -84,7 +85,7 @@ Status: initial development prototype (v0.1.0 target). Checked means implemented
 
 ## Current blockers / open decisions
 - Tester make/model and protocol unknown (red enclosure is the only known clue).
-- Pi SD card backup not yet confirmed complete.
-- Printer link-local IP and raw printing verified; permanent DHCP setup outstanding. Nextion baud and wiring not yet verified.
-- Initial code committed; tests and hardware functionality not yet verified.
+- Pi SD card backup completed and archive integrity verified.
+- Printer link-local IP and raw printing verified; permanent DHCP setup outstanding. Nextion serial communication verified at 9600 baud. HMI hardware testing outstanding.
+- Four initial unit tests passed. Epson printing and Nextion identification verified; runtime HMI not yet tested.
 - Final receipt layout, report retention and shared power budget undecided.
