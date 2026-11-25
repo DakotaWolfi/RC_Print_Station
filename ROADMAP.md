@@ -37,10 +37,13 @@ Status: initial development prototype (v0.1.0 target). Checked means implemented
 - [ ] Verify power supply headroom and UART signal levels
 - [x] Confirm functional UART wiring and 9600 baud
 - [x] Verify physical serial communication (PL011 /dev/serial0, 9600 baud, comok NX8048T070_011R)
-- [ ] Create Nextion Editor HMI project and commit source
+- [ ] Commit editable Nextion HMI template and font resources
+- [x] Implement Pi-driven runtime HMI
 - [ ] Build home/status screen, ticket and device entry, report preview and print confirmation
 - [ ] Add touchscreen keyboard and error/status feedback
-- [ ] Test HMI/backend integration
+- [x] Test HMI/backend integration (runtime UI and physical printing confirmed)
+- [ ] Verify 270-degree portrait orientation and touch alignment
+- [ ] Validate mixed-case keyboard and high-speed UART separately
 
 ## 5. Electrical safety tester — BLOCKED on identification
 - [ ] Obtain manufacturer, model and firmware from colleague
@@ -86,6 +89,6 @@ Status: initial development prototype (v0.1.0 target). Checked means implemented
 ## Current blockers / open decisions
 - Tester make/model and protocol unknown (red enclosure is the only known clue).
 - Pi SD card backup completed and archive integrity verified.
-- Printer link-local IP and raw printing verified; permanent DHCP setup outstanding. Nextion serial communication verified at 9600 baud. HMI hardware testing outstanding.
+- Printer link-local IP and raw printing verified; permanent DHCP setup outstanding. Nextion serial communication verified at 9600 baud. Runtime HMI and touchscreen-triggered printing confirmed; rotation and detailed keyboard testing outstanding.
 - Four initial unit tests passed. Epson printing and Nextion identification verified; runtime HMI not yet tested.
 - Final receipt layout, report retention and shared power budget undecided.
