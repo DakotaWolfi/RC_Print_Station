@@ -19,13 +19,14 @@ class UI:
         self.status = ""
         self.buttons = []
     def cmd(self, s):
+        print("TX:", s, flush=True)
         self.ser.write(s.encode("latin-1", "replace") + END)
         self.ser.flush()
         time.sleep(.025)
     def text(self, x, y, w, h, value, color=WHITE, align=0):
         value = str(value).replace('"', "'").replace("\\", "/")
         value = "".join(c for c in value if c.isprintable())[:max(1,w//14)]
-        self.cmd(f'xstr {x},{y},{w},{h},0,{color},{BG},{align},1,3,"{value}"')
+        self.cmd(f'xstr {x},{y},{w},{h},0,{color},{BG},{align},1,1,"{value}"')
     def button(self, x, y, w, h, label, action, color=PANEL):
         self.cmd(f"fill {x},{y},{w},{h},{color}")
         self.text(x,y,w,h,label,align=1)
@@ -113,9 +114,14 @@ class UI:
             self.status="Drucker nicht erreichbar"
         self.draw()
     def run(self):
-        self.cmd("bkcmd=0")
+        self.ser.reset_input_buffer()
+        self.ser.write(END)
+        self.cmd("bkcmd=3")
+        self.cmd("sleep=0")
+        self.cmd("dim=100")
         self.cmd("sendxy=1")
         self.draw()
+        print("Initial drawing sent; listening for responses and touch.", flush=True)
         buf=bytearray()
         while True:
             chunk=self.ser.read(self.ser.in_waiting or 1)
@@ -123,6 +129,7 @@ class UI:
             while END in buf:
                 frame,_,rest=buf.partition(END)
                 buf=bytearray(rest)
+                print("RX:", frame.hex(" "), flush=True)
                 if len(frame)==6 and frame[0]==0x67 and frame[5]==0:
                     x=int.from_bytes(frame[1:3],"big")
                     y=int.from_bytes(frame[3:5],"big")
