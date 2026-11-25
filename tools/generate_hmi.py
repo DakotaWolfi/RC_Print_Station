@@ -16,7 +16,7 @@ DESIGN = ROOT / "hmi/design"
 BG, PANEL, EDGE = "#101923", "#1d2c3a", "#344858"
 WHITE, MUTED, ORANGE, CYAN = "#f5f6f7", "#afc2d0", "#ff941f", "#42d9dd"
 WARN = "#ffd08a"
-PAGES = ["home", "entry", "keybdA", "report", "qrpage", "history", "settings"]
+PAGES = ["home", "entry", "keyboard", "report", "qrpage", "history", "settings"]
 
 # Swiss letter order, direct umlauts, plus two symbol banks. A touchscreen
 # shift intentionally provides uppercase umlauts directly (Ä/Ö/Ü).
@@ -157,7 +157,7 @@ def make_entry():
     p.text("tDevice", 38, 460, 404, 66, global_=True, limit=64, isbr=1, size=20)
     for field, (y, h) in enumerate(((315,72),(450,86))):
         p.add(f"hEdit{field}", "hotspot", x=24, y=y, w=432, h=h)
-        p.on(f"hEdit{field}.up", ["if(busy.val==0)", "{", f"field.val={field}", "page keybdA", "}"])
+        p.on(f"hEdit{field}.up", ["if(busy.val==0)", "{", f"field.val={field}", "page keyboard", "}"])
     p.text("tStatus", 24, 548, 432, 51, "Felder antippen, um Text einzugeben.", size=20,
            color=WARN, bg=BG, global_=True, limit=80, isbr=1)
     p.button("bCreate", 24, 615, 432, 72, "Simulation erstellen", [
@@ -175,7 +175,7 @@ def make_entry():
 
 
 def make_keyboard():
-    p = Page("keybdA", "Texteingabe", "Schweiz · QWERTZ   /   direkt auf dem Display")
+    p = Page("keyboard", "Texteingabe", "Schweiz · QWERTZ   /   direkt auf dem Display")
     for name in ("mode", "shift", "caps", "count", "limit"):
         p.var(name, global_=False)
     p.var("dirty", 1, global_=False)
@@ -242,7 +242,7 @@ def make_keyboard():
     p.button("bOK",240,725,224,44,"Übernehmen",["if(entry.field.val==0)","{",
         "entry.tTicket.txt=input.txt","}else","{","entry.tDevice.txt=input.txt","}",
         'entry.tStatus.txt=""',"page entry"],True,20)
-    p.on("keybdA.loadend", ["mode.val=0","shift.val=0","caps.val=0","if(entry.field.val==0)","{",
+    p.on("keyboard.loadend", ["mode.val=0","shift.val=0","caps.val=0","if(entry.field.val==0)","{",
         "input.txt=entry.tTicket.txt",'tField.txt="Reparaturnummer"',"limit.val=32","}else","{",
         "input.txt=entry.tDevice.txt",'tField.txt="Gerätebezeichnung"',"limit.val=64","}",
         "click hLayout,0","click hCount,0"])
