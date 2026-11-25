@@ -7,7 +7,8 @@ from report_web import publish, start_server
 from station import simulate, receipt, send, database
 
 END = b"\xff\xff\xff"
-BG, PANEL, GREEN, WHITE, MUTED, AMBER = 4324, 8583, 11243, 65535, 48631, 64800
+BG, PANEL, GREEN, WHITE, MUTED, AMBER = 4324, 12746, 9082, 65535, 48631, 64800
+HEADER, BORDER = 6468, 16971
 
 class UI:
     def __init__(self, ser, host, db):
@@ -34,13 +35,13 @@ class UI:
         self.ser.write(s.encode("latin-1", "replace") + END)
         self.ser.flush()
         time.sleep(.025)
-    def text(self, x, y, w, h, value, color=WHITE, align=0):
+    def text(self, x, y, w, h, value, color=WHITE, align=0, bg=BG):
         value = str(value).replace('"', "'").replace("\\", "/")
         value = "".join(c for c in value if c.isprintable())[:max(1,w//14)]
-        self.cmd(f'xstr {x},{y},{w},{h},0,{color},{BG},{align},1,1,"{value}"')
+        self.cmd(f'xstr {x},{y},{w},{h},0,{color},{bg},{align},1,1,"{value}"')
     def button(self, x, y, w, h, label, action, color=PANEL):
         self.cmd(f"fill {x},{y},{w},{h},{color}")
-        self.text(x,y,w,h,label,align=1)
+        self.text(x+4,y+4,w-8,h-8,label,align=1,bg=color)
         self.buttons.append((x,y,w,h,action))
     def go(self, page):
         self.page = page
@@ -49,21 +50,24 @@ class UI:
     def draw(self):
         self.buttons = []
         self.cmd(f"cls {BG}")
-        self.text(20,20,440,44,"Repair Cafe Riehen",align=1)
-        self.text(20,70,440,30,"FMI | PRUEFSTATION",MUTED,1)
-        self.cmd(f"line 20,112,460,112,{MUTED}")
+        self.cmd(f"fill 0,0,480,112,{HEADER}")
+        self.text(16,12,448,52,"Repair Café Riehen",align=1,bg=HEADER)
+        self.text(16,66,448,32,"FMI  |  PRÜFSTATION",MUTED,1,bg=HEADER)
+        self.cmd(f"fill 0,110,480,3,{GREEN}")
         p = self.page
         if p == "home":
-            self.text(24,140,432,40,"Pruefgeraet: Simulator",AMBER)
-            self.text(24,185,432,40,"Drucker: TCP / 9100")
-            self.button(24,260,432,100,"Neues Protokoll",lambda:self.go("entry"),GREEN)
-            self.button(24,380,432,80,"Verlauf",lambda:self.go("history"))
+            self.text(24,128,432,36,"SYSTEMÜBERSICHT",MUTED)
+            self.cmd(f"fill 24,170,432,76,{PANEL}")
+            self.text(36,174,408,32,"Prüfgerät: Simulation",AMBER,bg=PANEL)
+            self.text(36,209,408,32,"Drucker: TCP / 9100",WHITE,bg=PANEL)
+            self.button(24,260,432,100,"Neues Prüfprotokoll",lambda:self.go("entry"),GREEN)
+            self.button(24,380,432,80,"Protokollverlauf",lambda:self.go("history"))
             self.button(24,480,432,80,"Einstellungen",lambda:self.go("settings"))
             self.button(24,580,432,80,"Testbeleg",lambda:self.go("test"))
         elif p == "entry":
-            self.text(24,135,432,40,"Reparaturnummer")
-            self.button(24,180,432,65,self.ticket or "Eingeben",lambda:self.keyboard("ticket"))
-            self.text(24,265,432,40,"Geraet")
+            self.text(24,135,432,40,"01  Reparaturnummer")
+            self.button(24,180,432,65,self.ticket or "Zum Eingeben tippen",lambda:self.keyboard("ticket"))
+            self.text(24,265,432,40,"02  Gerätebezeichnung")
             self.button(24,310,432,65,self.device or "Eingeben",lambda:self.keyboard("device"))
             self.button(24,440,432,80,"Demo-Bericht erstellen",self.create,GREEN)
         elif p == "keyboard":
@@ -84,11 +88,14 @@ class UI:
             self.button(15,590,215,60,"Abbruch",self.cancel_keyboard)
             self.button(240,590,225,60,"OK",lambda:self.go("entry"),GREEN)
         elif p in ("report","test"):
-            self.text(24,140,432,45,"SIMULATION - KEINE PRUEFUNG",AMBER)
+            self.cmd(f"fill 24,130,432,65,{PANEL}")
+            self.text(32,138,416,49,"DEMO - KEINE PRÜFUNG",AMBER,1,bg=PANEL)
             if p == "report" and self.report:
                 self.text(24,205,432,40,"Nr: "+self.report["ticket"])
-                self.text(24,255,432,40,"Geraet: "+self.report["device"])
-            self.text(24,330,432,40,"Ergebnis: NICHT GEPRUEFT")
+                self.text(24,255,432,40,"Gerät: "+self.report["device"])
+            self.cmd(f"fill 24,312,432,88,{PANEL}")
+            self.text(36,318,408,30,"PRÜFERGEBNIS",MUTED,bg=PANEL)
+            self.text(36,350,408,42,"NICHT GEPRÜFT",AMBER,bg=PANEL)
             self.button(24,440,432,90,"Testbeleg drucken",self.print_report,GREEN)
             if p == "report" and self.base_url:
                 self.button(24,550,432,85,"Digitales Protokoll",self.show_qr)
@@ -105,8 +112,8 @@ class UI:
             self.text(24,250,432,40,"Treiber: Simulator")
             self.text(24,300,432,40,"UART: "+str(self.ser.baudrate))
         if self.status:self.text(20,665,440,45,self.status,AMBER)
-        if p!="home":self.button(24,725,432,55,"Hauptmenue",lambda:self.go("home"))
-        else:self.text(24,735,432,40,"v0.1 | OFFLINE",MUTED,1)
+        if p!="home":self.button(24,725,432,55,"Zurück zum Hauptmenü",lambda:self.go("home"))
+        else:self.text(24,735,432,40,"FMI  |  v0.2 DEV",MUTED,1)
     def runtime_page(self):
         self.cmd("page home" if self.native else "page page0")
         if self.native:
@@ -162,7 +169,7 @@ class UI:
             self.draw()
     def create(self):
         if not self.ticket.strip() or not self.device.strip():
-            self.status="Bitte beide Felder ausfuellen"
+            self.status="Bitte beide Felder ausfüllen"
             self.draw()
             return
         self.report=simulate(self.ticket,self.device)
