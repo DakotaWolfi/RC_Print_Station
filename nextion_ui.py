@@ -3,6 +3,7 @@ import argparse
 import json
 import time
 import serial
+from report_web import publish, start_server
 from station import simulate, receipt, send, database
 
 END = b"\xff\xff\xff"
@@ -21,6 +22,8 @@ class UI:
         self.original = ""
         self.report = None
         self.status = ""
+        self.native = False
+        self.base_url = ""
         self.buttons = []
     def cmd(self, s):
         print("TX:", s, flush=True)
@@ -83,6 +86,8 @@ class UI:
                 self.text(24,255,432,40,"Geraet: "+self.report["device"])
             self.text(24,330,432,40,"Ergebnis: NICHT GEPRUEFT")
             self.button(24,440,432,90,"Testbeleg drucken",self.print_report,GREEN)
+            if p == "report" and self.base_url:
+                self.button(24,550,432,85,"Digitales Protokoll",self.show_qr)
         elif p == "history":
             with database(self.db) as db:
                 rows=db.execute("SELECT id,data FROM reports ORDER BY id DESC LIMIT 5").fetchall()
@@ -98,9 +103,24 @@ class UI:
         if self.status:self.text(20,665,440,45,self.status,AMBER)
         if p!="home":self.button(24,725,432,55,"Hauptmenue",lambda:self.go("home"))
         else:self.text(24,735,432,40,"v0.1 | OFFLINE",MUTED,1)
+    def show_qr(self):
+        url=publish(self.db,self.report,self.base_url)
+        self.page="qr"
+        self.buttons=[]
+        self.cmd("page qrpage")
+        self.cmd(f'qrReport.txt="{url}"')
     def keyboard(self,field):
         self.field=field
         self.original=getattr(self,field)
+        if self.native:
+            self.page="native_keyboard"
+            self.buttons=[]
+            self.cmd("page page0")
+            value=self.original.replace(chr(34),chr(39)).replace(chr(92),"/")
+            self.cmd(f'tInput.txt="{value}"')
+            self.cmd("click tInput,1")
+            self.cmd("click tInput,0")
+            return
         self.shift=False
         self.caps=False
         self.symbols=False
@@ -152,6 +172,7 @@ class UI:
         self.cmd("bkcmd=3")
         self.cmd("sleep=0")
         self.cmd("dim=100")
+        self.cmd("page page0")
         self.cmd("sendxy=1")
         self.draw()
         print("Initial drawing sent; listening for responses and touch.", flush=True)
@@ -163,7 +184,15 @@ class UI:
                 frame,_,rest=buf.partition(END)
                 buf=bytearray(rest)
                 print("RX:", frame.hex(" "), flush=True)
-                if len(frame)==6 and frame[0]==0x67 and frame[5]==0:
+                if frame==b"RCBACK" and self.page=="qr":
+                    self.cmd("page page0")
+                    self.go("report")
+                elif frame==b"RCKEY" and self.page=="native_keyboard":
+                    self.cmd("get tInput.txt")
+                elif frame[:1]==b"\x70" and self.page=="native_keyboard":
+                    setattr(self,self.field,bytes(frame[1:]).decode("latin-1")[:64])
+                    self.go("entry")
+                elif len(frame)==6 and frame[0]==0x67 and frame[5]==0:
                     x=int.from_bytes(frame[1:3],"big")
                     y=int.from_bytes(frame[3:5],"big")
                     for bx,by,w,h,action in self.buttons:
@@ -177,6 +206,9 @@ def main():
     p.add_argument("--baud",type=int,default=9600)
     p.add_argument("--host",default="169.254.223.252")
     p.add_argument("--db",default="reports.sqlite3")
+    p.add_argument("--native-keyboard",action="store_true")
+    p.add_argument("--report-url",help="Reachable LAN URL, e.g. http://192.168.200.241:8080")
+    p.add_argument("--web-port",type=int,default=8080)
     p.add_argument("--fast",action="store_true",help="Switch display from specified baud to 115200 for this session")
     a=p.parse_args()
     with serial.Serial(a.port,a.baud,timeout=.2,write_timeout=3) as ser:
@@ -192,5 +224,10 @@ def main():
             response=ser.read(256)
             if b"comok" not in response:
                 raise SystemExit("Fast baud handshake failed; power-cycle Nextion and retry without --fast")
-        UI(ser,a.host,a.db).run()
+        ui=UI(ser,a.host,a.db)
+        ui.native=a.native_keyboard
+        if a.report_url:
+            ui.base_url=a.report_url.rstrip("/")
+            start_server(a.db,a.web_port)
+        ui.run()
 if __name__=="__main__":main()
