@@ -6,7 +6,6 @@ from ipaddress import IPv4Address
 import json
 import subprocess
 import time
-import secrets
 from dataclasses import replace
 
 NM = "org.freedesktop.NetworkManager"
@@ -261,7 +260,7 @@ class NetworkManager:
             bus.close()
 
     def hotspot(self):
-        """Explicit temporary WPA2 access point; no password in argv or logs."""
+        """Explicit temporary open access point."""
         directory=Path.home()/".config"/"rc-printstation"
         directory.mkdir(parents=True,exist_ok=True)
         with (directory/"wifi.lock").open("a") as lock:
@@ -276,7 +275,7 @@ class NetworkManager:
         active=None
         previous_profile="/"
         ok=False
-        password=secrets.token_hex(5)
+        password=""
         ssid="FMI-RC-Printstation"
         try:
             root,path,_,props=self._device(dbus,bus)
@@ -287,7 +286,6 @@ class NetworkManager:
             settings={
                 "connection":{"id":ssid,"type":"802-11-wireless","interface-name":self.interface,"autoconnect":False},
                 "802-11-wireless":{"ssid":dbus.ByteArray(ssid.encode()),"mode":"ap","band":"bg"},
-                "802-11-wireless-security":{"key-mgmt":"wpa-psk","psk":password,"proto":dbus.Array(["rsn"],signature="s")},
                 "ipv4":{"method":"shared","never-default":True,"address-data":dbus.Array([{"address":"10.42.0.1","prefix":dbus.UInt32(24)}],signature="a{sv}")},
                 "ipv6":{"method":"disabled"},
             }
