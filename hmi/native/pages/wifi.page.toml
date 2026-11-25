@@ -1,0 +1,253 @@
+[page]
+name = "wifi"
+type = "page"
+x = 0
+y = 0
+w = 480
+h = 800
+bco = "#101923"
+
+[[component]]
+name = "pBg"
+type = "picture"
+x = 0
+y = 0
+w = 480
+h = 800
+pic = "wifi"
+
+[[component]]
+name = "wCurrent"
+type = "text"
+x = 24
+y = 263
+w = 432
+h = 48
+txt = "Nicht verbunden"
+txt_maxl = 56
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#1d2c3a"
+borderw = 0
+xcen = 1
+ycen = 1
+vscope = 0
+isbr = 1
+
+[[component]]
+name = "wBusy"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "wCount"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "wNext"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "wPrev"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "bScan"
+type = "button"
+x = 24
+y = 322
+w = 432
+h = 51
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#ff941f"
+bco2 = "#ffc071"
+pco = "#101923"
+pco2 = "#101923"
+txt = "Netzwerke suchen"
+txt_maxl = 16
+isbr = 0
+
+[[component]]
+name = "wRow0"
+type = "button"
+x = 24
+y = 384
+w = 432
+h = 46
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "-"
+txt_maxl = 54
+isbr = 1
+
+[[component]]
+name = "wRow1"
+type = "button"
+x = 24
+y = 437
+w = 432
+h = 46
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "-"
+txt_maxl = 54
+isbr = 1
+
+[[component]]
+name = "wRow2"
+type = "button"
+x = 24
+y = 490
+w = 432
+h = 46
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "-"
+txt_maxl = 54
+isbr = 1
+
+[[component]]
+name = "wRow3"
+type = "button"
+x = 24
+y = 543
+w = 432
+h = 46
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "-"
+txt_maxl = 54
+isbr = 1
+
+[[component]]
+name = "bPrev"
+type = "button"
+x = 24
+y = 597
+w = 132
+h = 48
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Zurück"
+txt_maxl = 6
+isbr = 0
+
+[[component]]
+name = "wIndex"
+type = "text"
+x = 164
+y = 597
+w = 150
+h = 48
+txt = ""
+txt_maxl = 16
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#1d2c3a"
+borderw = 0
+xcen = 1
+ycen = 1
+vscope = 0
+isbr = 1
+
+[[component]]
+name = "bNext"
+type = "button"
+x = 322
+y = 597
+w = 134
+h = 48
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Weitere"
+txt_maxl = 7
+isbr = 0
+
+[[component]]
+name = "wStatus"
+type = "text"
+x = 24
+y = 650
+w = 432
+h = 56
+txt = "Netzwerke suchen, um WLAN einzurichten."
+txt_maxl = 76
+font = "UI20"
+pco = "#ffd08a"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 1
+
+[[component]]
+name = "bBack"
+type = "button"
+x = 24
+y = 715
+w = 432
+h = 52
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Zurück"
+txt_maxl = 6
+isbr = 0
+
+[[component]]
+name = "tmLink"
+type = "timer"
+tim = 1000
+en = 1

@@ -28,35 +28,16 @@ python3 station.py display-test --port /dev/ttyUSB0 --baud 9600
 
 All reports are simulated; no actual safety certification is produced. The real tester protocol is not implemented. The Gen 3 printer at `169.254.223.252:9100` and legacy hybrid HMI have been physically tested. The new native HMI is a separate candidate, with bench validation outstanding.
 
-## Native portrait HMI candidate (v0.3)
+## Native v0.4 candidate
 
-![Native Nextion screens](hmi/previews/overview.png)
+![Native settings pages](hmi/previews/overview.png)
 
-The candidate uses the Nextion Basic NX8048T070_011R at 270° (480 × 800) and 115200 baud. All seven pages, the Swiss QWERTZ keyboard, touch feedback and page transitions run on the panel. Python handles SQLite, the existing Epson receipt sender and optional local PDF downloads.
+The separate candidate adds native WLAN, printer, receipt and system settings for the Pi 4B and NX8048T070_011R at 270° (480 × 800), 115200 baud. The working v0.3 deployment remains the rollback baseline. Its official Editor keyboard rename is retained.
 
-- [Editable HMI project (ZIP; extract before opening)](hmi/build/FMI_RC_native_v0_3.zip)
-- [Setup, build and rollback](hmi/README.md)
-- [Protocol and component contract](docs/native-hmi-protocol.md)
-- [Tool investigation](docs/nextion-tooling.md)
-- [Validation evidence and remaining bench checks](hmi/VALIDATION.md)
+- [Pi 4 operator setup, services and rollback](docs/native-v04.md)
+- [Validation and December 12 bench checklist](hmi/VALIDATION-v04.md)
+- [Editable v0.4 HMI (extract ZIP)](hmi/build/FMI_RC_native_v0_4.zip)
+- [Protocol](docs/native-hmi-protocol.md)
+- [Roadmap](ROADMAP.md)
 
-The original compiling HMI is preserved byte for byte inside `hmi/reference/FMI_RC_Printstation_working.zip`. `nextion_ui.py` remains the legacy backend. Complete the Editor and physical checks before adopting the candidate as the working installation.
-
-After uploading the candidate on a development display:
-
-```sh
-python3 -m pip install -r requirements.txt
-python3 native_ui.py --port /dev/serial0 --host 169.254.223.252
-```
-
-For PDF downloads, add `--report-url http://YOUR-PI-LAN-IP:8080`. The phone must reach that address. The app does not configure Wi-Fi, Ethernet, DHCP or system services.
-
-## Project progress
-
-See the [living project roadmap and checklist](ROADMAP.md) for completed tasks, outstanding work, hardware validation and current blockers.
-
-## Station administration (candidate)
-
-Run `python3 station_admin.py` as the same user as native_ui.py. The admin server binds to 127.0.0.1:8081 only. For remote access use an SSH tunnel, e.g. `ssh -L 8081:127.0.0.1:8081 jenna@192.168.200.241`, then open http://127.0.0.1:8081. Wi-Fi controls require NetworkManager and permission to use nmcli. Changing the Wi-Fi can disconnect SSH; arrange local access before doing so. Passwords are not logged by the app but are briefly passed in nmcli process arguments. Receipt options are saved in ~/.config/rc-printstation/receipt.json and read per print.
-
-Use `--auto-report-url` instead of a fixed `--report-url` to discover wlan0 IPv4 and update QR links automatically. Previously issued QR links still contain the old address. No native HMI firmware changes are included in this update. The graphical header and administration features require bench testing.
+The existing Epson receipt banner and feed are preserved at default settings. Every report is still a simulation and is labelled accordingly. Bench-test v0.4 separately before adopting it.

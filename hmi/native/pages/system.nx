@@ -1,0 +1,37 @@
+on bBrightDown.up:
+  if(home.online.val==1)
+  {
+  prints "RC4:BR-",0
+  printh ff ff ff
+  }
+
+on bBrightUp.up:
+  if(home.online.val==1)
+  {
+  prints "RC4:BR+",0
+  printh ff ff ff
+  }
+
+on bStand.up:
+  if(home.online.val==1)
+  {
+  prints "RC4:STANDBY",0
+  printh ff ff ff
+  }
+
+on bPower.up:
+  page power
+
+on bBack.up:
+  page settings
+
+on tmLink.timer:
+  home.age.val++
+  if(home.age.val>6)
+  {
+  home.online.val=0
+  home.tLink.txt="Host nicht verbunden"
+  }
+
+on system.loadend:
+  sendme

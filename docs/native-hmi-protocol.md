@@ -34,3 +34,9 @@ Ticket/device limits are 32/64 encoded bytes. The keyboard does not offer NUL/co
 All cross-page components have `vscope=1`. Working copy, Shift/Caps, limits, cancel/commit and every `page` instruction are native events. Python never paints or sends `page` commands. The keyboard is a regular native page, independent of the stock system-keyboard protocol.
 
 Only `source=SIMULATOR`, `verdict=NOT TESTED` records open in this candidate. Future tester integration needs a separate reviewed contract preserving real measurements and verdicts; do not relabel genuine reports to fit this simulator UI.
+
+## v4 settings extension
+
+The v0.4 backend requires `home.proto.val=4`. Existing `RC3:*` report events stay unchanged. Each native page sends `sendme` on load; status replies use component names local to the current settings page. The page IDs are defined in `station_panel_settings.PAGES`. Navigation and button feedback still run on the panel.
+
+Settings events are `RC4:SCAN/NEXT/PREV/SEL:n/JOIN`, `RC4:PASS` + NUL + password, `RC4:IP/PORT` + NUL + value, `RC4:PROBE/TEST`, `RC4:GRAPH/FEED+/FEED-/DENSITY`, `RC4:BR+/BR-/STANDBY`, and `RC4:REBOOT/HALT`. Each frame uses the existing terminator and Latin-9 encoding. Password bytes are sent once from a keyboard-local buffer, never echoed to the panel. Field initialization for printer uses a separate bounded nonsecret draft. Host state scopes commands by the announced page. The application never records raw RC4 input. Generic serial tracing tools can see UART payloads.

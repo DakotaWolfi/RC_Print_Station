@@ -47,6 +47,7 @@ on bBack.up:
   page home
 
 on history.loadend:
+  sendme
   pending.val=0
   prints "RC3:HISTORY",0
   printh ff ff ff
@@ -70,4 +71,3 @@ on tmLink.timer:
   home.online.val=0
   home.tLink.txt="Host nicht verbunden"
   }
-

@@ -16,7 +16,9 @@ DESIGN = ROOT / "hmi/design"
 BG, PANEL, EDGE = "#101923", "#1d2c3a", "#344858"
 WHITE, MUTED, ORANGE, CYAN = "#f5f6f7", "#afc2d0", "#ff941f", "#42d9dd"
 WARN = "#ffd08a"
-PAGES = ["home", "entry", "keyboard", "report", "qrpage", "history", "settings"]
+PAGES = ["home", "entry", "keyboard", "report", "qrpage", "history", "settings",
+         "wifi", "wjoin", "printer", "receipt", "system", "power"]
+FLAT = set(PAGES[6:])
 
 # Swiss letter order, direct umlauts, plus two symbol banks. A touchscreen
 # shift intentionally provides uppercase umlauts directly (Ä/Ö/Ü).
@@ -56,7 +58,7 @@ class Page:
         self.label(24, 183, title, 30, WHITE)
         self.label(24, 228, subtitle, 17, MUTED)
         self.label(24, 777, "FMI  /  REPAIR CAFÉ RIEHEN", 12, MUTED)
-        self.label(390, 777, "v0.3 RC", 12, MUTED)
+        self.label(390, 777, "v0.4 RC", 12, MUTED)
         self.shapes = []
         self.add("pBg", "picture", x=0, y=0, w=480, h=800, pic=name)
 
@@ -84,6 +86,13 @@ class Page:
     def button(self, name, x, y, w, h, label, lines, primary=False, size=24):
         color = ORANGE if primary else PANEL
         self.box(x, y, w, h, color)
+        if self.name in FLAT:
+            self.add(name,"button",x=x,y=y,w=w,h=h,sta=1,style=0,borderw=0,
+                     font=f"UI{size}",bco=color,bco2="#ffc071" if primary else "#365164",
+                     pco=BG if primary else WHITE,pco2=BG if primary else WHITE,
+                     txt=label,txt_maxl=max(len(label),1),isbr=0)
+            self.code += event(name+".up",lines)
+            return
         self.shapes.append((x, y, w, h, primary))
         self.add(name, "button", x=x, y=y, w=w, h=h, sta=0,
                  picc=self.name, picc2=self.name + "_press", style=0, borderw=0,
@@ -106,9 +115,16 @@ class Page:
 
     def save(self):
         self.watchdog()
+        load = f"on {self.name}.loadend:\n"
+        if load in self.code:
+            self.code = self.code.replace(load,load+"  sendme\n",1)
+        else:
+            self.on(self.name+".loadend",["sendme"])
         (APP / f"pages/{self.name}.page.toml").write_text(tomli_w.dumps(self.doc), encoding="utf-8")
-        (APP / f"pages/{self.name}.nx").write_text(self.code, encoding="utf-8")
+        (APP / f"pages/{self.name}.nx").write_text(self.code.rstrip()+"\n", encoding="utf-8")
         self.art.resize((480, 800), Image.Resampling.LANCZOS).save(APP / f"pictures/{self.name}.png")
+        if self.name in FLAT:
+            return
         pressed = self.art.copy()
         draw = ImageDraw.Draw(pressed)
         for x, y, w, h, primary in self.shapes:
@@ -119,7 +135,7 @@ class Page:
 
 def make_home():
     p = Page("home", "Reparieren. Weitergeben.", "Ein zweites Leben beginnt mit einer Reparatur.")
-    p.var("proto", 3)
+    p.var("proto", 4)
     for name in ("online", "age", "pending"):
         p.var(name)
     p.box(24, 273, 432, 115)
@@ -178,7 +194,12 @@ def make_keyboard():
     p = Page("keyboard", "Texteingabe", "Schweiz · QWERTZ   /   direkt auf dem Display")
     for name in ("mode", "shift", "caps", "count", "limit"):
         p.var(name, global_=False)
-    p.var("dirty", 1, global_=False)
+    p.add("secret","variable",sta=1,txt="",txt_maxl=64)
+    p.add("vKey","variable",sta=1,txt="",txt_maxl=1)
+    p.add("hAdd","hotspot",x=4,y=0,w=2,h=2)
+    p.on("hAdd.up",["strlen input.txt,count.val","if(count.val<limit.val)","{",
+                    "if(entry.field.val==2)","{","secret.txt+=vKey.txt",'input.txt+="*"',
+                    "}else","{","input.txt+=vKey.txt","}","}",'vKey.txt=""',"click hCount,0"])
     p.text("tField",16,271,448,28,"Eingabe",size=20,color=CYAN,bg=BG,limit=24)
     p.box(16, 303, 448, 83, outline=EDGE)
     p.text("input", 28, 310, 424, 67, size=20, limit=64, isbr=1)
@@ -197,9 +218,8 @@ def make_keyboard():
         p.add(name, "button", x=8+39*col, y=431+56*row, w=36, h=50,
               style=0, borderw=0, font="UI24", bco=PANEL, bco2=ORANGE,
               pco=WHITE, pco2=BG, txt=char, txt_maxl=1)
-        p.on(name+".up", ["strlen input.txt,count.val", "if(count.val<limit.val)", "{",
-                            f"input.txt+={name}.txt", "}", "if(shift.val==1)", "{",
-                            "shift.val=0", "click hLayout,0", "}", "click hCount,0"])
+        p.on(name+".up", [f"vKey.txt={name}.txt","click hAdd,0","if(shift.val==1)","{",
+                          "shift.val=0","click hLayout,0","}"])
     p.add("hLayout", "hotspot", x=0, y=0, w=2, h=2)
     layout = []
     for mode, bank in enumerate((LOWER, SYMBOL1, SYMBOL2)):
@@ -229,22 +249,36 @@ def make_keyboard():
     # Control keys are native buttons too. Their fills do not need a bitmap.
     controls = [
         ("bShift",8,599,36,50,"Aa",["shift.val=1-shift.val", "mode.val=0", "click hLayout,0"],20),
-        ("bDel",437,599,36,50,"<",['input.txt-=1',"click hCount,0"],24),
+        ("bDel",437,599,36,50,"<",['input.txt-=1','secret.txt-=1',"click hCount,0"],24),
         ("bMode",8,660,74,50,"123",["mode.val++","if(mode.val>2)","{","mode.val=0","}","click hLayout,0"],20),
         ("bCaps",88,660,74,50,"Caps",["caps.val=1-caps.val","shift.val=0","mode.val=0","click hLayout,0"],20),
-        ("bSpace",168,660,204,50,"Leerzeichen",["strlen input.txt,count.val","if(count.val<limit.val)","{",'input.txt+=" "',"}","click hCount,0"],20),
-        ("bClear",378,660,94,50,"Leeren",['input.txt=""',"click hCount,0"],20)]
+        ("bSpace",168,660,204,50,"Leerzeichen",['vKey.txt=" "',"click hAdd,0"],20),
+        ("bClear",378,660,94,50,"Leeren",['input.txt=""','secret.txt=""',"click hCount,0"],20)]
     for name,x,y,w,h,label,lines,size in controls:
         p.add(name,"button",x=x,y=y,w=w,h=h,style=0,borderw=0,font=f"UI{size}",
               bco=PANEL,bco2=ORANGE,pco=WHITE,pco2=BG,txt=label,txt_maxl=max(len(label),5))
         p.on(name+".up", lines)
-    p.button("bCancel",16,725,212,44,"Abbrechen",["page entry"],size=20)
-    p.button("bOK",240,725,224,44,"Übernehmen",["if(entry.field.val==0)","{",
+    p.button("bCancel",16,725,212,44,"Abbrechen",['secret.txt=""','input.txt=""',
+        "if(entry.field.val==2)","{","page wjoin","}else if(entry.field.val>2)","{","page printer",
+        "}else","{","page entry","}"],size=20)
+    p.button("bOK",240,725,224,44,"Übernehmen",[
+        "if(entry.field.val==2)","{","if(home.online.val==1)","{",
+        'prints "RC4:PASS",0',"printh 00","prints secret.txt,0","printh ff ff ff","}",
+        'secret.txt=""','input.txt=""',"page wjoin","}else if(entry.field.val>2)","{",
+        "if(home.online.val==1)","{","if(entry.field.val==3)","{",'prints "RC4:IP",0',"}else","{",
+        'prints "RC4:PORT",0',"}","printh 00","prints input.txt,0","printh ff ff ff","}",
+        'input.txt=""',"page printer","}else","{","if(entry.field.val==0)","{",
         "entry.tTicket.txt=input.txt","}else","{","entry.tDevice.txt=input.txt","}",
-        'entry.tStatus.txt=""',"page entry"],True,20)
-    p.on("keyboard.loadend", ["mode.val=0","shift.val=0","caps.val=0","if(entry.field.val==0)","{",
-        "input.txt=entry.tTicket.txt",'tField.txt="Reparaturnummer"',"limit.val=32","}else","{",
-        "input.txt=entry.tDevice.txt",'tField.txt="Gerätebezeichnung"',"limit.val=64","}",
+        'entry.tStatus.txt=""',"page entry","}"],True,20)
+    p.on("keyboard.unload",['secret.txt=""','vKey.txt=""','input.txt=""'])
+    p.on("keyboard.loadend", ["mode.val=0","shift.val=0","caps.val=0",'secret.txt=""',
+        "if(entry.field.val==0)","{",
+        "input.txt=entry.tTicket.txt",'tField.txt="Reparaturnummer"',"limit.val=32","}else if(entry.field.val==1)","{",
+        "input.txt=entry.tDevice.txt",'tField.txt="Gerätebezeichnung"',"limit.val=64",
+        "}else if(entry.field.val==2)","{",'input.txt=""','tField.txt="WLAN-Passwort"',"limit.val=64",
+        "}else if(entry.field.val==3)","{","input.txt=settings.editText.txt",
+        'tField.txt="Drucker-IPv4-Adresse"',"limit.val=15","}else","{","input.txt=settings.editText.txt",
+        'tField.txt="Drucker-TCP-Port"',"limit.val=5","}",'settings.editText.txt=""',
         "click hLayout,0","click hCount,0"])
     p.save()
 
@@ -318,17 +352,121 @@ def make_history():
     p.save()
 
 
+def active_action(action):
+    return ["if(home.online.val==1)","{",*emit("RC4:"+action),"}"]
+
+
+def back(p, target="settings"):
+    p.button("bBack",24,715,432,52,"Zurück",["page "+target],size=20)
+
+
+def note(p,name,y,limit=76,default=""):
+    p.text(name,24,y,432,56,default,size=20,color=WARN,bg=BG,limit=limit,isbr=1)
+
+
+def value(p,name,x,y,w,label="",limit=48):
+    p.text(name,x,y,w,48,label,size=20,bg=PANEL,limit=limit,isbr=1,align=1)
+
+
 def make_settings():
-    p = Page("settings", "Station & Verbindung", "FMI Printstation   /   lokale Geräte")
-    for title,y in (("DRUCKER",282),("DISPLAY",389),("PDF-DOWNLOAD",496)):
-        p.label(24,y,title,14,CYAN)
-        p.box(24,y+25,432,68)
-    p.text("tPrinter",38,311,404,60,"",size=20,limit=64,global_=True,isbr=1)
-    p.text("tUart",38,418,404,60,"115200 Baud · 480 × 800 · 270°",size=20,limit=64,global_=True,isbr=1)
-    p.text("tUrl",38,525,404,60,"Deaktiviert",size=20,limit=100,global_=True,isbr=1)
-    p.text("tStatus",24,618,432,66,"Prüfgerät: Simulator. Keine Messwerte.",size=20,
-           limit=80,color=WARN,bg=BG,isbr=1)
-    p.button("bBack",24,715,432,52,"Hauptmenü",["page home"],size=20)
+    p=Page("settings","Stationseinstellungen","FMI Printstation / Raspberry Pi 4B")
+    p.add("editText","variable",vscope=1,sta=1,txt="",txt_maxl=16)
+    for y,target,label in ((279,"wifi","WLAN"),(379,"printer","Drucker"),
+                           (479,"receipt","Beleg"),(579,"system","System & Display")):
+        p.button("b"+target,24,y,432,78,label,["page "+target],target=="wifi")
+    back(p,"home")
+    p.save()
+
+
+def make_wifi():
+    p=Page("wifi","WLAN einrichten","Lokale Einstellungen / kein Internet nötig")
+    value(p,"wCurrent",24,263,432,"Nicht verbunden",56)
+    for name in ("wBusy","wCount","wNext","wPrev"):
+        p.var(name,global_=False)
+    p.button("bScan",24,322,432,51,"Netzwerke suchen",[
+        "if(wBusy.val==0&&home.online.val==1)","{","wBusy.val=1","wCount.val=0",
+        *emit("RC4:SCAN"),"}"],True,20)
+    for i in range(4):
+        p.button(f"wRow{i}",24,384+i*53,432,46,"-",
+                 [f"if(wBusy.val==0&&wCount.val>{i}&&home.online.val==1)","{",
+                  *emit(f"RC4:SEL:{i}"),"page wjoin","}"],size=20)
+        p.doc["component"][-1].update(txt_maxl=54,isbr=1)
+    p.button("bPrev",24,597,132,48,"Zurück",["if(wPrev.val==1)","{",*active_action("PREV"),"}"],size=20)
+    value(p,"wIndex",164,597,150,"",16)
+    p.button("bNext",322,597,134,48,"Weitere",["if(wNext.val==1)","{",*active_action("NEXT"),"}"],size=20)
+    note(p,"wStatus",650,default="Netzwerke suchen, um WLAN einzurichten.")
+    back(p)
+    p.save()
+
+
+def make_join():
+    p=Page("wjoin","WLAN verbinden","Die Verbindung läuft auf dem Raspberry Pi.")
+    p.var("jMode",global_=False)
+    value(p,"jName",24,285,432,"Kein Netz ausgewählt",42)
+    note(p,"jStatus",362,86)
+    p.button("bJoin",24,456,432,76,"Verbinden / Passwort",[
+        "if(home.online.val==1)","{","if(jMode.val==1)","{","jMode.val=0",*emit("RC4:JOIN"),
+        "}else if(jMode.val==2)","{","entry.field.val=2","page keyboard","}","}"],True,20)
+    back(p,"wifi")
+    p.save()
+
+
+def make_printer():
+    p=Page("printer","Drucker einrichten","Direktverbindung / Epson ESC-POS über Ethernet")
+    for i, (stem,label,limit) in enumerate((("Host","IPv4-ADRESSE",16),("Port","TCP-PORT",5))):
+        y=280+i*99
+        p.label(24,y,label,14,CYAN)
+        value(p,"p"+stem,24,y+24,294,"",limit)
+        p.button("b"+stem,330,y+24,126,48,"Ändern",["if(home.online.val==1)","{",
+                 "settings.editText.txt=p"+stem+".txt",f"entry.field.val={3+i}","page keyboard","}"],size=20)
+    p.button("bProbe",24,499,432,53,"TCP-Verbindung testen",active_action("PROBE"),size=20)
+    p.button("bTest",24,565,432,55,"Testbeleg drucken",active_action("TEST"),True,20)
+    note(p,"pStatus",643)
+    back(p)
+    p.save()
+
+
+def make_receipt():
+    p=Page("receipt","Beleg einstellen","Änderungen gelten ab dem nächsten Druck.")
+    p.button("rGraphic",24,279,432,61,"Kopf: Grafik",active_action("GRAPH"),size=20)
+    p.doc["component"][-1]["txt_maxl"]=28
+    p.label(24,369,"PAPIERTRANSPORT VOR SCHNITT",14,CYAN)
+    p.button("bFeedDown",24,398,117,58,"- 5 mm",active_action("FEED-"),size=20)
+    value(p,"rFeed",151,403,178,"45 mm",16)
+    p.button("bFeedUp",339,398,117,58,"+ 5 mm",active_action("FEED+"),size=20)
+    p.label(24,489,"DRUCKDICHTE · GS ( K NUR BEI KOMPATIBLEM MODELL",13,CYAN)
+    p.button("rDensity",24,516,432,58,"Druckervorgabe",active_action("DENSITY"),size=20)
+    p.doc["component"][-1]["txt_maxl"]=30
+    note(p,"rStatus",626,68)
+    back(p)
+    p.save()
+
+
+def make_system():
+    p=Page("system","System & Display","480 × 800 / 270° / UART 115200")
+    value(p,"sModel",24,259,432,"Raspberry Pi 4B",50)
+    p.label(24,328,"HELLIGKEIT",14,CYAN)
+    p.button("bBrightDown",24,353,116,50,"- 10 %",active_action("BR-"),size=20)
+    value(p,"sBright",151,354,178,"100 %",16)
+    p.button("bBrightUp",340,353,116,50,"+ 10 %",active_action("BR+"),size=20)
+    p.label(24,425,"STANDBY NACH LETZTER BERÜHRUNG",14,CYAN)
+    value(p,"sStand",24,449,230,"Aus",16)
+    p.button("bStand",270,449,186,50,"Ändern",active_action("STANDBY"),size=20)
+    p.button("bPower",24,546,432,58,"Neustart / Ausschalten",["page power"],size=20)
+    note(p,"sStatus",638,60)
+    back(p)
+    p.save()
+
+
+def make_power():
+    p=Page("power","Systemaktion bestätigen","Laufende Aufträge zuerst abschliessen.")
+    p.var("xEnabled",global_=False)
+    note(p,"xStatus",274)
+    for y,name,label in ((377,"REBOOT","Jetzt neu starten"),(469,"HALT","Jetzt ausschalten")):
+        p.button("b"+name,24,y,432,65,label,["if(xEnabled.val==1&&home.online.val==1)","{",
+                 "xEnabled.val=0",*emit("RC4:"+name),"}"],size=20)
+    p.button("bCancel",24,610,432,60,"Abbrechen",["page system"],True,20)
+    back(p,"system")
     p.save()
 
 
@@ -337,10 +475,10 @@ def main():
         for path in (APP/folder).glob("*"):
             if path.is_file():
                 path.unlink()
-    app = {"format":1,"name":"Repair Café Riehen · FMI Printstation v0.3",
+    app = {"format":1,"name":"Repair Café Riehen · FMI Printstation v0.4",
            "language":"nextion_do_not_change_manually","screen":"NX8048T070",
            "rotation":270,"encoding":"iso-8859-15","pages":PAGES,
-           "pictures":[s for p in PAGES for s in (p,p+"_press")],
+           "pictures":[s for p in PAGES for s in ((p,) if p in FLAT else (p,p+"_press"))],
            "fonts":["UI20","UI24","UI28"]}
     (APP/"app.toml").write_text(tomli_w.dumps(app),encoding="utf-8")
     typeface = TrueTypeFont((DESIGN/"typeface/NotoSans-Regular.ttf").read_bytes())
@@ -352,9 +490,10 @@ def main():
         'printh 00 00 00 ff ff ff 88 ff ff ff\nprints "RC3:BOOT",0\nprinth ff ff ff\npage home\n',
         encoding="utf-8")
     make_home(); make_entry(); make_keyboard(); make_report(); make_qr(); make_history(); make_settings()
+    make_wifi(); make_join(); make_printer(); make_receipt(); make_system(); make_power()
     (ROOT/"hmi/design/keyboard-layout.json").write_text(json.dumps(
         dict(lower=LOWER,upper=UPPER,symbols=SYMBOL1,accents=SYMBOL2),ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
-    print("Generated seven candidate pages; reference HMI left untouched.")
+    print("Generated native v0.4 pages; reference HMI left untouched.")
 
 
 if __name__ == "__main__":

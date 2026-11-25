@@ -1,0 +1,32 @@
+{
+  "candidate": "v0.4",
+  "target": "NX8048T070_011R",
+  "rotation": 270,
+  "resolution": [
+    480,
+    800
+  ],
+  "baud": 115200,
+  "protocol": 4,
+  "encoding": "iso-8859-15",
+  "baseline": "9d807e3171afd003921b63006ec533c3f4f0b6e0",
+  "nxwright_commit": "e9443a409cc9deb866db7486854fa962d382accc",
+  "vendor_firmware_editor": "1.68.2",
+  "files": [
+    {
+      "name": "FMI_RC_native_v0_4.HMI",
+      "size_bytes": 24450426,
+      "sha256": "a4fda53d04a250b3f7d0e9108e0dd360003e472b349241b1a1af859d9527b7b0"
+    },
+    {
+      "name": "FMI_RC_native_v0_4.tft",
+      "size_bytes": 15263644,
+      "sha256": "e45babccf21b875febfcb745222d86e5883a3f737c4fd4a31b1e11e054142d6a"
+    },
+    {
+      "name": "FMI_RC_native_v0_4.zip",
+      "size_bytes": 3320272,
+      "sha256": "5414813de10173920ddefaab4700f93c623390df17a7931a366fc6c6baac36c5"
+    }
+  ]
+}

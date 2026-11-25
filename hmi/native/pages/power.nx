@@ -1,0 +1,32 @@
+on bREBOOT.up:
+  if(xEnabled.val==1&&home.online.val==1)
+  {
+  xEnabled.val=0
+  prints "RC4:REBOOT",0
+  printh ff ff ff
+  }
+
+on bHALT.up:
+  if(xEnabled.val==1&&home.online.val==1)
+  {
+  xEnabled.val=0
+  prints "RC4:HALT",0
+  printh ff ff ff
+  }
+
+on bCancel.up:
+  page system
+
+on bBack.up:
+  page system
+
+on tmLink.timer:
+  home.age.val++
+  if(home.age.val>6)
+  {
+  home.online.val=0
+  home.tLink.txt="Host nicht verbunden"
+  }
+
+on power.loadend:
+  sendme

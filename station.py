@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 import textwrap
 import base64
 import zlib
-from station_admin import receipt_settings
+from station_config import load as receipt_settings, DENSITIES
 
 def simulate(ticket, device):
     return {"ticket": ticket, "device": device, "source": "SIMULATOR",
@@ -26,7 +26,7 @@ def graphic_header():
         raise ValueError("Invalid receipt header")
     return b"\x1d\x76\x30\x00\x3f\x00\xa8\x00" + data + b"\n"
 
-def receipt(report):
+def receipt(report, settings=None):
     """80 mm ESC/POS demo receipt, 42 columns, PC850."""
     def clean(value):
         # PC850 has no euro glyph; keep the new native keyboard's € legible.
@@ -48,7 +48,9 @@ def receipt(report):
     rule=line("-"*42)
     heavy=line("="*42)
     # Epson 203 dpi: 120 dots ~= 15 mm. Keep the proven 240-dot feed.
-    settings=receipt_settings()
+    settings=receipt_settings() if settings is None else settings
+    m=DENSITIES[settings.get("density","default")]
+    density=b"" if m is None else b"\x1d(K\x02\x001"+bytes([m])
     dots=round(settings["feed_mm"]*8)
     chunks=[]
     while dots:
@@ -57,7 +59,7 @@ def receipt(report):
         dots-=step
     feed_and_cut=b"".join(chunks)+b"\x1dV\x00"
     header=graphic_header() if settings["graphic"] else bold+b"\x1d!\x11"+line("REPAIR CAFÉ")+b"\x1d!\x00"+line("RIEHEN")+normal
-    return (b"\x1b@\x1bt\x02"+center+header+normal+
+    return (b"\x1b@"+density+b"\x1bt\x02"+center+header+normal+
             line("Reparieren statt wegwerfen.")+heavy+
             bold+line("ELEKTRISCHES PRÜFPROTOKOLL")+normal+line()+bold+
             line("DEMO / SIMULATION ONLY")+line("KEINE ELEKTRISCHE PRÜFUNG")+normal+

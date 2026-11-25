@@ -1,0 +1,123 @@
+[page]
+name = "power"
+type = "page"
+x = 0
+y = 0
+w = 480
+h = 800
+bco = "#101923"
+
+[[component]]
+name = "pBg"
+type = "picture"
+x = 0
+y = 0
+w = 480
+h = 800
+pic = "power"
+
+[[component]]
+name = "xEnabled"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "xStatus"
+type = "text"
+x = 24
+y = 274
+w = 432
+h = 56
+txt = ""
+txt_maxl = 76
+font = "UI20"
+pco = "#ffd08a"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 1
+
+[[component]]
+name = "bREBOOT"
+type = "button"
+x = 24
+y = 377
+w = 432
+h = 65
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Jetzt neu starten"
+txt_maxl = 17
+isbr = 0
+
+[[component]]
+name = "bHALT"
+type = "button"
+x = 24
+y = 469
+w = 432
+h = 65
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Jetzt ausschalten"
+txt_maxl = 17
+isbr = 0
+
+[[component]]
+name = "bCancel"
+type = "button"
+x = 24
+y = 610
+w = 432
+h = 60
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#ff941f"
+bco2 = "#ffc071"
+pco = "#101923"
+pco2 = "#101923"
+txt = "Abbrechen"
+txt_maxl = 9
+isbr = 0
+
+[[component]]
+name = "bBack"
+type = "button"
+x = 24
+y = 715
+w = 432
+h = 52
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Zurück"
+txt_maxl = 6
+isbr = 0
+
+[[component]]
+name = "tmLink"
+type = "timer"
+tim = 1000
+en = 1

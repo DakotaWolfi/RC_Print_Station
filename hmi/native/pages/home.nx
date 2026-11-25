@@ -43,3 +43,5 @@ on tmLink.timer:
   home.tLink.txt="Host nicht verbunden"
   }
 
+on home.loadend:
+  sendme

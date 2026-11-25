@@ -1,0 +1,74 @@
+on bScan.up:
+  if(wBusy.val==0&&home.online.val==1)
+  {
+  wBusy.val=1
+  wCount.val=0
+  prints "RC4:SCAN",0
+  printh ff ff ff
+  }
+
+on wRow0.up:
+  if(wBusy.val==0&&wCount.val>0&&home.online.val==1)
+  {
+  prints "RC4:SEL:0",0
+  printh ff ff ff
+  page wjoin
+  }
+
+on wRow1.up:
+  if(wBusy.val==0&&wCount.val>1&&home.online.val==1)
+  {
+  prints "RC4:SEL:1",0
+  printh ff ff ff
+  page wjoin
+  }
+
+on wRow2.up:
+  if(wBusy.val==0&&wCount.val>2&&home.online.val==1)
+  {
+  prints "RC4:SEL:2",0
+  printh ff ff ff
+  page wjoin
+  }
+
+on wRow3.up:
+  if(wBusy.val==0&&wCount.val>3&&home.online.val==1)
+  {
+  prints "RC4:SEL:3",0
+  printh ff ff ff
+  page wjoin
+  }
+
+on bPrev.up:
+  if(wPrev.val==1)
+  {
+  if(home.online.val==1)
+  {
+  prints "RC4:PREV",0
+  printh ff ff ff
+  }
+  }
+
+on bNext.up:
+  if(wNext.val==1)
+  {
+  if(home.online.val==1)
+  {
+  prints "RC4:NEXT",0
+  printh ff ff ff
+  }
+  }
+
+on bBack.up:
+  page settings
+
+on tmLink.timer:
+  home.age.val++
+  if(home.age.val>6)
+  {
+  home.online.val=0
+  home.tLink.txt="Host nicht verbunden"
+  }
+
+on wifi.loadend:
+  sendme

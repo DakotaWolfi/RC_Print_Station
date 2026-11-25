@@ -1,5 +1,5 @@
 format = 1
-name = "Repair Café Riehen · FMI Printstation v0.3"
+name = "Repair Café Riehen · FMI Printstation v0.4"
 language = "nextion_do_not_change_manually"
 screen = "NX8048T070"
 rotation = 270
@@ -7,19 +7,25 @@ encoding = "iso-8859-15"
 pages = [
     "home",
     "entry",
-    "keybdA",
+    "keyboard",
     "report",
     "qrpage",
     "history",
     "settings",
+    "wifi",
+    "wjoin",
+    "printer",
+    "receipt",
+    "system",
+    "power",
 ]
 pictures = [
     "home",
     "home_press",
     "entry",
     "entry_press",
-    "keybdA",
-    "keybdA_press",
+    "keyboard",
+    "keyboard_press",
     "report",
     "report_press",
     "qrpage",
@@ -27,7 +33,12 @@ pictures = [
     "history",
     "history_press",
     "settings",
-    "settings_press",
+    "wifi",
+    "wjoin",
+    "printer",
+    "receipt",
+    "system",
+    "power",
 ]
 fonts = [
     "UI20",

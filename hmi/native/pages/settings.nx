@@ -1,3 +1,15 @@
+on bwifi.up:
+  page wifi
+
+on bprinter.up:
+  page printer
+
+on breceipt.up:
+  page receipt
+
+on bsystem.up:
+  page system
+
 on bBack.up:
   page home
 
@@ -9,3 +21,5 @@ on tmLink.timer:
   home.tLink.txt="Host nicht verbunden"
   }
 
+on settings.loadend:
+  sendme

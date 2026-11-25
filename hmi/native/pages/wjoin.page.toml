@@ -1,0 +1,103 @@
+[page]
+name = "wjoin"
+type = "page"
+x = 0
+y = 0
+w = 480
+h = 800
+bco = "#101923"
+
+[[component]]
+name = "pBg"
+type = "picture"
+x = 0
+y = 0
+w = 480
+h = 800
+pic = "wjoin"
+
+[[component]]
+name = "jMode"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "jName"
+type = "text"
+x = 24
+y = 285
+w = 432
+h = 48
+txt = "Kein Netz ausgewählt"
+txt_maxl = 42
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#1d2c3a"
+borderw = 0
+xcen = 1
+ycen = 1
+vscope = 0
+isbr = 1
+
+[[component]]
+name = "jStatus"
+type = "text"
+x = 24
+y = 362
+w = 432
+h = 56
+txt = ""
+txt_maxl = 86
+font = "UI20"
+pco = "#ffd08a"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 1
+
+[[component]]
+name = "bJoin"
+type = "button"
+x = 24
+y = 456
+w = 432
+h = 76
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#ff941f"
+bco2 = "#ffc071"
+pco = "#101923"
+pco2 = "#101923"
+txt = "Verbinden / Passwort"
+txt_maxl = 20
+isbr = 0
+
+[[component]]
+name = "bBack"
+type = "button"
+x = 24
+y = 715
+w = 432
+h = 52
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Zurück"
+txt_maxl = 6
+isbr = 0
+
+[[component]]
+name = "tmLink"
+type = "timer"
+tim = 1000
+en = 1

@@ -1,0 +1,190 @@
+[page]
+name = "system"
+type = "page"
+x = 0
+y = 0
+w = 480
+h = 800
+bco = "#101923"
+
+[[component]]
+name = "pBg"
+type = "picture"
+x = 0
+y = 0
+w = 480
+h = 800
+pic = "system"
+
+[[component]]
+name = "sModel"
+type = "text"
+x = 24
+y = 259
+w = 432
+h = 48
+txt = "Raspberry Pi 4B"
+txt_maxl = 50
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#1d2c3a"
+borderw = 0
+xcen = 1
+ycen = 1
+vscope = 0
+isbr = 1
+
+[[component]]
+name = "bBrightDown"
+type = "button"
+x = 24
+y = 353
+w = 116
+h = 50
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "- 10 %"
+txt_maxl = 6
+isbr = 0
+
+[[component]]
+name = "sBright"
+type = "text"
+x = 151
+y = 354
+w = 178
+h = 48
+txt = "100 %"
+txt_maxl = 16
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#1d2c3a"
+borderw = 0
+xcen = 1
+ycen = 1
+vscope = 0
+isbr = 1
+
+[[component]]
+name = "bBrightUp"
+type = "button"
+x = 340
+y = 353
+w = 116
+h = 50
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "+ 10 %"
+txt_maxl = 6
+isbr = 0
+
+[[component]]
+name = "sStand"
+type = "text"
+x = 24
+y = 449
+w = 230
+h = 48
+txt = "Aus"
+txt_maxl = 16
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#1d2c3a"
+borderw = 0
+xcen = 1
+ycen = 1
+vscope = 0
+isbr = 1
+
+[[component]]
+name = "bStand"
+type = "button"
+x = 270
+y = 449
+w = 186
+h = 50
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Ändern"
+txt_maxl = 6
+isbr = 0
+
+[[component]]
+name = "bPower"
+type = "button"
+x = 24
+y = 546
+w = 432
+h = 58
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Neustart / Ausschalten"
+txt_maxl = 22
+isbr = 0
+
+[[component]]
+name = "sStatus"
+type = "text"
+x = 24
+y = 638
+w = 432
+h = 56
+txt = ""
+txt_maxl = 60
+font = "UI20"
+pco = "#ffd08a"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 1
+
+[[component]]
+name = "bBack"
+type = "button"
+x = 24
+y = 715
+w = 432
+h = 52
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Zurück"
+txt_maxl = 6
+isbr = 0
+
+[[component]]
+name = "tmLink"
+type = "timer"
+tim = 1000
+en = 1

@@ -128,3 +128,14 @@ Status: working legacy hybrid prototype plus separate native HMI v0.3 candidate.
 - [ ] Validate memory budget, official Editor compile, and physical offline configuration
 - [ ] Keep Raspberry Pi 4 for first event; defer Orange Pi migration
 - [ ] Verify NetworkManager permissions and permanent dedicated printer Ethernet configuration
+
+## Native v0.4 · Raspberry Pi 4B · target 12 December 2026
+
+- [x] Branch from the latest physical v0.3 baseline and keep the official Editor `keyboard` page name.
+- [x] Implement native Wi-Fi setup and asynchronous NetworkManager operations; update QR origin when Wi-Fi IPv4 changes.
+- [x] Add printer endpoint, TCP test, simulation test receipt and shared receipt preferences without removing the graphical header.
+- [x] Add brightness, standby, system info and optional confirmed power actions.
+- [x] Review autostart, preserve rollback path, build separate editable HMI and compiled TFT, run simulator/backend regressions.
+- [ ] Independently open/compile v0.4 in official Editor and complete the [Pi 4 bench checklist](hmi/VALIDATION-v04.md).
+- [ ] Verify Landauer Wi-Fi, QR reachability, Ethernet printing and boot-time reconnect before switching the working unit.
+- [ ] Consider Orange Pi migration after the 12 December deployment.

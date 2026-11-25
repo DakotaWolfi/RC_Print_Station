@@ -1,0 +1,43 @@
+on bHost.up:
+  if(home.online.val==1)
+  {
+  settings.editText.txt=pHost.txt
+  entry.field.val=3
+  page keyboard
+  }
+
+on bPort.up:
+  if(home.online.val==1)
+  {
+  settings.editText.txt=pPort.txt
+  entry.field.val=4
+  page keyboard
+  }
+
+on bProbe.up:
+  if(home.online.val==1)
+  {
+  prints "RC4:PROBE",0
+  printh ff ff ff
+  }
+
+on bTest.up:
+  if(home.online.val==1)
+  {
+  prints "RC4:TEST",0
+  printh ff ff ff
+  }
+
+on bBack.up:
+  page settings
+
+on tmLink.timer:
+  home.age.val++
+  if(home.age.val>6)
+  {
+  home.online.val=0
+  home.tLink.txt="Host nicht verbunden"
+  }
+
+on printer.loadend:
+  sendme

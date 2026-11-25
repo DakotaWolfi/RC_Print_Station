@@ -1,0 +1,41 @@
+on rGraphic.up:
+  if(home.online.val==1)
+  {
+  prints "RC4:GRAPH",0
+  printh ff ff ff
+  }
+
+on bFeedDown.up:
+  if(home.online.val==1)
+  {
+  prints "RC4:FEED-",0
+  printh ff ff ff
+  }
+
+on bFeedUp.up:
+  if(home.online.val==1)
+  {
+  prints "RC4:FEED+",0
+  printh ff ff ff
+  }
+
+on rDensity.up:
+  if(home.online.val==1)
+  {
+  prints "RC4:DENSITY",0
+  printh ff ff ff
+  }
+
+on bBack.up:
+  page settings
+
+on tmLink.timer:
+  home.age.val++
+  if(home.age.val>6)
+  {
+  home.online.val=0
+  home.tLink.txt="Host nicht verbunden"
+  }
+
+on receipt.loadend:
+  sendme

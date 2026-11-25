@@ -1,3 +1,21 @@
+# Native Nextion HMI
+
+The current source in `native/` is v0.4. For v0.4 operation and rollout see [the Pi 4 procedure](../docs/native-v04.md) and [validation](VALIDATION-v04.md). The v0.3 documentation below is retained for the earlier candidate; the original HMI archives stay unchanged.
+
+## Build v0.4
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements.txt -r requirements-build.txt
+nxwright check hmi/native
+python -m unittest discover -s tests -v
+nxwright build hmi/native /tmp/FMI_RC_native_v0_4.HMI --no-lock
+nxwright compile hmi/native /tmp/FMI_RC_native_v0_4.tft --download
+```
+
+If a 1.68.2 Basic-series TFT is available, use `--firmware PATH` instead of the download. Open and compile the generated HMI in official Editor 1.68.2 as an independent check before flashing. `tools/generate_hmi.py` replaces the generated source in `native/`; keep manual edits in version control before regenerating. `tools/render_hmi.py` produces simulated UI previews. See the [v0.4 manifest](build/manifest-v04.json) for exact artifact hashes.
+
 # Native portrait HMI candidate v0.3
 
 Target: **Nextion Basic NX8048T070_011R**, 270°, **480 × 800**, UART **115200**. The supplied compiling project is the starting point: its target, orientation, branded banner and component defaults were retained. The original HMI and legacy backend are preserved.

@@ -17,76 +17,88 @@ h = 800
 pic = "settings"
 
 [[component]]
-name = "tPrinter"
-type = "text"
-x = 38
-y = 311
-w = 404
-h = 60
+name = "editText"
+type = "variable"
+vscope = 1
+sta = 1
 txt = ""
-txt_maxl = 64
-font = "UI20"
-pco = "#f5f6f7"
-bco = "#1d2c3a"
-borderw = 0
-xcen = 0
-ycen = 1
-vscope = 1
-isbr = 1
+txt_maxl = 16
 
 [[component]]
-name = "tUart"
-type = "text"
-x = 38
-y = 418
-w = 404
-h = 60
-txt = "115200 Baud · 480 × 800 · 270°"
-txt_maxl = 64
-font = "UI20"
-pco = "#f5f6f7"
-bco = "#1d2c3a"
-borderw = 0
-xcen = 0
-ycen = 1
-vscope = 1
-isbr = 1
-
-[[component]]
-name = "tUrl"
-type = "text"
-x = 38
-y = 525
-w = 404
-h = 60
-txt = "Deaktiviert"
-txt_maxl = 100
-font = "UI20"
-pco = "#f5f6f7"
-bco = "#1d2c3a"
-borderw = 0
-xcen = 0
-ycen = 1
-vscope = 1
-isbr = 1
-
-[[component]]
-name = "tStatus"
-type = "text"
+name = "bwifi"
+type = "button"
 x = 24
-y = 618
+y = 279
 w = 432
-h = 66
-txt = "Prüfgerät: Simulator. Keine Messwerte."
-txt_maxl = 80
-font = "UI20"
-pco = "#ffd08a"
-bco = "#101923"
+h = 78
+sta = 1
+style = 0
 borderw = 0
-xcen = 0
-ycen = 1
-vscope = 0
-isbr = 1
+font = "UI24"
+bco = "#ff941f"
+bco2 = "#ffc071"
+pco = "#101923"
+pco2 = "#101923"
+txt = "WLAN"
+txt_maxl = 4
+isbr = 0
+
+[[component]]
+name = "bprinter"
+type = "button"
+x = 24
+y = 379
+w = 432
+h = 78
+sta = 1
+style = 0
+borderw = 0
+font = "UI24"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Drucker"
+txt_maxl = 7
+isbr = 0
+
+[[component]]
+name = "breceipt"
+type = "button"
+x = 24
+y = 479
+w = 432
+h = 78
+sta = 1
+style = 0
+borderw = 0
+font = "UI24"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Beleg"
+txt_maxl = 5
+isbr = 0
+
+[[component]]
+name = "bsystem"
+type = "button"
+x = 24
+y = 579
+w = 432
+h = 78
+sta = 1
+style = 0
+borderw = 0
+font = "UI24"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "System & Display"
+txt_maxl = 16
+isbr = 0
 
 [[component]]
 name = "bBack"
@@ -95,16 +107,16 @@ x = 24
 y = 715
 w = 432
 h = 52
-sta = 0
-picc = "settings"
-picc2 = "settings_press"
+sta = 1
 style = 0
 borderw = 0
 font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
 pco = "#f5f6f7"
 pco2 = "#f5f6f7"
-txt = "Hauptmenü"
-txt_maxl = 9
+txt = "Zurück"
+txt_maxl = 6
 isbr = 0
 
 [[component]]

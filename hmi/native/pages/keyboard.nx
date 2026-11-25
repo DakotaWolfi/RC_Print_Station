@@ -1,600 +1,432 @@
-on k0.up:
+on hAdd.up:
   strlen input.txt,count.val
   if(count.val<limit.val)
   {
-  input.txt+=k0.txt
+  if(entry.field.val==2)
+  {
+  secret.txt+=vKey.txt
+  input.txt+="*"
+  }else
+  {
+  input.txt+=vKey.txt
   }
+  }
+  vKey.txt=""
+  click hCount,0
+
+on k0.up:
+  vKey.txt=k0.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k1.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k1.txt
-  }
+  vKey.txt=k1.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k2.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k2.txt
-  }
+  vKey.txt=k2.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k3.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k3.txt
-  }
+  vKey.txt=k3.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k4.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k4.txt
-  }
+  vKey.txt=k4.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k5.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k5.txt
-  }
+  vKey.txt=k5.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k6.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k6.txt
-  }
+  vKey.txt=k6.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k7.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k7.txt
-  }
+  vKey.txt=k7.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k8.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k8.txt
-  }
+  vKey.txt=k8.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k9.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k9.txt
-  }
+  vKey.txt=k9.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k10.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k10.txt
-  }
+  vKey.txt=k10.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k11.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k11.txt
-  }
+  vKey.txt=k11.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k12.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k12.txt
-  }
+  vKey.txt=k12.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k13.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k13.txt
-  }
+  vKey.txt=k13.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k14.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k14.txt
-  }
+  vKey.txt=k14.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k15.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k15.txt
-  }
+  vKey.txt=k15.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k16.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k16.txt
-  }
+  vKey.txt=k16.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k17.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k17.txt
-  }
+  vKey.txt=k17.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k18.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k18.txt
-  }
+  vKey.txt=k18.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k19.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k19.txt
-  }
+  vKey.txt=k19.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k20.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k20.txt
-  }
+  vKey.txt=k20.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k21.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k21.txt
-  }
+  vKey.txt=k21.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k22.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k22.txt
-  }
+  vKey.txt=k22.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k23.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k23.txt
-  }
+  vKey.txt=k23.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k24.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k24.txt
-  }
+  vKey.txt=k24.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k25.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k25.txt
-  }
+  vKey.txt=k25.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k26.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k26.txt
-  }
+  vKey.txt=k26.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k27.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k27.txt
-  }
+  vKey.txt=k27.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k28.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k28.txt
-  }
+  vKey.txt=k28.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k29.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k29.txt
-  }
+  vKey.txt=k29.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k30.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k30.txt
-  }
+  vKey.txt=k30.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k31.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k31.txt
-  }
+  vKey.txt=k31.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k32.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k32.txt
-  }
+  vKey.txt=k32.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k33.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k33.txt
-  }
+  vKey.txt=k33.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k34.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k34.txt
-  }
+  vKey.txt=k34.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k35.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k35.txt
-  }
+  vKey.txt=k35.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k36.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k36.txt
-  }
+  vKey.txt=k36.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k37.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k37.txt
-  }
+  vKey.txt=k37.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k38.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k38.txt
-  }
+  vKey.txt=k38.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k39.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k39.txt
-  }
+  vKey.txt=k39.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k40.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k40.txt
-  }
+  vKey.txt=k40.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k41.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k41.txt
-  }
+  vKey.txt=k41.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k42.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k42.txt
-  }
+  vKey.txt=k42.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k43.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k43.txt
-  }
+  vKey.txt=k43.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k44.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k44.txt
-  }
+  vKey.txt=k44.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on k45.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=k45.txt
-  }
+  vKey.txt=k45.txt
+  click hAdd,0
   if(shift.val==1)
   {
   shift.val=0
   click hLayout,0
   }
-  click hCount,0
 
 on hLayout.up:
   if(mode.val==0)
@@ -1063,6 +895,7 @@ on bShift.up:
 
 on bDel.up:
   input.txt-=1
+  secret.txt-=1
   click hCount,0
 
 on bMode.up:
@@ -1080,21 +913,60 @@ on bCaps.up:
   click hLayout,0
 
 on bSpace.up:
-  strlen input.txt,count.val
-  if(count.val<limit.val)
-  {
-  input.txt+=" "
-  }
-  click hCount,0
+  vKey.txt=" "
+  click hAdd,0
 
 on bClear.up:
   input.txt=""
+  secret.txt=""
   click hCount,0
 
 on bCancel.up:
+  secret.txt=""
+  input.txt=""
+  if(entry.field.val==2)
+  {
+  page wjoin
+  }else if(entry.field.val>2)
+  {
+  page printer
+  }else
+  {
   page entry
+  }
 
 on bOK.up:
+  if(entry.field.val==2)
+  {
+  if(home.online.val==1)
+  {
+  prints "RC4:PASS",0
+  printh 00
+  prints secret.txt,0
+  printh ff ff ff
+  }
+  secret.txt=""
+  input.txt=""
+  page wjoin
+  }else if(entry.field.val>2)
+  {
+  if(home.online.val==1)
+  {
+  if(entry.field.val==3)
+  {
+  prints "RC4:IP",0
+  }else
+  {
+  prints "RC4:PORT",0
+  }
+  printh 00
+  prints input.txt,0
+  printh ff ff ff
+  }
+  input.txt=""
+  page printer
+  }else
+  {
   if(entry.field.val==0)
   {
   entry.tTicket.txt=input.txt
@@ -1104,22 +976,46 @@ on bOK.up:
   }
   entry.tStatus.txt=""
   page entry
+  }
 
-on keybdA.loadend:
+on keyboard.unload:
+  secret.txt=""
+  vKey.txt=""
+  input.txt=""
+
+on keyboard.loadend:
+  sendme
   mode.val=0
   shift.val=0
   caps.val=0
+  secret.txt=""
   if(entry.field.val==0)
   {
   input.txt=entry.tTicket.txt
   tField.txt="Reparaturnummer"
   limit.val=32
-  }else
+  }else if(entry.field.val==1)
   {
   input.txt=entry.tDevice.txt
   tField.txt="Gerätebezeichnung"
   limit.val=64
+  }else if(entry.field.val==2)
+  {
+  input.txt=""
+  tField.txt="WLAN-Passwort"
+  limit.val=64
+  }else if(entry.field.val==3)
+  {
+  input.txt=settings.editText.txt
+  tField.txt="Drucker-IPv4-Adresse"
+  limit.val=15
+  }else
+  {
+  input.txt=settings.editText.txt
+  tField.txt="Drucker-TCP-Port"
+  limit.val=5
   }
+  settings.editText.txt=""
   click hLayout,0
   click hCount,0
 
@@ -1130,4 +1026,3 @@ on tmLink.timer:
   home.online.val=0
   home.tLink.txt="Host nicht verbunden"
   }
-

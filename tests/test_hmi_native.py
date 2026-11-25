@@ -72,7 +72,7 @@ class NativeFlowTests(unittest.TestCase):
     def open_keyboard(self,field="device"):
         self.tap("bNew")
         self.tap("hEdit1" if field=="device" else "hEdit0")
-        self.assertEqual(self.panel.page,"keybdA")
+        self.assertEqual(self.panel.page,"keyboard")
 
     def key(self,char):
         match=next(c for c in self.panel.components()

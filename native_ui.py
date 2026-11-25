@@ -1,8 +1,7 @@
-"""Backend for the v0.3 native Nextion candidate; legacy nextion_ui is unchanged.
+"""Backend for the v0.4 native Nextion candidate; legacy nextion_ui is unchanged.
 
-The panel renders every page and edits every key locally. This process only
-stores simulated reports, submits the existing receipt bytes, and publishes
-PDF links. It never changes network configuration or flashes the display.
+The panel renders and edits locally. The host handles reports, printing,
+LAN downloads and operator-requested settings. It never flashes the display.
 """
 import argparse
 from concurrent.futures import ThreadPoolExecutor
@@ -10,16 +9,18 @@ from datetime import datetime
 import json
 import logging
 import sqlite3
+import signal
 import time
 from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
 from station import database, receipt, send, simulate
-from station_admin import wifi_address
+from station_panel_settings import PanelSettings
+from station_network import NetworkManager
 
 END = b"\xff\xff\xff"
 ENCODING = "iso-8859-15"
-PROTOCOL = 3
+PROTOCOL = 4
 LOG = logging.getLogger(__name__)
 
 
@@ -107,7 +108,8 @@ def verify_panel(ser, timeout=3):
 
 class NativeUI:
     def __init__(self, ser, host, db, printer_port=9100, base_url="", *,
-                 sender=send, publisher=None):
+                 sender=send, publisher=None, config_path=None, network=None,
+                 enable_power=False, **settings_hooks):
         self.ser, self.host, self.db = ser, host, db
         self.printer_port = printer_port
         self.base_url = report_base(base_url) if base_url else ""
@@ -125,8 +127,9 @@ class NativeUI:
         self.print_job = None
         self.last_heartbeat = float("-inf")
         self.last_clock = ""
+        self.stop_requested = False
         self.auto_port = None
-        self.last_network_check = float("-inf")
+        self.settings = PanelSettings(self,network,config_path,enable_power,**settings_hooks)
 
     def cmd(self, command):
         # Commands and text come from our fixed schema, never raw HMI input.
@@ -141,9 +144,12 @@ class NativeUI:
     def initialise(self):
         self.cmd("bkcmd=3")
         self.cmd("sendxy=0")
-        self.text("settings.tPrinter", f"{self.host}:{self.printer_port} / TCP", 64)
-        self.text("settings.tUart", f"{self.ser.baudrate} Baud / 480 x 800 / 270°", 64)
-        self.text("settings.tUrl", self.base_url or "Deaktiviert (keine LAN-URL konfiguriert)", 100)
+        self.settings.page = None
+        self.settings.selected = None
+        self.settings.joined = False
+        self.settings.armed_until = 0
+        self.settings.apply_display(force=True)
+        self.cmd("sendme")
         self.cmd("entry.busy.val=0")
         self.cmd("report.printing.val=0")
         self.cmd("home.pending.val=0")
@@ -160,16 +166,6 @@ class NativeUI:
 
     def heartbeat(self, force=False):
         now = time.monotonic()
-        if self.auto_port is not None and (force or now-self.last_network_check >= 10):
-            self.last_network_check = now
-            ip = wifi_address()
-            base = f"http://{ip}:{self.auto_port}" if ip else ""
-            if base != self.base_url:
-                self.base_url = base
-                self.urls.clear()
-                self.cmd("qrpage.qReady.val=2")
-                self.text("qrpage.tNote", "Netzwerk geändert. PDF-Link erneut öffnen.", 100)
-            self.text("settings.tUrl", base or "WLAN nicht verbunden", 100)
         if force or now - self.last_heartbeat >= 2:
             self.cmd("home.age.val=0")
             self.cmd("home.online.val=1")
@@ -250,9 +246,20 @@ class NativeUI:
             return
         if self.report is None:
             raise ValueError("Bitte zuerst einen Bericht öffnen.")
-        data = receipt(self.report)
-        future = self.executor.submit(self.sender, self.host, self.printer_port, data)
-        self.print_job = (future, self.report_id)
+        self.queue_receipt(self.report,self.report_id)
+
+    def queue_receipt(self, report, ident):
+        settings = self.settings.cfg()
+        data = receipt(report,settings)
+        future = self.executor.submit(self.sender,*self.settings.endpoint(settings),data)
+        self.print_job = (future,ident)
+
+    def queue_print_test(self):
+        if self.print_job is not None:
+            self.settings.printer_note="Ein Druckauftrag läuft bereits."
+            return
+        self.settings.printer_note="Testbeleg wird gesendet ..."
+        self.queue_receipt(simulate("DRUCKTEST","Epson / ESC-POS Verbindungstest"),"test")
 
     def finish_print(self):
         if self.print_job is None or not self.print_job[0].done():
@@ -265,7 +272,10 @@ class NativeUI:
         except OSError:
             LOG.exception("Printer submission failed")
             status = "Druckfehler. Beleg prüfen, dann ggf. erneut drucken."
-        if ident == self.report_id:
+        if ident == "test":
+            self.settings.printer_note=status
+            self.settings.draw()
+        elif ident == self.report_id:
             self.text("report.tStatus", status, 80)
             self.cmd("report.printing.val=0")
         else:
@@ -299,8 +309,14 @@ class NativeUI:
         self.cmd("qrpage.qReady.val=2")
 
     def handle(self, frame):
+        if len(frame)==2 and frame[0]==0x66:
+            self.settings.enter(frame[1])
+            return
+        if frame.startswith(b"RC4:"):
+            self.settings.handle(frame)
+            return
         if not frame.startswith(b"RC3:"):
-            if len(frame) == 1 and frame[0] not in (0x00,0x01,0x88):
+            if len(frame) == 1 and frame[0] not in (0x00,0x01,0x86,0x87,0x88):
                 LOG.warning("Nextion response: 0x%02x", frame[0])
             return
         try:
@@ -331,16 +347,18 @@ class NativeUI:
     def tick(self):
         self.finish_print()
         self.heartbeat()
+        self.settings.poll()
         self.ser.flush()
 
     def close(self):
         # Never cancel/retry a receipt whose bytes may already have arrived.
         self.executor.shutdown(wait=True)
+        self.settings.close()
 
     def run(self):
         self.initialise()
         try:
-            while True:
+            while not self.stop_requested:
                 self.feed(self.ser.read(self.ser.in_waiting or 1))
                 self.tick()
         finally:
@@ -357,6 +375,8 @@ def main():
     parser.add_argument("--report-url", default="", help="Reachable LAN origin, e.g. http://192.168.1.42:8080")
     parser.add_argument("--web-port", type=int, default=8080)
     parser.add_argument("--auto-report-url", action="store_true", help="Use wlan0 IPv4 for QR URLs")
+    parser.add_argument("--wifi-interface", default="wlan0")
+    parser.add_argument("--enable-local-power", action="store_true", help="Allow confirmed panel reboot/shutdown via logind")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
@@ -366,15 +386,17 @@ def main():
         except ValueError as exc:
             parser.error(str(exc))
     import serial
-    with serial.Serial(args.port, args.baud, timeout=.1, write_timeout=3) as ser:
+    with serial.Serial(args.port, args.baud, timeout=.1, write_timeout=3, exclusive=True) as ser:
         verify_panel(ser)
         server = None
         if args.report_url or args.auto_report_url:
             from report_web import start_server
             server = start_server(args.db, args.web_port)
-        ui = NativeUI(ser,args.host,args.db,args.printer_port,args.report_url)
+        ui = NativeUI(ser,args.host,args.db,args.printer_port,args.report_url,
+                      network=NetworkManager(args.wifi_interface),enable_power=args.enable_local_power)
         if args.auto_report_url:
             ui.auto_port = args.web_port
+        signal.signal(signal.SIGTERM,lambda *_: setattr(ui,"stop_requested",True))
         try:
             ui.run()
         except KeyboardInterrupt:

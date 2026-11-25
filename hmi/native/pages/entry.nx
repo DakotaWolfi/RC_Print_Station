@@ -2,14 +2,14 @@ on hEdit0.up:
   if(busy.val==0)
   {
   field.val=0
-  page keybdA
+  page keyboard
   }
 
 on hEdit1.up:
   if(busy.val==0)
   {
   field.val=1
-  page keybdA
+  page keyboard
   }
 
 on bCreate.up:
@@ -61,3 +61,5 @@ on tmLink.timer:
   home.tLink.txt="Host nicht verbunden"
   }
 
+on entry.loadend:
+  sendme

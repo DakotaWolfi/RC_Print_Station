@@ -1,53 +1,19 @@
 """Local-only station administration. Access via SSH port forwarding."""
 import argparse
 import html
-import json
-import os
-from pathlib import Path
 import secrets
 import subprocess
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs
 
-CONFIG = Path.home()/".config"/"rc-printstation"/"receipt.json"
+from station_config import load as receipt_settings, save as save_config
+from station_network import NetworkManager, NetworkError, wifi_address
 
-def receipt_settings():
-    defaults = {"graphic": True, "feed_mm": 45}
-    try:
-        d = json.loads(CONFIG.read_text())
-        if isinstance(d.get("graphic"), bool):
-            defaults["graphic"] = d["graphic"]
-        if type(d.get("feed_mm")) is int and 0 <= d["feed_mm"] <= 100:
-            defaults["feed_mm"] = d["feed_mm"]
-    except (OSError, ValueError, AttributeError):
-        pass
-    return defaults
 
-def save_settings(graphic, feed_mm):
-    if not 0 <= feed_mm <= 100:
-        raise ValueError("Papiertransport: 0–100 mm")
-    CONFIG.parent.mkdir(parents=True, exist_ok=True)
-    tmp = CONFIG.with_suffix(".tmp")
-    tmp.write_text(json.dumps({"graphic": graphic, "feed_mm": feed_mm}))
-    os.replace(tmp, CONFIG)
-
-def nm(*args, timeout=15):
+def nm(*args, timeout=8):
     return subprocess.run(["nmcli", *args], capture_output=True, text=True,
                           timeout=timeout, check=True).stdout
 
-def wifi_address(interface="wlan0"):
-    try:
-        import ipaddress
-        data = json.loads(subprocess.check_output(
-            ["ip","-j","-4","addr","show","dev",interface], timeout=2))
-        for device in data:
-            for a in device.get("addr_info", []):
-                ip = ipaddress.ip_address(a["local"])
-                if not ip.is_link_local and not ip.is_loopback and a.get("scope")=="global":
-                    return str(ip)
-    except (OSError, ValueError, subprocess.SubprocessError, KeyError):
-        pass
-    return ""
 
 def main():
     p = argparse.ArgumentParser()
@@ -55,6 +21,7 @@ def main():
     p.add_argument("--interface", default="wlan0")
     args = p.parse_args()
     token = secrets.token_urlsafe(32)
+    network = NetworkManager(args.interface)
     esc = html.escape
     class Handler(BaseHTTPRequestHandler):
         def log_message(self,*args):
@@ -69,6 +36,9 @@ def main():
                 profiles=""
             s=receipt_settings()
             check="checked" if s["graphic"] else ""
+            density_options = "".join(
+                f'<option value="{key}" {"selected" if s["density"]==key else ""}>{label}</option>'
+                for key,label in (("default","Druckervorgabe"),("light","Hell (GS ( K)"),("dark","Dunkel (GS ( K)")))
             body=f"""<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FMI Station – Verwaltung</title><style>
 *{{box-sizing:border-box}}body{{background:#101923;color:#f5f6f7;font:16px system-ui;margin:0 auto;max-width:760px;padding:24px}}
@@ -86,6 +56,7 @@ section{{background:#1d2c3a;border-radius:12px;padding:20px;margin:20px 0}}input
 <section><h2>Beleg</h2><form method="post"><input type="hidden" name="token" value="{token}">
 <label><input type="checkbox" name="graphic" {check}> Grafischer Briefkopf</label>
 <label>Papiertransport vor Schnitt (mm) <input type="number" name="feed" min="0" max="100" value="{s['feed_mm']}" required></label>
+<label>Druckdichte (nur bei bestätigter GS ( K Unterstützung) <select name="density">{density_options}</select></label>
 <button name="action" value="save">Speichern</button></form><small>Ab dem nächsten Druckauftrag wirksam.</small></section></html>"""
             data=body.encode()
             self.send_response(200)
@@ -111,22 +82,22 @@ section{{background:#1d2c3a;border-radius:12px;padding:20px;margin:20px 0}}input
                     self.send_error(403); return
                 action=val("action")
                 if action=="save":
-                    save_settings("graphic" in d,int(val("feed")))
+                    save_config(dict(graphic="graphic" in d,feed_mm=int(val("feed")),density=val("density")))
                     message="Belegeinstellungen gespeichert."
                 elif action=="scan":
                     nm("device","wifi","rescan","ifname",args.interface)
                     message="WLAN-Suche gestartet. Seite erneut laden."
                 elif action=="connect":
                     ssid,pw=val("ssid"),val("password")
-                    if not 1<=len(ssid.encode())<=32 or ssid.startswith("-") or any(ord(c)<32 for c in ssid+pw):
+                    candidates = [n for n in network.scan(rescan=False) if n.name == ssid
+                                  and n.key_mgmt is not None and bool(n.key_mgmt)==bool(pw)]
+                    if not candidates:
                         raise ValueError()
-                    cmd=["device","wifi","connect",ssid,"ifname",args.interface]
-                    if pw: cmd+=["password",pw]
-                    nm(*cmd,timeout=45)
+                    network.connect(candidates[0],pw)
                     message="Verbindung hergestellt."
                 else:
                     raise ValueError()
-            except (ValueError, OSError, subprocess.SubprocessError):
+            except (ValueError, OSError, subprocess.SubprocessError, NetworkError):
                 message="Aktion fehlgeschlagen. Eingaben, NetworkManager und Berechtigungen prüfen."
             self.page(message)
     server=ThreadingHTTPServer(("127.0.0.1",args.port),Handler)

@@ -38,3 +38,5 @@ on tmLink.timer:
   home.tLink.txt="Host nicht verbunden"
   }
 
+on report.loadend:
+  sendme

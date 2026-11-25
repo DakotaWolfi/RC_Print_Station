@@ -1,0 +1,154 @@
+[page]
+name = "receipt"
+type = "page"
+x = 0
+y = 0
+w = 480
+h = 800
+bco = "#101923"
+
+[[component]]
+name = "pBg"
+type = "picture"
+x = 0
+y = 0
+w = 480
+h = 800
+pic = "receipt"
+
+[[component]]
+name = "rGraphic"
+type = "button"
+x = 24
+y = 279
+w = 432
+h = 61
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Kopf: Grafik"
+txt_maxl = 28
+isbr = 0
+
+[[component]]
+name = "bFeedDown"
+type = "button"
+x = 24
+y = 398
+w = 117
+h = 58
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "- 5 mm"
+txt_maxl = 6
+isbr = 0
+
+[[component]]
+name = "rFeed"
+type = "text"
+x = 151
+y = 403
+w = 178
+h = 48
+txt = "45 mm"
+txt_maxl = 16
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#1d2c3a"
+borderw = 0
+xcen = 1
+ycen = 1
+vscope = 0
+isbr = 1
+
+[[component]]
+name = "bFeedUp"
+type = "button"
+x = 339
+y = 398
+w = 117
+h = 58
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "+ 5 mm"
+txt_maxl = 6
+isbr = 0
+
+[[component]]
+name = "rDensity"
+type = "button"
+x = 24
+y = 516
+w = 432
+h = 58
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Druckervorgabe"
+txt_maxl = 30
+isbr = 0
+
+[[component]]
+name = "rStatus"
+type = "text"
+x = 24
+y = 626
+w = 432
+h = 56
+txt = ""
+txt_maxl = 68
+font = "UI20"
+pco = "#ffd08a"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 1
+
+[[component]]
+name = "bBack"
+type = "button"
+x = 24
+y = 715
+w = 432
+h = 52
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Zurück"
+txt_maxl = 6
+isbr = 0
+
+[[component]]
+name = "tmLink"
+type = "timer"
+tim = 1000
+en = 1

@@ -1,5 +1,5 @@
 [page]
-name = "keybdA"
+name = "keyboard"
 type = "page"
 x = 0
 y = 0
@@ -14,7 +14,7 @@ x = 0
 y = 0
 w = 480
 h = 800
-pic = "keybdA"
+pic = "keyboard"
 
 [[component]]
 name = "mode"
@@ -47,10 +47,26 @@ val = 0
 vscope = 0
 
 [[component]]
-name = "dirty"
+name = "secret"
 type = "variable"
-val = 1
-vscope = 0
+sta = 1
+txt = ""
+txt_maxl = 64
+
+[[component]]
+name = "vKey"
+type = "variable"
+sta = 1
+txt = ""
+txt_maxl = 1
+
+[[component]]
+name = "hAdd"
+type = "hotspot"
+x = 4
+y = 0
+w = 2
+h = 2
 
 [[component]]
 name = "tField"
@@ -1019,8 +1035,8 @@ y = 725
 w = 212
 h = 44
 sta = 0
-picc = "keybdA"
-picc2 = "keybdA_press"
+picc = "keyboard"
+picc2 = "keyboard_press"
 style = 0
 borderw = 0
 font = "UI20"
@@ -1038,8 +1054,8 @@ y = 725
 w = 224
 h = 44
 sta = 0
-picc = "keybdA"
-picc2 = "keybdA_press"
+picc = "keyboard"
+picc2 = "keyboard_press"
 style = 0
 borderw = 0
 font = "UI20"
