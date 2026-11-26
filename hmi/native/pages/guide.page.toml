@@ -1,0 +1,449 @@
+[page]
+name = "guide"
+type = "page"
+x = 0
+y = 0
+w = 480
+h = 800
+bco = "#101923"
+
+[[component]]
+name = "pBg"
+type = "picture"
+x = 0
+y = 0
+w = 480
+h = 800
+pic = "guide"
+
+[[component]]
+name = "gCount"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "gExam"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "gAdvance"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "gBusy"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "gProgress"
+type = "text"
+x = 24
+y = 258
+w = 432
+h = 22
+txt = ""
+txt_maxl = 50
+font = "UI20"
+pco = "#42d9dd"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+
+[[component]]
+name = "gTitle"
+type = "text"
+x = 24
+y = 282
+w = 432
+h = 32
+txt = "Bitte warten ..."
+txt_maxl = 52
+font = "UI24"
+pco = "#f5f6f7"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+
+[[component]]
+name = "gArt"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "pArt"
+type = "picture"
+x = 24
+y = 316
+w = 432
+h = 96
+pic = "g_lcd"
+
+[[component]]
+name = "hArt"
+type = "hotspot"
+x = 2
+y = 0
+w = 2
+h = 2
+
+[[component]]
+name = "gDisplay"
+type = "text"
+x = 50
+y = 369
+w = 380
+h = 38
+txt = ""
+txt_maxl = 40
+font = "UI24"
+pco = "#ff941f"
+bco = "#1d2c3a"
+borderw = 0
+xcen = 1
+ycen = 1
+vscope = 0
+
+[[component]]
+name = "gBody"
+type = "text"
+x = 24
+y = 415
+w = 432
+h = 96
+txt = ""
+txt_maxl = 230
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 1
+
+[[component]]
+name = "gError"
+type = "text"
+x = 24
+y = 688
+w = 432
+h = 40
+txt = ""
+txt_maxl = 82
+font = "UI20"
+pco = "#ffd08a"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 1
+
+[[component]]
+name = "bStep0"
+type = "button"
+x = 24
+y = 514
+w = 432
+h = 33
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#ff941f"
+bco2 = "#ffc071"
+pco = "#101923"
+pco2 = "#101923"
+txt = "-"
+txt_maxl = 38
+isbr = 0
+
+[[component]]
+name = "bStep1"
+type = "button"
+x = 24
+y = 549
+w = 432
+h = 33
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "-"
+txt_maxl = 38
+isbr = 0
+
+[[component]]
+name = "bStep2"
+type = "button"
+x = 24
+y = 584
+w = 432
+h = 33
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "-"
+txt_maxl = 38
+isbr = 0
+
+[[component]]
+name = "bStep3"
+type = "button"
+x = 24
+y = 619
+w = 432
+h = 33
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "-"
+txt_maxl = 38
+isbr = 0
+
+[[component]]
+name = "bStep4"
+type = "button"
+x = 24
+y = 654
+w = 432
+h = 33
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "-"
+txt_maxl = 38
+isbr = 0
+
+[[component]]
+name = "eName"
+type = "text"
+x = 157
+y = 515
+w = 299
+h = 36
+txt = ""
+txt_maxl = 48
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#1d2c3a"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 1
+
+[[component]]
+name = "eRemarks"
+type = "text"
+x = 157
+y = 554
+w = 299
+h = 36
+txt = ""
+txt_maxl = 64
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#1d2c3a"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 1
+
+[[component]]
+name = "bName"
+type = "button"
+x = 24
+y = 515
+w = 128
+h = 36
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Prüfperson"
+txt_maxl = 10
+isbr = 0
+
+[[component]]
+name = "hName"
+type = "hotspot"
+x = 157
+y = 515
+w = 299
+h = 36
+
+[[component]]
+name = "bRemark"
+type = "button"
+x = 24
+y = 554
+w = 128
+h = 36
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Bemerkung"
+txt_maxl = 9
+isbr = 0
+
+[[component]]
+name = "hRemark"
+type = "hotspot"
+x = 157
+y = 554
+w = 299
+h = 36
+
+[[component]]
+name = "gFunction"
+type = "button"
+x = 24
+y = 594
+w = 432
+h = 40
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Funktion: Offen"
+txt_maxl = 34
+isbr = 0
+
+[[component]]
+name = "gProceed"
+type = "button"
+x = 24
+y = 638
+w = 432
+h = 43
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#ff941f"
+bco2 = "#ffc071"
+pco = "#101923"
+pco2 = "#101923"
+txt = "Zum Import"
+txt_maxl = 30
+isbr = 0
+
+[[component]]
+name = "hLayout"
+type = "hotspot"
+x = 4
+y = 0
+w = 2
+h = 2
+
+[[component]]
+name = "bBack"
+type = "button"
+x = 24
+y = 730
+w = 135
+h = 40
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Zurück"
+txt_maxl = 6
+isbr = 0
+
+[[component]]
+name = "bHelp"
+type = "button"
+x = 173
+y = 730
+w = 135
+h = 40
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Hilfe"
+txt_maxl = 5
+isbr = 0
+
+[[component]]
+name = "bCancel"
+type = "button"
+x = 322
+y = 730
+w = 134
+h = 40
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Abbrechen"
+txt_maxl = 9
+isbr = 0
+
+[[component]]
+name = "tmFlow"
+type = "timer"
+tim = 200
+en = 1
+
+[[component]]
+name = "tmLink"
+type = "timer"
+tim = 1000
+en = 1

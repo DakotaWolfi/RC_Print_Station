@@ -47,6 +47,18 @@ val = 0
 vscope = 1
 
 [[component]]
+name = "guided"
+type = "variable"
+val = 0
+vscope = 1
+
+[[component]]
+name = "route"
+type = "variable"
+val = 0
+vscope = 1
+
+[[component]]
 name = "tTicket"
 type = "text"
 x = 34
@@ -167,9 +179,9 @@ h = 2
 name = "tTester"
 type = "text"
 x = 24
-y = 580
+y = 575
 w = 432
-h = 37
+h = 38
 txt = "Warte auf BENNING-Host."
 txt_maxl = 92
 font = "UI20"
@@ -185,11 +197,11 @@ isbr = 1
 name = "tStatus"
 type = "text"
 x = 24
-y = 620
+y = 615
 w = 432
-h = 42
+h = 46
 txt = ""
-txt_maxl = 80
+txt_maxl = 100
 font = "UI20"
 pco = "#ffd08a"
 bco = "#101923"
@@ -210,9 +222,9 @@ txt_maxl = 2
 name = "bCreate"
 type = "button"
 x = 24
-y = 667
-w = 270
-h = 49
+y = 665
+w = 228
+h = 50
 sta = 1
 style = 0
 borderw = 0
@@ -221,17 +233,17 @@ bco = "#ff941f"
 bco2 = "#ffc071"
 pco = "#101923"
 pco2 = "#101923"
-txt = "Messung prüfen"
-txt_maxl = 24
+txt = "Messung importieren"
+txt_maxl = 26
 isbr = 0
 
 [[component]]
 name = "bTester"
 type = "button"
-x = 304
-y = 667
-w = 152
-h = 49
+x = 262
+y = 665
+w = 194
+h = 50
 sta = 1
 style = 0
 borderw = 0
@@ -240,8 +252,8 @@ bco = "#1d2c3a"
 bco2 = "#365164"
 pco = "#f5f6f7"
 pco2 = "#f5f6f7"
-txt = "Speicher"
-txt_maxl = 8
+txt = "Vorhandene Messung"
+txt_maxl = 18
 isbr = 0
 
 [[component]]
@@ -249,7 +261,7 @@ name = "bBack"
 type = "button"
 x = 24
 y = 725
-w = 432
+w = 210
 h = 41
 sta = 1
 style = 0
@@ -261,6 +273,25 @@ pco = "#f5f6f7"
 pco2 = "#f5f6f7"
 txt = "Zurück"
 txt_maxl = 6
+isbr = 0
+
+[[component]]
+name = "bHelp"
+type = "button"
+x = 246
+y = 725
+w = 210
+h = 41
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Hilfe"
+txt_maxl = 5
 isbr = 0
 
 [[component]]

@@ -12,7 +12,7 @@ import station_config as config
 from station_network import Network, NetworkError, NetworkManager
 
 PAGES = ("home","entry","keyboard","report","qrpage","history","settings",
-         "wifi","wjoin","printer","receipt","system","power","tester")
+         "wifi","wjoin","printer","receipt","system","power","tester","guide","importer")
 ROWS = 4
 DENSITY_LABELS = {"default":"Druckervorgabe","light":"Hell (GS ( K)","dark":"Dunkel (GS ( K)"}
 

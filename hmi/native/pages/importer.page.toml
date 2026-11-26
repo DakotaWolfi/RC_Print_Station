@@ -1,0 +1,175 @@
+[page]
+name = "importer"
+type = "page"
+x = 0
+y = 0
+w = 480
+h = 800
+bco = "#101923"
+
+[[component]]
+name = "pBg"
+type = "picture"
+x = 0
+y = 0
+w = 480
+h = 800
+pic = "importer"
+
+[[component]]
+name = "iAdvance"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "iAvailable"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "iArt"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "pArt"
+type = "picture"
+x = 24
+y = 273
+w = 432
+h = 96
+pic = "g_lcd"
+
+[[component]]
+name = "hArt"
+type = "hotspot"
+x = 2
+y = 0
+w = 2
+h = 2
+
+[[component]]
+name = "iBody"
+type = "text"
+x = 24
+y = 390
+w = 432
+h = 115
+txt = "Warte auf Host ..."
+txt_maxl = 220
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 1
+
+[[component]]
+name = "iStatus"
+type = "text"
+x = 24
+y = 510
+w = 432
+h = 50
+txt = ""
+txt_maxl = 105
+font = "UI20"
+pco = "#42d9dd"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 1
+
+[[component]]
+name = "iMessage"
+type = "text"
+x = 24
+y = 562
+w = 432
+h = 59
+txt = ""
+txt_maxl = 105
+font = "UI20"
+pco = "#ffd08a"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 1
+
+[[component]]
+name = "bManual"
+type = "button"
+x = 24
+y = 639
+w = 432
+h = 55
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Vorhandene Messung wählen"
+txt_maxl = 25
+isbr = 0
+
+[[component]]
+name = "bBack"
+type = "button"
+x = 24
+y = 722
+w = 210
+h = 45
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Zurück"
+txt_maxl = 6
+isbr = 0
+
+[[component]]
+name = "bHelp"
+type = "button"
+x = 246
+y = 722
+w = 210
+h = 45
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Hilfe"
+txt_maxl = 5
+isbr = 0
+
+[[component]]
+name = "tmFlow"
+type = "timer"
+tim = 200
+en = 1
+
+[[component]]
+name = "tmLink"
+type = "timer"
+tim = 1000
+en = 1

@@ -3,10 +3,30 @@ on bNew.up:
   entry.tDevice.txt=""
   entry.tStatus.txt=""
   entry.tSlot.txt=""
+  guide.eName.txt=""
+  guide.eRemarks.txt=""
   entry.phase.val=0
   entry.useLast.val=1
   entry.busy.val=0
-  prints "RC5:NEW",0
+  entry.route.val=0
+  entry.guided.val=1
+  prints "RC6:NEW",0
+  printh ff ff ff
+  page entry
+
+on bDirect.up:
+  entry.tTicket.txt=""
+  entry.tDevice.txt=""
+  entry.tStatus.txt=""
+  entry.tSlot.txt=""
+  guide.eName.txt=""
+  guide.eRemarks.txt=""
+  entry.phase.val=0
+  entry.useLast.val=1
+  entry.busy.val=0
+  entry.route.val=0
+  entry.guided.val=0
+  prints "RC6:NEW",0
   printh ff ff ff
   page entry
 

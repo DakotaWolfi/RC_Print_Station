@@ -23,6 +23,20 @@ on bQR.up:
 on bHome.up:
   page home
 
+on bValues.up:
+  if(vMore.val==1&&home.online.val==1)
+  {
+  prints "RC6:VALUES",0
+  printh ff ff ff
+  }
+
+on report.loadend:
+  sendme
+  if(vMore.val==0)
+  {
+  vis bValues,0
+  }
+
 on tmFlow.timer:
   if(printing.val==1&&home.online.val==0)
   {
@@ -37,6 +51,3 @@ on tmLink.timer:
   home.online.val=0
   home.tLink.txt="Host nicht verbunden"
   }
-
-on report.loadend:
-  sendme

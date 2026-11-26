@@ -28,6 +28,17 @@ python3 station.py display-test --port /dev/ttyUSB0 --baud 9600
 
 `station.py simulate` writes a visibly marked simulation. Imported BENNING records preserve the original tester verdict and do not constitute independent certification by the station. The Gen 3 printer at `169.254.223.252:9100` and previous native HMI have been tested on the station.
 
+## Guided testing v0.6 candidate
+
+![Native v0.6 simulator preview](hmi/previews/overview-v06.png)
+
+Geführte Prüfung für BENNING ST 725 CH (050317), Direktmodus, eigener Import-Warteschritt und kompakte Messwertübersicht. Das Tester-Originalergebnis erscheint auf Display, Epson-Beleg und A4-PDF.
+
+- [Bedienung, Pi 4 und Rollback](docs/guided-v06.md)
+- [Zuordnung zum Schweizer BENNING-Handbuch 12/2021](docs/benning-guided-workflows.md)
+- [Editable v0.6 HMI (ZIP)](hmi/build/FMI_RC_native_v0_6.zip) und [Prüfsummen](hmi/build/manifest-v06.json)
+- [Simulator- und Hardwareprüfungen](hmi/VALIDATION-v06.md)
+
 ## BENNING v0.5 candidate
 
 ![Native v0.5 simulator preview](hmi/previews/overview-v05.png)

@@ -132,7 +132,21 @@ class Measurements:
                               (source,)).fetchall()
         return [dict(row,source=source,original=json.loads(row["original"])) for row in rows]
 
-    def create_report(self,ticket,device,phase,selection,*,require_current=False):
+    def snapshot(self, sources):
+        """Remember accepted imports and exact current slot identities per source."""
+        with closing(self.db()) as conn,conn:
+            conn.execute("BEGIN")
+            imports={row["source"]:row["batch"] for row in conn.execute(
+                "SELECT source,max(id) AS batch FROM benning_imports GROUP BY source")
+                if row["source"] in sources}
+            slots={source:{} for source in imports}
+            for row in conn.execute("SELECT source,slot,record_id FROM benning_slots"):
+                if row["source"] in slots:
+                    slots[row["source"]][row["slot"]]=row["record_id"]
+        return {source:(batch,slots[source]) for source,batch in imports.items()}
+
+    @staticmethod
+    def repair_fields(ticket,device,phase):
         if not isinstance(ticket,str) or not isinstance(device,str):
             raise ValueError("Prüfnummer und Gerätebeschreibung erforderlich.")
         ticket,device=ticket.strip(),device.strip()
@@ -141,6 +155,19 @@ class Measurements:
             raise ValueError("Prüfnummer und Gerätebeschreibung prüfen.")
         if phase not in PHASES:
             raise ValueError("Ungültige Prüfart.")
+        return ticket,device,phase
+
+    def create_incomplete(self,ticket,device,phase,examination):
+        ticket,device,phase=self.repair_fields(ticket,device,phase)
+        report={"ticket":ticket,"device":device,"source":"EXAMINATION","phase":phase,
+                "created":now(),"verdict":None,"measurements":[],
+                "examination":dict(examination,status="Unvollständig")}
+        with closing(self.db()) as conn,conn:
+            ident=conn.execute("INSERT INTO reports(data) VALUES(?)",(json.dumps(report),)).lastrowid
+        return ident,report
+
+    def create_report(self,ticket,device,phase,selection,*,require_current=False,examination=None):
+        ticket,device,phase=self.repair_fields(ticket,device,phase)
         # Resolve from the immutable batch, not from mutable slot metadata or UI fields.
         with closing(self.db()) as conn,conn:
             conn.execute("BEGIN IMMEDIATE")
@@ -161,5 +188,7 @@ class Measurements:
                     "created":now(),"verdict":record["verdict"],"measurements":record["measurements"],
                     "record":record,"record_id":row["id"],"imported":row["imported"],
                     "import_source":row["source"]}
+            if examination:
+                report["examination"]=examination
             ident=conn.execute("INSERT INTO reports(data) VALUES(?)",(json.dumps(report),)).lastrowid
         return ident,report

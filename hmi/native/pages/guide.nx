@@ -1,0 +1,234 @@
+on hArt.up:
+  if(gArt.val==0)
+  {
+  pArt.pic=19
+  }
+  if(gArt.val==1)
+  {
+  pArt.pic=20
+  }
+  if(gArt.val==2)
+  {
+  pArt.pic=21
+  }
+  if(gArt.val==3)
+  {
+  pArt.pic=22
+  }
+  if(gArt.val==4)
+  {
+  pArt.pic=23
+  }
+  if(gArt.val==5)
+  {
+  pArt.pic=24
+  }
+  if(gArt.val==6)
+  {
+  pArt.pic=25
+  }
+  if(gArt.val==7)
+  {
+  pArt.pic=26
+  }
+  if(gArt.val==8)
+  {
+  pArt.pic=27
+  }
+  if(gArt.val==9)
+  {
+  pArt.pic=28
+  }
+
+on bStep0.up:
+  if(home.online.val==1&&gBusy.val==0&&gCount.val>0)
+  {
+  gBusy.val=1
+  prints "RC6:STEP:0",0
+  printh ff ff ff
+  }
+
+on bStep1.up:
+  if(home.online.val==1&&gBusy.val==0&&gCount.val>1)
+  {
+  gBusy.val=1
+  prints "RC6:STEP:1",0
+  printh ff ff ff
+  }
+
+on bStep2.up:
+  if(home.online.val==1&&gBusy.val==0&&gCount.val>2)
+  {
+  gBusy.val=1
+  prints "RC6:STEP:2",0
+  printh ff ff ff
+  }
+
+on bStep3.up:
+  if(home.online.val==1&&gBusy.val==0&&gCount.val>3)
+  {
+  gBusy.val=1
+  prints "RC6:STEP:3",0
+  printh ff ff ff
+  }
+
+on bStep4.up:
+  if(home.online.val==1&&gBusy.val==0&&gCount.val>4)
+  {
+  gBusy.val=1
+  prints "RC6:STEP:4",0
+  printh ff ff ff
+  }
+
+on bName.up:
+  if(gExam.val==1)
+  {
+  entry.field.val=6
+  page keyboard
+  }
+
+on hName.up:
+  if(gExam.val==1)
+  {
+  entry.field.val=6
+  page keyboard
+  }
+
+on bRemark.up:
+  if(gExam.val==1)
+  {
+  entry.field.val=7
+  page keyboard
+  }
+
+on hRemark.up:
+  if(gExam.val==1)
+  {
+  entry.field.val=7
+  page keyboard
+  }
+
+on gFunction.up:
+  if(gExam.val==1&&home.online.val==1)
+  {
+  prints "RC6:FUNCTION",0
+  printh ff ff ff
+  }
+
+on gProceed.up:
+  if(gExam.val==1&&home.online.val==1&&gBusy.val==0)
+  {
+  gBusy.val=1
+  report.ready.val=0
+  prints "RC6:EXAM",0
+  printh 00
+  prints eName.txt,0
+  printh 00
+  prints eRemarks.txt,0
+  printh ff ff ff
+  }
+
+on hLayout.up:
+  vis bStep0,0
+  vis bStep1,0
+  vis bStep2,0
+  vis bStep3,0
+  vis bStep4,0
+  vis eName,0
+  vis eRemarks,0
+  vis bName,0
+  vis bRemark,0
+  vis hName,0
+  vis hRemark,0
+  vis gFunction,0
+  vis gProceed,0
+  if(gExam.val==1)
+  {
+  vis eName,1
+  vis eRemarks,1
+  vis bName,1
+  vis bRemark,1
+  vis hName,1
+  vis hRemark,1
+  vis gFunction,1
+  vis gProceed,1
+  }else
+  {
+  if(gCount.val>0)
+  {
+  vis bStep0,1
+  }
+  if(gCount.val>1)
+  {
+  vis bStep1,1
+  }
+  if(gCount.val>2)
+  {
+  vis bStep2,1
+  }
+  if(gCount.val>3)
+  {
+  vis bStep3,1
+  }
+  if(gCount.val>4)
+  {
+  vis bStep4,1
+  }
+  }
+
+on bBack.up:
+  if(home.online.val==1)
+  {
+  prints "RC6:BACK",0
+  printh ff ff ff
+  }else
+  {
+  page entry
+  }
+
+on bHelp.up:
+  prints "RC6:HELP",0
+  printh ff ff ff
+
+on bCancel.up:
+  if(home.online.val==1)
+  {
+  prints "RC6:CANCEL",0
+  printh ff ff ff
+  }else
+  {
+  page entry
+  }
+
+on guide.loadend:
+  sendme
+  vis gDisplay,0
+  click hLayout,0
+
+on tmFlow.timer:
+  if(gAdvance.val==1)
+  {
+  gAdvance.val=0
+  page importer
+  }else if(gAdvance.val==2&&report.ready.val==1)
+  {
+  gAdvance.val=0
+  page report
+  }else if(gAdvance.val==3)
+  {
+  gAdvance.val=0
+  page entry
+  }
+  if(home.online.val==0)
+  {
+  gError.txt="Host getrennt. BENNING lokal sichern."
+  gBusy.val=0
+  }
+
+on tmLink.timer:
+  home.age.val++
+  if(home.age.val>6)
+  {
+  home.online.val=0
+  home.tLink.txt="Host nicht verbunden"
+  }

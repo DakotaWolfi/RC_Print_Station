@@ -55,3 +55,18 @@ The BENNING serial receiver runs independently from this 115200-baud Nextion int
 `entry.tSlot`, `entry.useLast` and `entry.phase` hold the slot, checkbox value and test phase. Keyboard field 5 edits the slot when automatic suggestion is disabled. `entry.tTester` displays tester status. `entry.sim` is set by the backend from the explicit mode. `tester.mLink/mImport/mRow0..3/mSelected/mNote` carry status, count/time, page rows, selection and warnings. `mCount/mPrev/mNext/mReady/mSaving` guard native actions and the transition. The backend writes `report.tOrigin/tMeta/tResult` and the saved report fields before `report.ready`, and sets `qrpage.tKind` for source identification. All navigation still uses native `page` instructions.
 
 Previously saved simulations and token links remain supported. Real reports retain the source, tester date, original verdict and immutable measurement snapshot. Printer, display, Wi-Fi and power events keep the v4 contract.
+
+## v6 Assistent und Importseite
+
+Der v0.6 Host erwartet `home.proto.val=6`. Seiten 14 `guide` und 15 `importer` kommen hinzu. Der Host liefert Texte und Zustandsflags. Touch, Tasten und Seitenwechsel bleiben nativ.
+
+| Frame | Bedeutung |
+| --- | --- |
+| `RC6:NEW` | Start des Entwurfs und Baseline der Slot-Identitäten pro Quelle |
+| `RC6:GUIDE`, `RC6:IMPORT`, `RC6:EXISTING` + v5 REVIEW-Felder | Eingabe in Assistent, Warte-/Empfangsseite oder bewusste Speicherwahl überführen |
+| `RC6:STEP:0` … `RC6:STEP:4`, `RC6:HELP`, `RC6:BACK`, `RC6:CANCEL` | Schrittoption, Hilfe, zurück oder Abbruch |
+| `RC6:FUNCTION`; `RC6:EXAM` + NUL + Prüfperson + NUL + Bemerkung | Separate Funktion und Prüfnotizen erfassen |
+| `RC6:MANUAL` | Cache-Auswahl auf der Importseite |
+| `RC6:VALUES` | Weitere sichtbare Messwerte des aktuellen Protokolls |
+
+Die Bestätigung nutzt `RC5:USE`. Tastaturziel 6 ist die Prüfperson (48 Byte), Ziel 7 die Bemerkung (64 Byte). Zur Prüfverfahrenslogik siehe [Verfahrensmatrix](benning-guided-workflows.md).

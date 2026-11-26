@@ -53,39 +53,62 @@ on hPhase.up:
 
 on entry.loadend:
   sendme
+  route.val=0
+  busy.val=0
   cLast.val=useLast.val
   click hPhase,0
   if(sim.val==1)
   {
   bCreate.txt="Simulation erstellen"
+  }else if(guided.val==1)
+  {
+  bCreate.txt="Prüfung beginnen"
+  vis bTester,0
   }
 
 on bCreate.up:
   if(busy.val==0)
   {
-  if(tTicket.txt==""||tDevice.txt=="")
-  {
-  tStatus.txt="Bitte beide Felder ausfüllen."
-  }else if(home.online.val==0)
+  if(home.online.val==0)
   {
   tStatus.txt="Host nicht verbunden. Eingaben bleiben erhalten."
+  }else if(tTicket.txt==""||tDevice.txt=="")
+  {
+  tStatus.txt="Prüfnummer und Gerät eingeben."
   }else
   {
   report.ready.val=0
+  busy.val=1
+  route.val=0
   if(sim.val==1)
   {
-  busy.val=1
   prints "RC3:CREATE",0
-  }else
-  {
-  prints "RC5:REVIEW",0
-  }
   printh 00
   prints tTicket.txt,0
   printh 00
   prints tDevice.txt,0
-  if(sim.val==0)
+  }else if(guided.val==1)
   {
+  prints "RC6:GUIDE",0
+  printh 00
+  prints tTicket.txt,0
+  printh 00
+  prints tDevice.txt,0
+  printh 00
+  prints tSlot.txt,0
+  printh 00
+  covx phase.val,vArg.txt,0,0
+  prints vArg.txt,0
+  printh 00
+  covx useLast.val,vArg.txt,0,0
+  prints vArg.txt,0
+  }else
+  {
+  prints "RC6:IMPORT",0
+  printh 00
+  prints tTicket.txt,0
+  printh 00
+  prints tDevice.txt,0
   printh 00
   prints tSlot.txt,0
   printh 00
@@ -96,22 +119,53 @@ on bCreate.up:
   prints vArg.txt,0
   }
   printh ff ff ff
-  if(sim.val==0)
-  {
-  page tester
-  }
   }
   }
 
 on bTester.up:
-  prints "RC5:BROWSE",0
+  if(busy.val==0)
+  {
+  if(home.online.val==0)
+  {
+  tStatus.txt="Host nicht verbunden. Eingaben bleiben erhalten."
+  }else if(tTicket.txt==""||tDevice.txt=="")
+  {
+  tStatus.txt="Prüfnummer und Gerät eingeben."
+  }else
+  {
+  report.ready.val=0
+  busy.val=1
+  route.val=0
+  prints "RC6:EXISTING",0
+  printh 00
+  prints tTicket.txt,0
+  printh 00
+  prints tDevice.txt,0
+  printh 00
+  prints tSlot.txt,0
+  printh 00
+  covx phase.val,vArg.txt,0,0
+  prints vArg.txt,0
+  printh 00
+  covx useLast.val,vArg.txt,0,0
+  prints vArg.txt,0
   printh ff ff ff
-  page tester
+  }
+  }
 
 on bBack.up:
   if(busy.val==0)
   {
   page home
+  }
+
+on bHelp.up:
+  if(guided.val==1)
+  {
+  tStatus.txt="Eingaben bleiben beim Zurückblättern erhalten."
+  }else
+  {
+  tStatus.txt="Neue Messung importieren oder einen gespeicherten Slot wählen."
   }
 
 on tmFlow.timer:
@@ -124,6 +178,21 @@ on tmFlow.timer:
   {
   busy.val=0
   tStatus.txt="Host-Verbindung verloren. Bitte erneut versuchen."
+  }else if(route.val==1)
+  {
+  busy.val=0
+  route.val=0
+  page guide
+  }else if(route.val==2)
+  {
+  busy.val=0
+  route.val=0
+  page importer
+  }else if(route.val==3)
+  {
+  busy.val=0
+  route.val=0
+  page tester
   }
 
 on tmLink.timer:

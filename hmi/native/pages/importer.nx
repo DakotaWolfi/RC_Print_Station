@@ -1,0 +1,98 @@
+on hArt.up:
+  if(iArt.val==0)
+  {
+  pArt.pic=19
+  }
+  if(iArt.val==1)
+  {
+  pArt.pic=20
+  }
+  if(iArt.val==2)
+  {
+  pArt.pic=21
+  }
+  if(iArt.val==3)
+  {
+  pArt.pic=22
+  }
+  if(iArt.val==4)
+  {
+  pArt.pic=23
+  }
+  if(iArt.val==5)
+  {
+  pArt.pic=24
+  }
+  if(iArt.val==6)
+  {
+  pArt.pic=25
+  }
+  if(iArt.val==7)
+  {
+  pArt.pic=26
+  }
+  if(iArt.val==8)
+  {
+  pArt.pic=27
+  }
+  if(iArt.val==9)
+  {
+  pArt.pic=28
+  }
+
+on bManual.up:
+  if(home.online.val==1&&iAvailable.val==1)
+  {
+  prints "RC6:MANUAL",0
+  printh ff ff ff
+  }else
+  {
+  iMessage.txt="Noch kein bestätigter Speicherimport verfügbar."
+  }
+
+on bBack.up:
+  if(home.online.val==1)
+  {
+  prints "RC6:BACK",0
+  printh ff ff ff
+  }else
+  {
+  page entry
+  }
+
+on bHelp.up:
+  prints "RC6:HELP",0
+  printh ff ff ff
+
+on tmFlow.timer:
+  if(iAdvance.val==1&&home.online.val==1)
+  {
+  iAdvance.val=0
+  page tester
+  }else if(iAdvance.val==2)
+  {
+  iAdvance.val=0
+  if(entry.guided.val==1)
+  {
+  page guide
+  }else
+  {
+  page entry
+  }
+  }
+  if(home.online.val==0)
+  {
+  iStatus.txt="Host getrennt. Verbindung prüfen."
+  iAvailable.val=0
+  }
+
+on tmLink.timer:
+  home.age.val++
+  if(home.age.val>6)
+  {
+  home.online.val=0
+  home.tLink.txt="Host nicht verbunden"
+  }
+
+on importer.loadend:
+  sendme

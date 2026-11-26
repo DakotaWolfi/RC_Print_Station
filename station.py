@@ -11,7 +11,8 @@ import textwrap
 import base64
 import zlib
 from station_config import load as receipt_settings, DENSITIES
-from benning_output import measurement_state, selected_fields, show_value
+from benning_output import (examination_fields, measurement_summary, result_kind,
+                            selected_fields, visible_measurements)
 from benning_store import SOURCES
 
 def simulate(ticket, device):
@@ -37,7 +38,7 @@ def receipt(report, settings=None):
     def line(value=""):
         return (clean(value)+"\n").encode("cp850","replace")
     def field(label,value):
-        return b"".join(line(s) for s in textwrap.wrap(label+": "+clean(value),42) or [""])
+        return b"".join(line(s) for s in textwrap.wrap((label+": " if label else "")+clean(value),42) or [""])
     try:
         date=datetime.fromisoformat(report["created"]).astimezone(ZoneInfo("Europe/Zurich"))
         stamp=date.strftime("%d.%m.%Y  %H:%M")
@@ -61,18 +62,30 @@ def receipt(report, settings=None):
         dots-=step
     feed_and_cut=b"".join(chunks)+b"\x1dV\x00"
     header=graphic_header() if settings["graphic"] else bold+b"\x1d!\x11"+line("REPAIR CAFÉ")+b"\x1d!\x00"+line("RIEHEN")+normal
-    prefix=b"\x1b@"+density+b"\x1bt\x02"+center+header+normal
-    if report.get("source")=="BENNING":
-        data=[prefix,bold,line("BENNING ST 725"),normal,line(SOURCES[report["import_source"]]),heavy,left]
+    raster=(pathlib.Path(__file__).resolve().parent/"hmi/design"/f"result-{result_kind(report)}.bin").read_bytes()
+    prefix=b"\x1b@"+density+b"\x1bt\x02"+center+header+normal+raster
+    if report.get("source") in ("BENNING","EXAMINATION"):
+        source=SOURCES.get(report.get("import_source"),"Sicht- und Funktionsprüfung")
+        data=[prefix,bold,line("BENNING ST 725"),normal,line(source),left]
         data.extend(field(key,value) for key,value in selected_fields(report))
-        data.extend((rule,bold,field("Originales Testergebnis",report["record"]["verdict"]),normal,rule))
-        for item in report["measurements"]:
-            state,_=measurement_state(item)
-            label=item["name"]+(" / "+item["test"] if item.get("test") else "")
-            value=show_value(item.get("value"),item.get("unit")).replace("Ω","Ohm")
-            limit=show_value(item.get("limit"),item.get("limit_unit")).replace("Ω","Ohm")
-            data.extend((field(label,value),field(" Grenzwert",limit),field(" Tester",state)))
-        data.extend((heavy,field("Hinweis","Importiertes Testergebnis. Keine Sicherheitsfreigabe durch FMI."),
+        record=report.get("record") or {}
+        if record.get("verdict"):
+            data.append(field("Tester-Original",record["verdict"]))
+        rows=visible_measurements(report)
+        if rows:
+            data.append(rule)
+        for item in rows:
+            name,value,limit,state,_=measurement_summary(item,csv_source=report.get("import_source") in ("usb","file-csv"))
+            value=value.replace("Ω","Ohm")
+            limit=limit.replace("Ω","Ohm")
+            data.append(field(name,value) if value else line(name))
+            if state or limit:
+                data.append(field("", " / ".join(filter(None,(state,"Grenze "+limit if limit else "")))))
+        exam=examination_fields(report)
+        if exam:
+            data.extend((rule,bold,line("Prüfperson / Sicht und Funktion"),normal))
+            data.extend(field(key,value) for key,value in exam)
+        data.extend((heavy,field("Freigabe","Entscheid der verantwortlichen Prüfperson."),
                      center,bold,line("FMI Printstation"),normal,left,feed_and_cut))
         return b"".join(data)
     return (prefix+

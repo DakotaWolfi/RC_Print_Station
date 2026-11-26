@@ -152,7 +152,7 @@ class TesterPanel:
         else:
             selection="Keine Messung ausgewählt"
         t("mSelected",selection,55)
-        t("mNote",self.note or self.freshness(self.selected),86)
+        t("mNote",self.note or self.freshness(self.selected),100)
         c(f'mReady.val={int(self.selected is not None and self.pending is not None and self.receiver.status.state!="receiving")}')
 
     def poll(self):
@@ -234,7 +234,7 @@ class TesterPanel:
                 if not self.selected or self.key(self.selected)!=chosen or self.receiver.status.state=="receiving":
                     self.note="Import läuft oder Auswahl geändert. Bitte erneut auswählen."
                 else:
-                    ident,report=self.store.create_report(*self.pending,self.selected,require_current=True)
+                    ident,report=self.ui.workflow.save_selection(self.selected)
                     self.pending=None
                     self.ui.load_report(ident,report)
             else:

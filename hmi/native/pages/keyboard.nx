@@ -930,6 +930,9 @@ on bCancel.up:
   }else if(entry.field.val>2&&entry.field.val<5)
   {
   page printer
+  }else if(entry.field.val>5)
+  {
+  page guide
   }else
   {
   page entry
@@ -965,6 +968,16 @@ on bOK.up:
   }
   input.txt=""
   page printer
+  }else if(entry.field.val>5)
+  {
+  if(entry.field.val==6)
+  {
+  guide.eName.txt=input.txt
+  }else
+  {
+  guide.eRemarks.txt=input.txt
+  }
+  page guide
   }else
   {
   if(entry.field.val==0)
@@ -1017,11 +1030,21 @@ on keyboard.loadend:
   input.txt=settings.editText.txt
   tField.txt="Drucker-TCP-Port"
   limit.val=5
-  }else
+  }else if(entry.field.val==5)
   {
   input.txt=entry.tSlot.txt
   tField.txt="Prüfspeichernummer"
   limit.val=3
+  }else if(entry.field.val==6)
+  {
+  input.txt=guide.eName.txt
+  tField.txt="Prüfperson"
+  limit.val=48
+  }else
+  {
+  input.txt=guide.eRemarks.txt
+  tField.txt="Bemerkung"
+  limit.val=64
   }
   settings.editText.txt=""
   click hLayout,0

@@ -1,0 +1,44 @@
+{
+  "candidate": "v0.6",
+  "target": "NX8048T070_011R",
+  "rotation": 270,
+  "resolution": [
+    480,
+    800
+  ],
+  "baud": 115200,
+  "protocol": 6,
+  "encoding": "iso-8859-15",
+  "baseline": "a1bcafff3617b74e151b9d7a6e0c2b3dc521f7d6",
+  "nxwright_commit": "e9443a409cc9deb866db7486854fa962d382accc",
+  "vendor_firmware_editor": "1.68.2",
+  "ram_bytes": {
+    "keyboard": 3160,
+    "guide": 2924,
+    "importer": 2468,
+    "qr_page": 1940,
+    "qr_workspace": 1565
+  },
+  "files": [
+    {
+      "name": "FMI_RC_native_v0_6.HMI",
+      "size_bytes": 25340230,
+      "sha256": "c4004ed93974e837a77300005e64d88883953ff4c60514cf37f4d28b7183d3cb"
+    },
+    {
+      "name": "FMI_RC_native_v0_6.tft",
+      "size_bytes": 16243036,
+      "sha256": "37a6281a6722a734b457b5db3ea7dee2db6c959c3ea7b9c80ebe4e893c4dee05"
+    },
+    {
+      "name": "FMI_RC_native_v0_6.zip",
+      "size_bytes": 3263330,
+      "sha256": "b22937cbfa858447f6ec815b1e92bb460fa8f7d39832c35d6a2df6aaa6f55a50"
+    },
+    {
+      "name": "FMI_RC_v06_previews.zip",
+      "size_bytes": 3500107,
+      "sha256": "1fe95c40d765f94ec041894f7a657b3752c4ec0e6306cce01d79e17d33f66e04"
+    }
+  ]
+}

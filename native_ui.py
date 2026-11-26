@@ -16,7 +16,8 @@ from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
 from station import database, receipt, send, simulate
-from benning_csv import outcome
+from benning_output import RESULTS, measurement_summary, report_timestamp, result_kind, visible_measurements
+from benning_workflow import WorkflowPanel
 from benning_panel import TesterPanel
 from benning_receiver import MODES, Receiver
 from benning_store import Measurements, SOURCES
@@ -25,7 +26,7 @@ from station_network import NetworkManager
 
 END = b"\xff\xff\xff"
 ENCODING = "iso-8859-15"
-PROTOCOL = 5
+PROTOCOL = 6
 LOG = logging.getLogger(__name__)
 
 
@@ -59,6 +60,11 @@ def display_text(value, limit):
     """
     value = "".join(c if c.isprintable() and c != "ÿ" else " " for c in str(value))
     return value.encode(ENCODING, "replace")[:limit].decode(ENCODING)
+
+
+def panel_colour(colour):
+    rgb=int(colour[1:],16)
+    return ((rgb>>19)<<11)|(((rgb>>10)&63)<<5)|((rgb>>3)&31)
 
 
 def quoted(value, limit):
@@ -141,6 +147,9 @@ class NativeUI:
                                                  tester_rs232,tester_encoding,tester_idle,hmi_port)
         self.tester=TesterPanel(self,self.measurements,self.receiver)
         self.settings = PanelSettings(self,network,config_path,enable_power,**settings_hooks)
+        self.workflow=WorkflowPanel(self)
+        self.measurement_offset=0
+        self.measurement_preview_pending=False
 
     def cmd(self, command):
         # Commands and text come from our fixed schema, never raw HMI input.
@@ -155,6 +164,7 @@ class NativeUI:
     def initialise(self):
         self.cmd("bkcmd=3")
         self.cmd("sendxy=0")
+        self.workflow.reset()
         self.settings.page = None
         self.settings.selected = None
         self.settings.joined = False
@@ -192,42 +202,67 @@ class NativeUI:
                 self.last_clock = stamp
             self.last_heartbeat = now
 
+    def draw_measurements(self,report):
+        rows=visible_measurements(report)
+        csv_source=report.get("import_source") in ("usb","file-csv")
+        for i in range(3):
+            component=f"tValue{i}"
+            label,colour="",RESULTS["unknown"][1]
+            index=self.measurement_offset+i
+            if index<len(rows):
+                name,value,limit,state,kind=measurement_summary(rows[index],csv_source=csv_source)
+                value=value.replace("Ω","Ohm")
+                limit=limit.replace("Ω","Ohm")
+                label="  ·  ".join(filter(None,(name,value,state,"Grenze "+limit if limit else "")))
+                colour=RESULTS[kind][1]
+            self.text(component,label,94)
+            self.cmd(f"{component}.pco={panel_colour(colour)}")
+        self.cmd(f"vMore.val={int(len(rows)>3)}")
+        self.cmd(f"vis bValues,{int(len(rows)>3)}")
+
     def load_report(self, ident, report):
-        if not isinstance(report,dict) or report.get("source") not in ("SIMULATOR","BENNING"):
+        if not isinstance(report,dict) or report.get("source") not in ("SIMULATOR","BENNING","EXAMINATION"):
             raise ValueError("Ungültiger gespeicherter Bericht.")
-        simulated = report["source"]=="SIMULATOR"
-        record = report.get("record")
-        if (simulated and report.get("verdict")!="NOT TESTED") or (
-                not simulated and (not isinstance(record,dict) or outcome(record.get("verdict","")) is None)):
+        source=report["source"]
+        record=report.get("record") or {}
+        if source=="BENNING" and not isinstance(report.get("record"),dict):
             raise ValueError("Ungültiges gespeichertes Prüfergebnis.")
-        if not isinstance(report.get("ticket"), str) or not isinstance(report.get("device"), str):
+        if source=="SIMULATOR" and report.get("verdict")!="NOT TESTED":
+            raise ValueError("Ungültiges gespeichertes Prüfergebnis.")
+        if not isinstance(report.get("ticket"),str) or not isinstance(report.get("device"),str):
             raise ValueError("Ungültiger gespeicherter Bericht.")
+        status=result_kind(report)
+        label,colour,_,_=RESULTS[status]
         self.cmd("report.ready.val=0")
-        self.text("report.tTicket", report["ticket"], 32)
-        self.text("report.tDevice", report["device"], 64)
-        try:
-            stamp = datetime.fromisoformat(report["created"]).astimezone(ZoneInfo("Europe/Zurich"))
-            date = stamp.strftime("%d.%m.%Y  %H:%M")
-        except (KeyError, ValueError, TypeError):
-            date = "Datum unbekannt"
-        if simulated:
-            self.text("report.tOrigin","SIMULATION / KEINE ELEKTRISCHE PRÜFUNG",45)
-            self.text("report.tResult","NICHT GEPRÜFT",40)
-            self.text("report.tMeta","",64)
-            self.text("qrpage.tKind","SIMULATION / keine elektrische Prüfung",56)
-            self.text("report.tStatus","Keine Messwerte. Kein Sicherheitsnachweis.",80)
+        self.text("report.tTicket",report["ticket"],32)
+        self.text("report.tDevice",report["device"],64)
+        self.text("report.tResult",label,40)
+        self.cmd(f"report.tResult.pco={panel_colour(colour)}")
+        meta=" / ".join(filter(None,(f'Slot {record["slot"]}' if record.get("slot") else "",
+                                  report.get("phase"),record.get("protection_class"))))
+        self.text("report.tMeta",meta,69)
+        date=record.get("tester_date","") if record else report_timestamp(report)
+        if source=="BENNING":
+            origin=f'Tester-Original: {record.get("verdict") or "unbekannt"}'
+            note="Messwerte und Prüfergebnis vom BENNING ST 725 übernommen."
+            if (report.get("examination") or {}).get("status")=="Unvollständig":
+                date+="  /  Prüfung unvollständig"
+            qr="BENNING-Import / Originalergebnis"
+        elif source=="EXAMINATION":
+            origin="Kein Testergebnis übernommen"
+            note="Sicht- und Funktionsprüfung dokumentiert."
+            qr="UNVOLLSTÄNDIGE PRÜFUNG"
         else:
-            date=record["tester_date"]
-            origin=SOURCES[report["import_source"]]
-            self.text("report.tOrigin",origin,45)
-            self.text("report.tResult",f'Tester: {record["verdict"]}',40)
-            self.text("report.tMeta",f'Slot {record["slot"]} / {report["phase"]} / {record["protection_class"] or "-"}',64)
-            self.text("qrpage.tKind","BENNING-Import / Originalergebnis",56)
-            self.text("report.tStatus","Testergebnis übernommen. Keine Freigabe durch FMI.",80)
-        self.text("report.tDate", date, 24)
+            origin="KEINE ELEKTRISCHE PRÜFUNG"
+            note="Keine Messwerte. Kein Sicherheitsnachweis."
+            qr="SIMULATION / keine elektrische Prüfung"
+        self.text("report.tOrigin",origin,55)
+        self.text("report.tStatus",note,90)
+        self.text("report.tDate",date,42)
+        self.text("qrpage.tKind",qr,56)
+        self.measurement_offset=0
         self.cmd("report.printing.val=0")
-        self.report, self.report_id = report, ident
-        # The native page's timer changes page only after the complete data.
+        self.report,self.report_id=report,ident
         self.cmd("report.ready.val=1")
 
     def create(self, payload):
@@ -345,6 +380,17 @@ class NativeUI:
         if len(frame)==2 and frame[0]==0x66:
             self.settings.enter(frame[1])
             self.tester.enter()
+            self.workflow.enter()
+            self.measurement_preview_pending=self.settings.page=="report"
+            return
+        if frame==b"RC6:VALUES" and self.settings.page=="report" and self.report:
+            self.measurement_offset=(self.measurement_offset+3)
+            if self.measurement_offset>=len(visible_measurements(self.report)):
+                self.measurement_offset=0
+            self.measurement_preview_pending=True
+            return
+        if frame.startswith(b"RC6:"):
+            self.workflow.handle(frame)
             return
         if frame.startswith(b"RC5:"):
             self.tester.handle(frame)
@@ -388,6 +434,10 @@ class NativeUI:
         self.heartbeat()
         self.settings.poll()
         self.tester.poll()
+        self.workflow.poll()
+        if self.measurement_preview_pending and self.settings.page=="report" and self.report:
+            self.measurement_preview_pending=False
+            self.draw_measurements(self.report)
         self.ser.flush()
 
     def close(self):

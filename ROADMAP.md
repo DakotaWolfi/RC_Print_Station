@@ -151,3 +151,13 @@ Status: working legacy hybrid prototype plus separate native HMI v0.3 candidate.
 - [ ] Compile independently in official Nextion Editor and complete the [physical acceptance and rollback checklist](hmi/VALIDATION-v05.md).
 - [ ] Validate the Mini-DIN 6 adapter, memory slot handling and representative printouts on the physical tester before enabling RS232.
 - [ ] Consider a broader authenticated operator web interface after the USB workflow is accepted.
+
+## Geführtes Prüfen v0.6 · Raspberry Pi 4B
+
+- [x] Schweizer BENNING-Handbuch 050317, Ausgabe 12/2021, mit den Originaltafeln abgleichen.
+- [x] Direkteingabe und Offline-Assistent mit Warn- und Abbruchzweigen ergänzen.
+- [x] Importzustand, Start-Baseline und Messwert-Bestätigung umsetzen.
+- [x] Sichtprüfung, Funktion und Bemerkungen getrennt protokollieren und Ausgaben kompakter gestalten.
+- [x] HMI/TFT bauen, Simulation und Beleg-/PDF-Muster prüfen.
+- [ ] v0.6 im offiziellen Editor und am Pi 4B mit BENNING und Epson abnehmen. [Prüfliste](hmi/VALIDATION-v06.md)
+- [ ] RS232-Adapter und Swiss-Layout am Gerät prüfen.
