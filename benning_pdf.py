@@ -13,7 +13,6 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, Tabl
 
 from benning_output import (RESULTS, examination_fields, measurement_summary,
                             report_checks, result_kind, selected_fields, visible_measurements)
-from benning_store import SOURCES
 
 DESIGN=Path(__file__).resolve().parent/"hmi"/"design"
 NAVY=HexColor("#101923")
@@ -41,7 +40,7 @@ def render(report):
     simulated=report.get("source")=="SIMULATOR"
     out=BytesIO()
     doc=SimpleDocTemplate(out,pagesize=A4,leftMargin=42,rightMargin=42,
-                          topMargin=158,bottomMargin=61,
+                          topMargin=137,bottomMargin=55,
                           title="Repair Café Riehen - "+("Simulationsprotokoll" if simulated else "BENNING Prüfprotokoll"),
                           author="FMI Printstation / Repair Café Riehen")
     width,height=A4
@@ -50,14 +49,14 @@ def render(report):
     def frame(pdf,_doc):
         pdf.saveState()
         pdf.setFillColor(NAVY)
-        pdf.rect(0,height-133,width,133,fill=1,stroke=0)
+        pdf.rect(0,height-113,width,113,fill=1,stroke=0)
         pdf.setFillColor(ORANGE)
-        pdf.rect(0,height-137,width,4,fill=1,stroke=0)
-        pdf.drawImage(ImageReader(str(DESIGN/"brand.png")),42,height-87,
-                      width=area,height=74,preserveAspectRatio=True,anchor="c")
+        pdf.rect(0,height-117,width,4,fill=1,stroke=0)
+        pdf.drawImage(ImageReader(str(DESIGN/"brand.png")),42,height-72,
+                      width=area,height=62,preserveAspectRatio=True,anchor="c")
         pdf.setFillColor(white)
         pdf.setFont("Helvetica-Bold",20)
-        pdf.drawString(42,height-115,"Simulationsprotokoll" if simulated else "BENNING ST 725  /  Prüfprotokoll")
+        pdf.drawString(42,height-96,"Simulationsprotokoll" if simulated else "BENNING ST 725  /  Prüfprotokoll")
         pdf.setStrokeColor(PALE)
         pdf.line(42,49,width-42,49)
         pdf.setFillColor(MUTED)
@@ -66,16 +65,11 @@ def render(report):
         pdf.drawRightString(width-42,33,str(pdf.getPageNumber()))
         pdf.restoreState()
 
-    record=report.get("record") or {}
     status=result_kind(report)
     label,_,colour,paper=RESULTS[status]
-    source=SOURCES.get(report.get("import_source"),"Keine elektrische Prüfung" if simulated else "Sicht- und Funktionsprüfung")
-    original=record.get("verdict")
-    summary_text="Original am BENNING: "+original if original else source
-    heading="PRÜFPROTOKOLL" if report.get("source")=="EXAMINATION" else "BENNING-URTEIL"
+    heading="PRÜFPROTOKOLL" if report.get("source")=="EXAMINATION" else "TESTERGEBNIS"
     summary=Table([[cell(heading,10,MUTED)],
-                   [cell(label,32,HexColor(colour),"Helvetica-Bold")],
-                   [cell(summary_text,11,INK)]],colWidths=[area])
+                   [cell(label,32,HexColor(colour),"Helvetica-Bold")]],colWidths=[area])
     summary.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,-1),HexColor(paper)),
                                  ("LINEBEFORE",(0,0),(0,-1),4,HexColor(colour)),
                                  ("LEFTPADDING",(0,0),(-1,-1),14),
@@ -85,13 +79,12 @@ def render(report):
     def details(fields):
         table=Table([[cell(key,9,MUTED),cell(value)] for key,value in fields],
                     colWidths=[135,area-135],hAlign="LEFT")
-        table.setStyle(TableStyle([("BOTTOMPADDING",(0,0),(-1,-1),4),
+        table.setStyle(TableStyle([("TOPPADDING",(0,0),(-1,-1),2),
+                                   ("BOTTOMPADDING",(0,0),(-1,-1),2),
                                    ("LINEBELOW",(0,0),(-1,-1),.4,PALE)]))
         return table
 
     fields=list(selected_fields(report))
-    if report.get("import_source"):
-        fields.append(("Datenquelle",source))
     story=[summary,Spacer(1,10),details(fields)]
     compact=[measurement_summary(row,csv_source=report.get("import_source") in ("usb","file-csv"))
              for row in visible_measurements(report)]
@@ -113,17 +106,26 @@ def render(report):
                                    ("TOPPADDING",(0,0),(-1,-1),4),
                                    ("BOTTOMPADDING",(0,0),(-1,-1),4)]))
         story.extend((Spacer(1,10),cell("Messwerte",13,INK,"Helvetica-Bold"),Spacer(1,4),table))
-    story.extend((Spacer(1,10),cell("Prüfstatus und Freigabe",13,INK,"Helvetica-Bold"),
-                  details(report_checks(report))))
-    exam=examination_fields(report)
-    if exam:
-        story.extend((Spacer(1,10),cell("Angaben der Prüfperson",13,INK,"Helvetica-Bold"),
-                      details(exam)))
+    checks=[]
+    for key,value in report_checks(report):
+        if key=="Elektrische Messung" and value=="Messdaten vollständig":
+            continue
+        if key=="Protokoll":
+            if value.startswith("Offen: "):
+                checks.append(("Offene Punkte",value[len("Offen: "):]))
+            continue
+        if key=="Freigabe" and value=="Nicht erfasst · Entscheid der Prüfperson":
+            continue
+        checks.append((key,value))
+    checks.extend((key,value) for key,value in examination_fields(report)
+                  if key in ("Prüfperson","Bemerkung"))
+    if checks:
+        story.extend((Spacer(1,8),cell("Weitere Prüfangaben",13,INK,"Helvetica-Bold"),
+                      details(checks)))
     if simulated:
         note="SIMULATION / KEINE ELEKTRISCHE PRÜFUNG. Keine Messwerte vorhanden."
     else:
-        note=("Messwerte und Prüfergebnis vom BENNING ST 725 übernommen. " if original else "")
-        note+="Die verantwortliche Prüfperson beurteilt die vollständige Prüfung und entscheidet, ob das Gerät freigegeben werden darf."
+        note="Die Freigabe des Geräts obliegt der verantwortlichen Prüfperson."
     story.extend((Spacer(1,10),cell(note,9,MUTED)))
     doc.build(story,onFirstPage=frame,onLaterPages=frame)
     return out.getvalue()
