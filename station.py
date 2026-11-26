@@ -6,17 +6,18 @@ import socket
 import sqlite3
 import subprocess
 from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
 import textwrap
 import base64
 import zlib
 from station_config import load as receipt_settings, DENSITIES
-from benning_output import (examination_fields, measurement_summary, report_checks, result_kind,
+from benning_output import (compact_checks, measurement_summary, report_language, report_timestamp, result_kind,
                             selected_fields, visible_measurements)
 
-def simulate(ticket, device):
+from i18n import locale, tr
+
+def simulate(ticket, device, *, language="de"):
     return {"ticket": ticket, "device": device, "source": "SIMULATOR",
-            "created": datetime.now(timezone.utc).isoformat(),
+            "created": datetime.now(timezone.utc).isoformat(), "language":locale(language),
             "measurements": [], "verdict": "NOT TESTED"}
 
 # Generated monochrome receipt artwork, 504 x 168, packed MSB-first.
@@ -34,15 +35,19 @@ def receipt(report, settings=None):
         # PC850 has no euro glyph; keep the new native keyboard's € legible.
         value = str(value).replace("€", "EUR").replace("≤","<=").replace("≥",">=")
         return "".join(c if c.isprintable() else " " for c in value)
+    language=report_language(report)
+    t=lambda key:tr(language,key)
+
     def line(value=""):
-        return (clean(value)+"\n").encode("cp850","replace")
+        # ESC t 0 selects Epson PC437: EA hex is Ω. Restore PC850 after the glyph.
+        chunks=clean(value).split("Ω")
+        code=b"\x1bt\x00"+bytes([0xEA])+b"\x1bt\x02"
+        return code.join(chunk.encode("cp850","replace") for chunk in chunks)+b"\n"
+
     def field(label,value):
         return b"".join(line(s) for s in textwrap.wrap((label+": " if label else "")+clean(value),42) or [""])
-    try:
-        date=datetime.fromisoformat(report["created"]).astimezone(ZoneInfo("Europe/Zurich"))
-        stamp=date.strftime("%d.%m.%Y  %H:%M")
-    except (ValueError,KeyError):
-        stamp=clean(report.get("created","Unbekannt"))
+
+    stamp=report_timestamp(report) or t("Unbekannt")
     center=b"\x1ba\x01"
     left=b"\x1ba\x00"
     bold=b"\x1bE\x01"
@@ -61,51 +66,36 @@ def receipt(report, settings=None):
         dots-=step
     feed_and_cut=b"".join(chunks)+b"\x1dV\x00"
     header=graphic_header() if settings["graphic"] else bold+b"\x1d!\x11"+line("REPAIR CAFÉ")+b"\x1d!\x00"+line("RIEHEN")+normal
-    raster=(pathlib.Path(__file__).resolve().parent/"hmi/design"/f"result-{result_kind(report)}.bin").read_bytes()
+    raster=(pathlib.Path(__file__).resolve().parent/"hmi/design"/f"result-{result_kind(report)}{'-en' if language=='en' else ''}.bin").read_bytes()
     prefix=b"\x1b@"+density+b"\x1bt\x02"+center+header+normal+raster
     if report.get("source") in ("BENNING","EXAMINATION"):
         data=[prefix,left]
-        data.extend(field(key,value) for key,value in selected_fields(report))
+        data.extend(field(t(key),value) for key,value in selected_fields(report))
         rows=visible_measurements(report)
         if rows:
-            data.extend((rule,bold,line("MESSWERTE"),normal))
+            data.extend((rule,bold,line(t("MESSWERTE")),normal))
         for item in rows:
-            name,value,limit,state,_=measurement_summary(item,csv_source=report.get("import_source") in ("usb","file-csv"))
-            value=value.replace("Ω","Ohm")
-            limit=limit.replace("Ω","Ohm")
+            name,value,limit,state,_=measurement_summary(item,csv_source=report.get("import_source") in ("usb","file-csv"),language=language)
             # Keep the measured value and individual verdict together whenever
             # they fit. Wrap long entries rather than truncating test data.
             data.append(field(name,"  ".join(filter(None,(value,state)))))
             if limit:
-                data.append(field("Grenzwert",limit))
+                data.append(field(t("Grenzwert"),limit))
         data.append(rule)
-        for key,value in report_checks(report):
-            # The headline already carries the original tester verdict.
-            # Retain actionable findings, not redundant successful states.
-            if key=="Elektrische Messung" and value=="Messdaten vollständig":
-                continue
-            if key=="Protokoll":
-                if value.startswith("Offen: "):
-                    data.append(field("Offene Punkte",value[len("Offen: "):]))
-                continue
-            if key=="Freigabe" and value=="Nicht erfasst · Entscheid der Prüfperson":
-                continue
-            data.append(field(key,value))
-        data.extend(field(key,value) for key,value in examination_fields(report)
-                    if key in ("Prüfperson","Bemerkung"))
+        data.extend(field(t(key),value) for key,value in compact_checks(report))
         data.extend((heavy,
                      center,bold,line("FMI Printstation"),normal,left,feed_and_cut))
         return b"".join(data)
     return (prefix+
-            line("Reparieren statt wegwerfen.")+heavy+
-            bold+line("ELEKTRISCHES PRÜFPROTOKOLL")+normal+line()+bold+
-            line("DEMO / SIMULATION ONLY")+line("KEINE ELEKTRISCHE PRÜFUNG")+normal+
-            rule+left+field("Datum",stamp)+line()+bold+line("REPARATURDATEN")+normal+
-            field("Ticket",report["ticket"])+field("Gerät",report["device"])+line()+rule+
-            bold+line("PRÜFERGEBNIS")+
-            line("NICHT GEPRÜFT / NOT TESTED")+normal+
-            line("Keine Messwerte vorhanden.")+line()+heavy+center+
-            bold+line("FMI Printstation")+normal+line("Repair Café Riehen | Entwicklung")+left+feed_and_cut)
+            line(t("Reparieren statt wegwerfen."))+heavy+
+            bold+line(t("ELEKTRISCHES PRÜFPROTOKOLL"))+normal+line()+bold+
+            line(t("DEMO / SIMULATION ONLY"))+line(t("KEINE ELEKTRISCHE PRÜFUNG"))+normal+
+            rule+left+field(t("Datum"),stamp)+line()+bold+line(t("REPARATURDATEN"))+normal+
+            field(t("Ticket"),report["ticket"])+field(t("Gerät"),report["device"])+line()+rule+
+            bold+line(t("PRÜFERGEBNIS"))+
+            line(t("NICHT GEPRÜFT / NOT TESTED"))+normal+
+            line(t("Keine Messwerte vorhanden."))+line()+heavy+center+
+            bold+line(t("FMI Printstation"))+normal+line(t("Repair Café Riehen | Entwicklung"))+left+feed_and_cut)
 
 def send(host, port, data):
     with socket.create_connection((host, port), timeout=5) as conn:

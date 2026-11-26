@@ -48,24 +48,53 @@ on bPhase.up:
   }
   click hPhase,0
 
+on bReportLang.up:
+  prints "RC70:REPORTLANG",0
+  printh ff ff ff
+
 on hPhase.up:
   if(phase.val==0)
   {
+  if(home.lang.val==1)
+  {
+  bPhase.txt="Initial test"
+  }else
+  {
   bPhase.txt="Eingangsprüfung"
+  }
   }else if(phase.val==1)
   {
+  if(home.lang.val==1)
+  {
+  bPhase.txt="Interim test"
+  }else
+  {
   bPhase.txt="Zwischenprüfung"
+  }
+  }else
+  {
+  if(home.lang.val==1)
+  {
+  bPhase.txt="Final test"
   }else
   {
   bPhase.txt="Ausgangsprüfung"
   }
+  }
 
 on entry.loadend:
+  click hLocale,0
   sendme
   strlen tTicket.txt,draftLen.val
   if(draftLen.val>21)
   {
+  if(home.lang.val==1)
+  {
+  tTicketView.txt="Tap to edit"
+  }else
+  {
   tTicketView.txt="Tippen zum Bearbeiten"
+  }
   }else
   {
   tTicketView.txt=tTicket.txt
@@ -73,7 +102,13 @@ on entry.loadend:
   strlen tDevice.txt,draftLen.val
   if(draftLen.val>14)
   {
+  if(home.lang.val==1)
+  {
+  tDeviceView.txt="Tap to edit"
+  }else
+  {
   tDeviceView.txt="Tippen zum Bearbeiten"
+  }
   }else
   {
   tDeviceView.txt=tDevice.txt
@@ -93,10 +128,22 @@ on entry.loadend:
   click hPhase,0
   if(sim.val==1)
   {
+  if(home.lang.val==1)
+  {
+  bCreate.txt="Create simulation"
+  }else
+  {
   bCreate.txt="Simulation erstellen"
+  }
   }else if(guided.val==1)
   {
+  if(home.lang.val==1)
+  {
+  bCreate.txt="Start test"
+  }else
+  {
   bCreate.txt="Prüfung beginnen"
+  }
   vis bTester,0
   }
 
@@ -105,10 +152,22 @@ on bCreate.up:
   {
   if(home.online.val==0)
   {
+  if(home.lang.val==1)
+  {
+  tStatus.txt="Host disconnected. Your entries are kept."
+  }else
+  {
   tStatus.txt="Host nicht verbunden. Eingaben bleiben erhalten."
+  }
   }else if(tTicket.txt==""||tDevice.txt=="")
   {
+  if(home.lang.val==1)
+  {
+  tStatus.txt="Enter the test number and appliance."
+  }else
+  {
   tStatus.txt="Prüfnummer und Gerät eingeben."
+  }
   }else
   {
   report.ready.val=0
@@ -161,10 +220,22 @@ on bTester.up:
   {
   if(home.online.val==0)
   {
+  if(home.lang.val==1)
+  {
+  tStatus.txt="Host disconnected. Your entries are kept."
+  }else
+  {
   tStatus.txt="Host nicht verbunden. Eingaben bleiben erhalten."
+  }
   }else if(tTicket.txt==""||tDevice.txt=="")
   {
+  if(home.lang.val==1)
+  {
+  tStatus.txt="Enter the test number and appliance."
+  }else
+  {
   tStatus.txt="Prüfnummer und Gerät eingeben."
+  }
   }else
   {
   report.ready.val=0
@@ -196,10 +267,22 @@ on bBack.up:
 on bHelp.up:
   if(guided.val==1)
   {
-  tStatus.txt="Eingaben bleiben beim Zurückblättern erhalten."
+  if(home.lang.val==1)
+  {
+  tStatus.txt="Going back keeps your entries."
   }else
   {
-  tStatus.txt="Neue Messung importieren oder einen gespeicherten Slot wählen."
+  tStatus.txt="Eingaben bleiben beim Zurückblättern erhalten."
+  }
+  }else
+  {
+  if(home.lang.val==1)
+  {
+  tStatus.txt="Import a new reading or select a saved slot."
+  }else
+  {
+  tStatus.txt="Neue Messung importieren oder einen gespeicherten Slot  wählen."
+  }
   }
 
 on tmFlow.timer:
@@ -211,7 +294,13 @@ on tmFlow.timer:
   if(busy.val==1&&home.online.val==0)
   {
   busy.val=0
+  if(home.lang.val==1)
+  {
+  tStatus.txt="Host connection lost. Try again."
+  }else
+  {
   tStatus.txt="Host-Verbindung verloren. Bitte erneut versuchen."
+  }
   }else if(route.val==1)
   {
   busy.val=0
@@ -234,5 +323,104 @@ on tmLink.timer:
   if(home.age.val>6)
   {
   home.online.val=0
+  if(home.lang.val==1)
+  {
+  home.tLink.txt="Host disconnected"
+  }else
+  {
   home.tLink.txt="Host nicht verbunden"
+  }
+  }
+
+on hLocale.up:
+  if(home.lang.val==1)
+  {
+  bTemplates.txt="Templates"
+  }else
+  {
+  bTemplates.txt="Vorlagen"
+  }
+  if(home.lang.val==1)
+  {
+  bPhase.txt="Initial test"
+  }else
+  {
+  bPhase.txt="Eingangsprüfung"
+  }
+  if(home.lang.val==1)
+  {
+  bReportLang.txt="Report: EN"
+  }else
+  {
+  bReportLang.txt="Bericht: DE"
+  }
+  if(home.lang.val==1)
+  {
+  bCreate.txt="Import reading"
+  }else
+  {
+  bCreate.txt="Messung importieren"
+  }
+  if(home.lang.val==1)
+  {
+  bTester.txt="Saved reading"
+  }else
+  {
+  bTester.txt="Vorhandene Messung"
+  }
+  if(home.lang.val==1)
+  {
+  bBack.txt="Back"
+  }else
+  {
+  bBack.txt="Zurück"
+  }
+  if(home.lang.val==1)
+  {
+  bHelp.txt="Help"
+  }else
+  {
+  bHelp.txt="Hilfe"
+  }
+  if(home.lang.val==1)
+  {
+  pLabel0.pic=2
+  }else
+  {
+  pLabel0.pic=1
+  }
+  if(home.lang.val==1)
+  {
+  pLabel1.pic=4
+  }else
+  {
+  pLabel1.pic=3
+  }
+  if(home.lang.val==1)
+  {
+  pLabel2.pic=6
+  }else
+  {
+  pLabel2.pic=5
+  }
+  if(home.lang.val==1)
+  {
+  pLabel3.pic=8
+  }else
+  {
+  pLabel3.pic=7
+  }
+  if(home.lang.val==1)
+  {
+  pLabel4.pic=10
+  }else
+  {
+  pLabel4.pic=9
+  }
+  if(home.lang.val==1)
+  {
+  pLabel5.pic=12
+  }else
+  {
+  pLabel5.pic=11
   }

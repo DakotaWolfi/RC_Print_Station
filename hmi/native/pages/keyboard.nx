@@ -893,7 +893,13 @@ on hCount.up:
   tInput.txt=input.txt
   }
   covx count.val,tHint.txt,0,0
+  if(home.lang.val==1)
+  {
+  tHint.txt+=" characters / max. "
+  }else
+  {
   tHint.txt+=" Zeichen  /  max. "
+  }
   covx limit.val,tLimit.txt,0,0
   tHint.txt+=tLimit.txt
 
@@ -1019,6 +1025,7 @@ on keyboard.unload:
   input.txt=""
 
 on keyboard.loadend:
+  click hLocale,0
   sendme
   mode.val=0
   shift.val=0
@@ -1027,42 +1034,90 @@ on keyboard.loadend:
   if(entry.field.val==0)
   {
   input.txt=entry.tTicket.txt
+  if(home.lang.val==1)
+  {
+  tField.txt="Repair number"
+  }else
+  {
   tField.txt="Prüfnummer"
+  }
   limit.val=32
   }else if(entry.field.val==1)
   {
   input.txt=entry.tDevice.txt
+  if(home.lang.val==1)
+  {
+  tField.txt="Appliance description"
+  }else
+  {
   tField.txt="Gerätebeschreibung"
+  }
   limit.val=64
   }else if(entry.field.val==2)
   {
   input.txt=""
+  if(home.lang.val==1)
+  {
+  tField.txt="Wi-Fi password"
+  }else
+  {
   tField.txt="WLAN-Passwort"
+  }
   limit.val=64
   }else if(entry.field.val==3)
   {
   input.txt=settings.editText.txt
+  if(home.lang.val==1)
+  {
+  tField.txt="Printer IPv4 address"
+  }else
+  {
   tField.txt="Drucker-IPv4-Adresse"
+  }
   limit.val=15
   }else if(entry.field.val==4)
   {
   input.txt=settings.editText.txt
+  if(home.lang.val==1)
+  {
+  tField.txt="Printer TCP port"
+  }else
+  {
   tField.txt="Drucker-TCP-Port"
+  }
   limit.val=5
   }else if(entry.field.val==5)
   {
   input.txt=entry.tSlot.txt
+  if(home.lang.val==1)
+  {
+  tField.txt="Test memory slot"
+  }else
+  {
   tField.txt="Prüfspeichernummer"
+  }
   limit.val=3
   }else if(entry.field.val==6)
   {
   input.txt=picker.pEdit.txt
+  if(home.lang.val==1)
+  {
+  tField.txt="Examiner"
+  }else
+  {
   tField.txt="Prüfperson"
+  }
   limit.val=48
   }else
   {
   input.txt=guide.eRemarks.txt
+  if(home.lang.val==1)
+  {
+  tField.txt="Remarks"
+  }else
+  {
   tField.txt="Bemerkung"
+  }
   limit.val=64
   }
   settings.editText.txt=""
@@ -1074,5 +1129,62 @@ on tmLink.timer:
   if(home.age.val>6)
   {
   home.online.val=0
+  if(home.lang.val==1)
+  {
+  home.tLink.txt="Host disconnected"
+  }else
+  {
   home.tLink.txt="Host nicht verbunden"
+  }
+  }
+
+on hLocale.up:
+  if(home.lang.val==1)
+  {
+  tField.txt="Entry"
+  }else
+  {
+  tField.txt="Eingabe"
+  }
+  if(home.lang.val==1)
+  {
+  bSpace.txt="Space"
+  }else
+  {
+  bSpace.txt="Leerzeichen"
+  }
+  if(home.lang.val==1)
+  {
+  bClear.txt="Clear"
+  }else
+  {
+  bClear.txt="Leeren"
+  }
+  if(home.lang.val==1)
+  {
+  bCancel.txt="Cancel"
+  }else
+  {
+  bCancel.txt="Abbrechen"
+  }
+  if(home.lang.val==1)
+  {
+  bOK.txt="Apply"
+  }else
+  {
+  bOK.txt="Übernehmen"
+  }
+  if(home.lang.val==1)
+  {
+  pLabel0.pic=58
+  }else
+  {
+  pLabel0.pic=57
+  }
+  if(home.lang.val==1)
+  {
+  pLabel1.pic=60
+  }else
+  {
+  pLabel1.pic=59
   }

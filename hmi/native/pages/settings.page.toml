@@ -17,6 +17,15 @@ h = 800
 pic = "settings"
 
 [[component]]
+name = "pLabel0"
+type = "picture"
+x = 24
+y = 183
+w = 308
+h = 35
+pic = "settings_s0_de"
+
+[[component]]
 name = "editText"
 type = "variable"
 vscope = 1
@@ -40,7 +49,7 @@ bco2 = "#ffc071"
 pco = "#101923"
 pco2 = "#101923"
 txt = "WLAN"
-txt_maxl = 4
+txt_maxl = 5
 isbr = 0
 
 [[component]]
@@ -78,7 +87,7 @@ bco2 = "#365164"
 pco = "#f5f6f7"
 pco2 = "#f5f6f7"
 txt = "Beleg"
-txt_maxl = 5
+txt_maxl = 7
 isbr = 0
 
 [[component]]
@@ -124,3 +133,11 @@ name = "tmLink"
 type = "timer"
 tim = 1000
 en = 1
+
+[[component]]
+name = "hLocale"
+type = "hotspot"
+x = 6
+y = 0
+w = 2
+h = 2

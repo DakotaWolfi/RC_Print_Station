@@ -17,6 +17,24 @@ h = 800
 pic = "qrpage"
 
 [[component]]
+name = "pLabel0"
+type = "picture"
+x = 24
+y = 183
+w = 301
+h = 35
+pic = "qrpage_s0_de"
+
+[[component]]
+name = "pLabel1"
+type = "picture"
+x = 24
+y = 228
+w = 331
+h = 22
+pic = "qrpage_s1_de"
+
+[[component]]
 name = "qReady"
 type = "variable"
 val = 0
@@ -107,3 +125,11 @@ name = "tmLink"
 type = "timer"
 tim = 1000
 en = 1
+
+[[component]]
+name = "hLocale"
+type = "hotspot"
+x = 6
+y = 0
+w = 2
+h = 2

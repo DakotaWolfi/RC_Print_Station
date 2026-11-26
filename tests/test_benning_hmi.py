@@ -156,7 +156,7 @@ class BenningTouchTests(unittest.TestCase):
         self.tap("gProceed")
         self.settle()
         self.assertEqual(self.panel.page,"report")
-        self.assertEqual(self.value("tResult.txt"),"UNBEKANNT")
+        self.assertEqual(self.value("tResult.txt"),"UNVOLLSTÄNDIG")
         self.assertEqual(self.ui.report["examination"]["visual"],"Mangel")
         self.assertEqual(self.ui.report["examination"]["examiner"],"Prüfperson Test")
         self.assertIsNone(self.ui.report["verdict"])

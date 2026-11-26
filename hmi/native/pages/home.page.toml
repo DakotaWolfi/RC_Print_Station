@@ -17,9 +17,42 @@ h = 800
 pic = "home"
 
 [[component]]
+name = "pLabel0"
+type = "picture"
+x = 24
+y = 183
+w = 362
+h = 35
+pic = "home_s0_de"
+
+[[component]]
+name = "pLabel1"
+type = "picture"
+x = 24
+y = 228
+w = 373
+h = 22
+pic = "home_s1_de"
+
+[[component]]
+name = "pLabel2"
+type = "picture"
+x = 40
+y = 289
+w = 125
+h = 19
+pic = "home_s2_de"
+
+[[component]]
 name = "proto"
 type = "variable"
-val = 61
+val = 70
+vscope = 1
+
+[[component]]
+name = "lang"
+type = "variable"
+val = 0
 vscope = 1
 
 [[component]]
@@ -45,7 +78,7 @@ name = "tLink"
 type = "text"
 x = 40
 y = 348
-w = 400
+w = 259
 h = 27
 txt = "Host nicht verbunden"
 txt_maxl = 32
@@ -56,6 +89,25 @@ borderw = 0
 xcen = 0
 ycen = 1
 vscope = 1
+isbr = 0
+
+[[component]]
+name = "bLang"
+type = "button"
+x = 320
+y = 339
+w = 117
+h = 42
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#365164"
+bco2 = "#517183"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "DE / EN"
+txt_maxl = 7
 isbr = 0
 
 [[component]]
@@ -137,20 +189,39 @@ isbr = 0
 [[component]]
 name = "bLast"
 type = "button"
-x = 24
+x = 246
 y = 598
-w = 432
+w = 210
 h = 68
 sta = 1
 style = 0
 borderw = 0
-font = "UI24"
+font = "UI20"
 bco = "#1d2c3a"
 bco2 = "#365164"
 pco = "#f5f6f7"
 pco2 = "#f5f6f7"
-txt = "Letztes Protokoll öffnen"
-txt_maxl = 24
+txt = "Letztes Protokoll"
+txt_maxl = 17
+isbr = 0
+
+[[component]]
+name = "bResume"
+type = "button"
+x = 24
+y = 598
+w = 210
+h = 68
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Entwurf fortsetzen"
+txt_maxl = 18
 isbr = 0
 
 [[component]]
@@ -200,3 +271,11 @@ name = "tmLink"
 type = "timer"
 tim = 1000
 en = 1
+
+[[component]]
+name = "hLocale"
+type = "hotspot"
+x = 6
+y = 0
+w = 2
+h = 2

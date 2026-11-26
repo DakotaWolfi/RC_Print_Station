@@ -1,55 +1,133 @@
 on hArt.up:
   if(gArt.val==0)
   {
-  pArt.pic=18
-  }
-  if(gArt.val==1)
+  if(home.lang.val==1)
   {
-  pArt.pic=19
-  }
-  if(gArt.val==2)
-  {
-  pArt.pic=20
-  }
-  if(gArt.val==3)
-  {
-  pArt.pic=21
-  }
-  if(gArt.val==4)
-  {
-  pArt.pic=22
-  }
-  if(gArt.val==5)
-  {
-  pArt.pic=23
-  }
-  if(gArt.val==6)
-  {
-  pArt.pic=24
-  }
-  if(gArt.val==7)
-  {
-  pArt.pic=25
-  }
-  if(gArt.val==8)
-  {
-  pArt.pic=26
-  }
-  if(gArt.val==9)
-  {
-  pArt.pic=27
-  }
-  if(gArt.val==10)
+  pArt.pic=29
+  }else
   {
   pArt.pic=28
   }
+  }
+  if(gArt.val==1)
+  {
+  if(home.lang.val==1)
+  {
+  pArt.pic=14
+  }else
+  {
+  pArt.pic=13
+  }
+  }
+  if(gArt.val==2)
+  {
+  if(home.lang.val==1)
+  {
+  pArt.pic=16
+  }else
+  {
+  pArt.pic=15
+  }
+  }
+  if(gArt.val==3)
+  {
+  if(home.lang.val==1)
+  {
+  pArt.pic=20
+  }else
+  {
+  pArt.pic=19
+  }
+  }
+  if(gArt.val==4)
+  {
+  if(home.lang.val==1)
+  {
+  pArt.pic=18
+  }else
+  {
+  pArt.pic=17
+  }
+  }
+  if(gArt.val==5)
+  {
+  if(home.lang.val==1)
+  {
+  pArt.pic=34
+  }else
+  {
+  pArt.pic=34
+  }
+  }
+  if(gArt.val==6)
+  {
+  if(home.lang.val==1)
+  {
+  pArt.pic=33
+  }else
+  {
+  pArt.pic=33
+  }
+  }
+  if(gArt.val==7)
+  {
+  if(home.lang.val==1)
+  {
+  pArt.pic=32
+  }else
+  {
+  pArt.pic=32
+  }
+  }
+  if(gArt.val==8)
+  {
+  if(home.lang.val==1)
+  {
+  pArt.pic=31
+  }else
+  {
+  pArt.pic=30
+  }
+  }
+  if(gArt.val==9)
+  {
+  if(home.lang.val==1)
+  {
+  pArt.pic=22
+  }else
+  {
+  pArt.pic=21
+  }
+  }
+  if(gArt.val==10)
+  {
+  if(home.lang.val==1)
+  {
+  pArt.pic=24
+  }else
+  {
+  pArt.pic=23
+  }
+  }
   if(gArt.val==11)
   {
-  pArt.pic=29
+  if(home.lang.val==1)
+  {
+  pArt.pic=26
+  }else
+  {
+  pArt.pic=25
+  }
   }
   if(gArt.val==12)
   {
-  pArt.pic=30
+  if(home.lang.val==1)
+  {
+  pArt.pic=27
+  }else
+  {
+  pArt.pic=27
+  }
   }
 
 on bStep0.up:
@@ -222,7 +300,13 @@ on hLayout.up:
   vis gProceed,1
   if(eRemarks.txt!="")
   {
+  if(home.lang.val==1)
+  {
+  eRemarkMark.txt="Remarks saved"
+  }else
+  {
   eRemarkMark.txt="Bemerkung erfasst"
+  }
   }
   }else if(gCount.val>5)
   {
@@ -282,6 +366,7 @@ on bCancel.up:
   }
 
 on guide.loadend:
+  click hLocale,0
   sendme
   vis gDisplay,0
   click hLayout,0
@@ -302,7 +387,13 @@ on tmFlow.timer:
   }
   if(home.online.val==0)
   {
+  if(home.lang.val==1)
+  {
+  gError.txt="Host disconnected. Secure the BENNING locally."
+  }else
+  {
   gError.txt="Host getrennt. BENNING lokal sichern."
+  }
   gBusy.val=0
   }
 
@@ -311,5 +402,83 @@ on tmLink.timer:
   if(home.age.val>6)
   {
   home.online.val=0
+  if(home.lang.val==1)
+  {
+  home.tLink.txt="Host disconnected"
+  }else
+  {
   home.tLink.txt="Host nicht verbunden"
+  }
+  }
+
+on hLocale.up:
+  if(home.lang.val==1)
+  {
+  gTitle.txt="Please wait ..."
+  }else
+  {
+  gTitle.txt="Bitte warten ..."
+  }
+  if(home.lang.val==1)
+  {
+  bName.txt="Examiner"
+  }else
+  {
+  bName.txt="Prüfperson"
+  }
+  if(home.lang.val==1)
+  {
+  bRemark.txt="Remarks"
+  }else
+  {
+  bRemark.txt="Bemerkung"
+  }
+  if(home.lang.val==1)
+  {
+  gFunction.txt="Function: open"
+  }else
+  {
+  gFunction.txt="Funktion: Offen"
+  }
+  if(home.lang.val==1)
+  {
+  gProceed.txt="Import reading"
+  }else
+  {
+  gProceed.txt="Zum Import"
+  }
+  if(home.lang.val==1)
+  {
+  bBack.txt="Back"
+  }else
+  {
+  bBack.txt="Zurück"
+  }
+  if(home.lang.val==1)
+  {
+  bHelp.txt="Help"
+  }else
+  {
+  bHelp.txt="Hilfe"
+  }
+  if(home.lang.val==1)
+  {
+  bCancel.txt="Cancel"
+  }else
+  {
+  bCancel.txt="Abbrechen"
+  }
+  if(home.lang.val==1)
+  {
+  pLabel0.pic=37
+  }else
+  {
+  pLabel0.pic=36
+  }
+  if(home.lang.val==1)
+  {
+  pLabel1.pic=39
+  }else
+  {
+  pLabel1.pic=38
   }

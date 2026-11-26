@@ -1,6 +1,15 @@
 # Repair Café Print Station — living checklist
 
-Status: working legacy hybrid prototype plus separate native HMI v0.3 candidate. Checked means implemented or confirmed, not necessarily hardware-tested. The candidate is not approved for replacing the working installation. See [validation evidence](hmi/VALIDATION.md).
+The station has a physically validated v0.6.2 baseline for Class I output. The v0.7 branch adds bilingual operation and has a separate [physical acceptance checklist](hmi/VALIDATION-v07.md). Older milestones remain below.
+
+## v0.7 bilingual candidate
+
+- [x] German and English station interface, guided procedures and per-report language selection.
+- [x] Compact bilingual receipts and PDFs, locale date formats and resistance symbols.
+- [x] Correct Epson installer fallback with configurable host and port.
+- [ ] Compile in official Nextion Editor and bench-test both languages on the Pi 4B, display and Epson.
+- [ ] Confirm RS232 on the physical adapter when available.
+
 
 ## 1. Project foundation
 - [x] Create GitHub repository

@@ -7,7 +7,8 @@ ENCODING="iso-8859-15"
 
 
 def printable(value):
-    return "".join(char if char.isprintable() and char!="ÿ" else " " for char in str(value)).encode(
+    return "".join("\xad" if char=="Ω" else char if char=="\xad" or (char.isprintable() and char!="ÿ")
+                   else " " for char in str(value)).encode(
         ENCODING,"replace").decode(ENCODING)
 
 

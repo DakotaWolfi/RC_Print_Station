@@ -148,6 +148,7 @@ on hLayout.up:
   }
 
 on picker.loadend:
+  click hLocale,0
   sendme
   click hLayout,0
 
@@ -169,5 +170,83 @@ on tmLink.timer:
   if(home.age.val>6)
   {
   home.online.val=0
+  if(home.lang.val==1)
+  {
+  home.tLink.txt="Host disconnected"
+  }else
+  {
   home.tLink.txt="Host nicht verbunden"
+  }
+  }
+
+on hLocale.up:
+  if(home.lang.val==1)
+  {
+  pTitle.txt="Please wait ..."
+  }else
+  {
+  pTitle.txt="Bitte warten ..."
+  }
+  if(home.lang.val==1)
+  {
+  bPrev.txt="Previous"
+  }else
+  {
+  bPrev.txt="Vorherige"
+  }
+  if(home.lang.val==1)
+  {
+  bNext.txt="Next"
+  }else
+  {
+  bNext.txt="Weitere"
+  }
+  if(home.lang.val==1)
+  {
+  bAdd.txt="New"
+  }else
+  {
+  bAdd.txt="Neu"
+  }
+  if(home.lang.val==1)
+  {
+  bEdit.txt="Edit"
+  }else
+  {
+  bEdit.txt="Bearbeiten"
+  }
+  if(home.lang.val==1)
+  {
+  bState.txt="Deactivate"
+  }else
+  {
+  bState.txt="Deaktivieren"
+  }
+  if(home.lang.val==1)
+  {
+  bToggle.txt="Include inactive"
+  }else
+  {
+  bToggle.txt="Auch inaktiv"
+  }
+  if(home.lang.val==1)
+  {
+  bUse.txt="Apply"
+  }else
+  {
+  bUse.txt="Übernehmen"
+  }
+  if(home.lang.val==1)
+  {
+  bBack.txt="Back"
+  }else
+  {
+  bBack.txt="Zurück"
+  }
+  if(home.lang.val==1)
+  {
+  pLabel0.pic=63
+  }else
+  {
+  pLabel0.pic=62
   }

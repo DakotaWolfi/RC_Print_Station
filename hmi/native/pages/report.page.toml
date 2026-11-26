@@ -17,6 +17,33 @@ h = 800
 pic = "report"
 
 [[component]]
+name = "pLabel0"
+type = "picture"
+x = 24
+y = 183
+w = 188
+h = 35
+pic = "report_s0_de"
+
+[[component]]
+name = "pLabel1"
+type = "picture"
+x = 24
+y = 228
+w = 330
+h = 22
+pic = "report_s1_de"
+
+[[component]]
+name = "pLabel2"
+type = "picture"
+x = 24
+y = 365
+w = 104
+h = 18
+pic = "report_s2_de"
+
+[[component]]
 name = "ready"
 type = "variable"
 val = 0
@@ -338,3 +365,11 @@ name = "tmLink"
 type = "timer"
 tim = 1000
 en = 1
+
+[[component]]
+name = "hLocale"
+type = "hotspot"
+x = 6
+y = 0
+w = 2
+h = 2

@@ -17,6 +17,15 @@ h = 800
 pic = "picker"
 
 [[component]]
+name = "pLabel0"
+type = "picture"
+x = 24
+y = 183
+w = 130
+h = 35
+pic = "picker_s0_de"
+
+[[component]]
 name = "pBack"
 type = "variable"
 val = 0
@@ -351,7 +360,7 @@ bco2 = "#365164"
 pco = "#f5f6f7"
 pco2 = "#f5f6f7"
 txt = "Auch inaktiv"
-txt_maxl = 14
+txt_maxl = 16
 isbr = 0
 
 [[component]]
@@ -411,3 +420,11 @@ name = "tmLink"
 type = "timer"
 tim = 1000
 en = 1
+
+[[component]]
+name = "hLocale"
+type = "hotspot"
+x = 6
+y = 0
+w = 2
+h = 2

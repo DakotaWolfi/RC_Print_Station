@@ -64,8 +64,80 @@ on tmLink.timer:
   if(home.age.val>6)
   {
   home.online.val=0
+  if(home.lang.val==1)
+  {
+  home.tLink.txt="Host disconnected"
+  }else
+  {
   home.tLink.txt="Host nicht verbunden"
+  }
+  }
+
+on hLocale.up:
+  if(home.lang.val==1)
+  {
+  mLink.txt="Waiting for host"
+  }else
+  {
+  mLink.txt="Warte auf Host"
+  }
+  if(home.lang.val==1)
+  {
+  mImport.txt="No imports yet"
+  }else
+  {
+  mImport.txt="Noch kein Import"
+  }
+  if(home.lang.val==1)
+  {
+  bPrev.txt="Previous"
+  }else
+  {
+  bPrev.txt="Vorherige"
+  }
+  if(home.lang.val==1)
+  {
+  bNext.txt="Next"
+  }else
+  {
+  bNext.txt="Weitere"
+  }
+  if(home.lang.val==1)
+  {
+  mSelected.txt="No reading selected"
+  }else
+  {
+  mSelected.txt="Keine Messung ausgewählt"
+  }
+  if(home.lang.val==1)
+  {
+  bUse.txt="Confirm reading"
+  }else
+  {
+  bUse.txt="Messung bestätigen"
+  }
+  if(home.lang.val==1)
+  {
+  bBack.txt="Back to details"
+  }else
+  {
+  bBack.txt="Zurück zur Eingabe"
+  }
+  if(home.lang.val==1)
+  {
+  pLabel0.pic=107
+  }else
+  {
+  pLabel0.pic=106
+  }
+  if(home.lang.val==1)
+  {
+  pLabel1.pic=109
+  }else
+  {
+  pLabel1.pic=108
   }
 
 on tester.loadend:
+  click hLocale,0
   sendme

@@ -21,8 +21,52 @@ on tmLink.timer:
   if(home.age.val>6)
   {
   home.online.val=0
+  if(home.lang.val==1)
+  {
+  home.tLink.txt="Host disconnected"
+  }else
+  {
   home.tLink.txt="Host nicht verbunden"
+  }
+  }
+
+on hLocale.up:
+  if(home.lang.val==1)
+  {
+  jName.txt="No network selected"
+  }else
+  {
+  jName.txt="Kein Netz ausgewählt"
+  }
+  if(home.lang.val==1)
+  {
+  bJoin.txt="Connect / password"
+  }else
+  {
+  bJoin.txt="Verbinden / Passwort"
+  }
+  if(home.lang.val==1)
+  {
+  bBack.txt="Back"
+  }else
+  {
+  bBack.txt="Zurück"
+  }
+  if(home.lang.val==1)
+  {
+  pLabel0.pic=115
+  }else
+  {
+  pLabel0.pic=114
+  }
+  if(home.lang.val==1)
+  {
+  pLabel1.pic=117
+  }else
+  {
+  pLabel1.pic=116
   }
 
 on wjoin.loadend:
+  click hLocale,0
   sendme

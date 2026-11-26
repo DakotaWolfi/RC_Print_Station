@@ -1,6 +1,7 @@
 # Native Nextion HMI
 
-The current source in `native/` is v0.6.1. See [the Pi 4 and BENNING guide](../docs/operator-usability-v061.md) and [v0.6.1 validation](VALIDATION-v061.md). Earlier HMI archives and their documentation are retained.
+The current `native/` source builds the v0.7 bilingual candidate. See the [rebuild and deployment guide](../docs/bilingual-v07.md), [validation](VALIDATION-v07.md), [editable HMI archive](build/FMI_RC_native_v0_7.zip) and [manifest](build/manifest-v07.json). Older HMI archives are kept for reference.
+
 
 ## Build v0.6.1
 

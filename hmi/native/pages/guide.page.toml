@@ -17,6 +17,24 @@ h = 800
 pic = "guide"
 
 [[component]]
+name = "pLabel0"
+type = "picture"
+x = 24
+y = 183
+w = 251
+h = 35
+pic = "guide_s0_de"
+
+[[component]]
+name = "pLabel1"
+type = "picture"
+x = 24
+y = 228
+w = 284
+h = 22
+pic = "guide_s1_de"
+
+[[component]]
 name = "gCount"
 type = "variable"
 val = 0
@@ -585,3 +603,11 @@ name = "tmLink"
 type = "timer"
 tim = 1000
 en = 1
+
+[[component]]
+name = "hLocale"
+type = "hotspot"
+x = 6
+y = 0
+w = 2
+h = 2

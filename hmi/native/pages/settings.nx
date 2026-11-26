@@ -18,8 +18,59 @@ on tmLink.timer:
   if(home.age.val>6)
   {
   home.online.val=0
+  if(home.lang.val==1)
+  {
+  home.tLink.txt="Host disconnected"
+  }else
+  {
   home.tLink.txt="Host nicht verbunden"
+  }
+  }
+
+on hLocale.up:
+  if(home.lang.val==1)
+  {
+  bwifi.txt="Wi-Fi"
+  }else
+  {
+  bwifi.txt="WLAN"
+  }
+  if(home.lang.val==1)
+  {
+  bprinter.txt="Printer"
+  }else
+  {
+  bprinter.txt="Drucker"
+  }
+  if(home.lang.val==1)
+  {
+  breceipt.txt="Receipt"
+  }else
+  {
+  breceipt.txt="Beleg"
+  }
+  if(home.lang.val==1)
+  {
+  bsystem.txt="System & display"
+  }else
+  {
+  bsystem.txt="System & Display"
+  }
+  if(home.lang.val==1)
+  {
+  bBack.txt="Back"
+  }else
+  {
+  bBack.txt="Zurück"
+  }
+  if(home.lang.val==1)
+  {
+  pLabel0.pic=98
+  }else
+  {
+  pLabel0.pic=97
   }
 
 on settings.loadend:
+  click hLocale,0
   sendme

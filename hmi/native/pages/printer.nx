@@ -36,8 +36,80 @@ on tmLink.timer:
   if(home.age.val>6)
   {
   home.online.val=0
+  if(home.lang.val==1)
+  {
+  home.tLink.txt="Host disconnected"
+  }else
+  {
   home.tLink.txt="Host nicht verbunden"
+  }
+  }
+
+on hLocale.up:
+  if(home.lang.val==1)
+  {
+  bHost.txt="Change"
+  }else
+  {
+  bHost.txt="Ändern"
+  }
+  if(home.lang.val==1)
+  {
+  bPort.txt="Change"
+  }else
+  {
+  bPort.txt="Ändern"
+  }
+  if(home.lang.val==1)
+  {
+  bProbe.txt="Test TCP connection"
+  }else
+  {
+  bProbe.txt="TCP-Verbindung testen"
+  }
+  if(home.lang.val==1)
+  {
+  bTest.txt="Print test receipt"
+  }else
+  {
+  bTest.txt="Testbeleg drucken"
+  }
+  if(home.lang.val==1)
+  {
+  bBack.txt="Back"
+  }else
+  {
+  bBack.txt="Zurück"
+  }
+  if(home.lang.val==1)
+  {
+  pLabel0.pic=69
+  }else
+  {
+  pLabel0.pic=68
+  }
+  if(home.lang.val==1)
+  {
+  pLabel1.pic=71
+  }else
+  {
+  pLabel1.pic=70
+  }
+  if(home.lang.val==1)
+  {
+  pLabel2.pic=73
+  }else
+  {
+  pLabel2.pic=72
+  }
+  if(home.lang.val==1)
+  {
+  pLabel3.pic=75
+  }else
+  {
+  pLabel3.pic=74
   }
 
 on printer.loadend:
+  click hLocale,0
   sendme

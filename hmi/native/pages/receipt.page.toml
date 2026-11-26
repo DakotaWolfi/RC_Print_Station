@@ -14,7 +14,43 @@ x = 0
 y = 0
 w = 480
 h = 800
-pic = "receipt"
+pic = "guide"
+
+[[component]]
+name = "pLabel0"
+type = "picture"
+x = 24
+y = 183
+w = 226
+h = 35
+pic = "receipt_s0_de"
+
+[[component]]
+name = "pLabel1"
+type = "picture"
+x = 24
+y = 228
+w = 356
+h = 22
+pic = "receipt_s1_de"
+
+[[component]]
+name = "pLabel2"
+type = "picture"
+x = 24
+y = 369
+w = 221
+h = 19
+pic = "receipt_s2_de"
+
+[[component]]
+name = "pLabel3"
+type = "picture"
+x = 24
+y = 489
+w = 341
+h = 18
+pic = "receipt_s3_de"
 
 [[component]]
 name = "rGraphic"
@@ -152,3 +188,11 @@ name = "tmLink"
 type = "timer"
 tim = 1000
 en = 1
+
+[[component]]
+name = "hLocale"
+type = "hotspot"
+x = 6
+y = 0
+w = 2
+h = 2

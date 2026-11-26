@@ -9,6 +9,8 @@ import sqlite3
 
 from benning_csv import ImportErrorDetail, MAX_BYTES
 from benning_store import Measurements
+from i18n import error_text, tr
+from station_config import load
 
 
 class ImportPage:
@@ -34,6 +36,8 @@ class ImportPage:
             handler.send_header("Cache-Control","no-store")
             handler.end_headers()
             return
+        language=load()["language"]
+        t=lambda key:escape(tr(language,key))
         message=""
         status=200
         if submit:
@@ -60,19 +64,19 @@ class ImportPage:
                 if kind not in (b"csv",b"txt"):
                     raise ImportErrorDetail("Dateiformat wählen.")
                 result=self.store.import_bytes(fields.get("data",b""),"file-"+kind.decode())
-                message=f"{result.count} Messungen importiert. Quelle Datei am Host wählen."
+                message=tr(language,"{count} Messungen importiert. Quelle Datei am Host wählen.",count=result.count)
             except (ImportErrorDetail,ValueError,TypeError,sqlite3.Error) as error:
-                message=str(error) if isinstance(error,ImportErrorDetail) else "Dateiimport fehlgeschlagen."
+                message=error_text(language,str(error) if isinstance(error,ImportErrorDetail) else "Dateiimport fehlgeschlagen.")
                 status=400
-        page=f"""<!DOCTYPE html><html lang="de"><meta charset="utf-8"><title>BENNING Import</title>
-<h1>BENNING ST 725 importieren</h1><p>{escape(message)}</p>
+        page=f"""<!DOCTYPE html><html lang="{language}"><meta charset="utf-8"><title>BENNING Import</title>
+<h1>{t('BENNING ST 725 importieren')}</h1><p>{escape(message)}</p>
 <form method="post" enctype="multipart/form-data">
 <input type="hidden" name="csrf" value="{self.csrf}">
 <label>Format <select name="format"><option value="csv">USB-CSV</option>
-<option value="txt">Druckbericht (experimentell)</option></select></label>
-<label>Datei <input type="file" name="data" required></label>
-<button type="submit">Validieren und importieren</button></form>
-<p><a href="/">Stationsverwaltung</a></p></html>""".encode()
+<option value="txt">{t('Druckbericht (experimentell)')}</option></select></label>
+<label>{t('Datei')} <input type="file" name="data" required></label>
+<button type="submit">{t('Validieren und importieren')}</button></form>
+<p><a href="/">{t('Stationsverwaltung')}</a></p></html>""".encode()
         handler.send_response(status)
         handler.send_header("Content-Type","text/html; charset=utf-8")
         handler.send_header("Cache-Control","no-store")

@@ -1,5 +1,6 @@
 """Portrait Nextion runtime UI. Requires a blank page and font 0 (24 px)."""
 import argparse
+from station_config import PRINTER_HOST
 import json
 import time
 import serial
@@ -242,7 +243,7 @@ def main():
     p=argparse.ArgumentParser()
     p.add_argument("--port",default="/dev/serial0")
     p.add_argument("--baud",type=int,default=9600)
-    p.add_argument("--host",default="169.254.223.252")
+    p.add_argument("--host",default=PRINTER_HOST)
     p.add_argument("--db",default="reports.sqlite3")
     p.add_argument("--native-keyboard",action="store_true")
     p.add_argument("--report-url",help="Reachable LAN URL, e.g. http://192.168.200.241:8080")

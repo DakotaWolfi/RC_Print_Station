@@ -25,8 +25,59 @@ on tmLink.timer:
   if(home.age.val>6)
   {
   home.online.val=0
+  if(home.lang.val==1)
+  {
+  home.tLink.txt="Host disconnected"
+  }else
+  {
   home.tLink.txt="Host nicht verbunden"
+  }
+  }
+
+on hLocale.up:
+  if(home.lang.val==1)
+  {
+  bREBOOT.txt="Restart now"
+  }else
+  {
+  bREBOOT.txt="Jetzt neu starten"
+  }
+  if(home.lang.val==1)
+  {
+  bHALT.txt="Shut down now"
+  }else
+  {
+  bHALT.txt="Jetzt ausschalten"
+  }
+  if(home.lang.val==1)
+  {
+  bCancel.txt="Cancel"
+  }else
+  {
+  bCancel.txt="Abbrechen"
+  }
+  if(home.lang.val==1)
+  {
+  bBack.txt="Back"
+  }else
+  {
+  bBack.txt="Zurück"
+  }
+  if(home.lang.val==1)
+  {
+  pLabel0.pic=65
+  }else
+  {
+  pLabel0.pic=64
+  }
+  if(home.lang.val==1)
+  {
+  pLabel1.pic=67
+  }else
+  {
+  pLabel1.pic=66
   }
 
 on power.loadend:
+  click hLocale,0
   sendme

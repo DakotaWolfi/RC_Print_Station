@@ -17,6 +17,60 @@ h = 800
 pic = "entry"
 
 [[component]]
+name = "pLabel0"
+type = "picture"
+x = 24
+y = 183
+w = 245
+h = 35
+pic = "entry_s0_de"
+
+[[component]]
+name = "pLabel1"
+type = "picture"
+x = 24
+y = 228
+w = 373
+h = 22
+pic = "entry_s1_de"
+
+[[component]]
+name = "pLabel2"
+type = "picture"
+x = 24
+y = 258
+w = 111
+h = 19
+pic = "entry_s2_de"
+
+[[component]]
+name = "pLabel3"
+type = "picture"
+x = 24
+y = 345
+w = 170
+h = 19
+pic = "entry_s3_de"
+
+[[component]]
+name = "pLabel4"
+type = "picture"
+x = 24
+y = 440
+w = 164
+h = 19
+pic = "entry_s4_de"
+
+[[component]]
+name = "pLabel5"
+type = "picture"
+x = 228
+y = 475
+w = 220
+h = 19
+pic = "entry_s5_de"
+
+[[component]]
 name = "field"
 type = "variable"
 val = 0
@@ -54,6 +108,12 @@ vscope = 1
 
 [[component]]
 name = "route"
+type = "variable"
+val = 0
+vscope = 1
+
+[[component]]
+name = "inProgress"
 type = "variable"
 val = 0
 vscope = 1
@@ -134,7 +194,7 @@ bco2 = "#365164"
 pco = "#f5f6f7"
 pco2 = "#f5f6f7"
 txt = "Vorlagen"
-txt_maxl = 8
+txt_maxl = 9
 isbr = 0
 
 [[component]]
@@ -188,7 +248,7 @@ name = "bPhase"
 type = "button"
 x = 24
 y = 523
-w = 432
+w = 220
 h = 50
 sta = 1
 style = 0
@@ -200,6 +260,25 @@ pco = "#f5f6f7"
 pco2 = "#f5f6f7"
 txt = "Eingangsprüfung"
 txt_maxl = 20
+isbr = 0
+
+[[component]]
+name = "bReportLang"
+type = "button"
+x = 256
+y = 523
+w = 200
+h = 50
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Bericht: DE"
+txt_maxl = 22
 isbr = 0
 
 [[component]]
@@ -346,3 +425,11 @@ name = "tmLink"
 type = "timer"
 tim = 1000
 en = 1
+
+[[component]]
+name = "hLocale"
+type = "hotspot"
+x = 6
+y = 0
+w = 2
+h = 2

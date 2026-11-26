@@ -14,7 +14,25 @@ x = 0
 y = 0
 w = 480
 h = 800
-pic = "tester"
+pic = "guide"
+
+[[component]]
+name = "pLabel0"
+type = "picture"
+x = 24
+y = 183
+w = 270
+h = 35
+pic = "tester_s0_de"
+
+[[component]]
+name = "pLabel1"
+type = "picture"
+x = 24
+y = 228
+w = 354
+h = 22
+pic = "tester_s1_de"
 
 [[component]]
 name = "mCount"
@@ -281,3 +299,11 @@ name = "tmLink"
 type = "timer"
 tim = 1000
 en = 1
+
+[[component]]
+name = "hLocale"
+type = "hotspot"
+x = 6
+y = 0
+w = 2
+h = 2

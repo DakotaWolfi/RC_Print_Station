@@ -26,7 +26,17 @@ sudo apt install python3-serial
 python3 station.py display-test --port /dev/ttyUSB0 --baud 9600
 ```
 
-`station.py simulate` writes a visibly marked simulation. Imported BENNING records preserve the original tester verdict and do not constitute independent certification by the station. The Gen 3 printer at `169.254.223.252:9100` and previous native HMI have been tested on the station.
+`station.py simulate` writes a visibly marked simulation. Imported BENNING records preserve the original tester verdict and do not constitute independent certification by the station. The installed Epson is at `169.254.25.23:9100`. The Pi Ethernet address is `169.254.100.1/16`.
+
+## v0.7 candidate · Deutsch / English
+
+One native HMI switches between German and English. Each saved report keeps its selected language. The compact v0.6.2 receipt and A4 layouts use localised verdicts, dates and resistance units.
+
+![Bilingual simulator preview](hmi/previews/overview-v07.png)
+
+- [Operation, microSD installation and rollback](docs/bilingual-v07.md)
+- [Editable bilingual HMI](hmi/build/FMI_RC_native_v0_7.zip) and [artifact checksums](hmi/build/manifest-v07.json)
+- [Validation and physical bench checklist](hmi/VALIDATION-v07.md)
 
 ## v0.6.1 Bedienung am Prüfstand
 

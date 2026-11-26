@@ -7,11 +7,15 @@ from pathlib import Path
 import tempfile
 
 CONFIG = Path.home()/".config"/"rc-printstation"/"receipt.json"
-DEFAULTS = dict(graphic=True, feed_mm=45, density="default", brightness=100, standby=0)
+PRINTER_HOST = "169.254.25.23"
+PRINTER_PORT = 9100
+DEFAULTS = dict(language="de", graphic=True, feed_mm=45, density="default", brightness=100, standby=0)
 DENSITIES = {"default": None, "light": 255, "dark": 1}
 
 
 def validated(key, value):
+    if key == "language" and value in ("de","en"):
+        return value
     if key == "graphic" and type(value) is bool:
         return value
     if key == "density" and isinstance(value,str) and value in DENSITIES:

@@ -1,5 +1,6 @@
 """Offline decision graph for the BENNING ST 725 CH (050317, 12/2021)."""
 from dataclasses import dataclass, field
+from i18n import tr
 
 
 @dataclass(frozen=True)
@@ -137,25 +138,25 @@ class Guide:
             return (("Getrennt + 250 V geprüft","start"),STOP)
         return STEPS[self.step].choices
 
-    def instruction(self):
+    def instruction(self, language="de"):
+        t=lambda message,**values:tr(language,message,**values)
         if self.step in ("connect1","connect2","iec","extension"):
-            text=STEPS[self.step].instruction
+            parts=[t(STEPS[self.step].instruction)]
             if self.mode=="Netz":
-                text+=" Netz an 11 prüfen."
-            else:
-                text+=" Netz an 11 trennen." if self.procedure=="III" else ""
-            return text+" 500 V am Tester prüfen, sofern geeignet."
+                parts.append(t("Netz an 11 prüfen."))
+            elif self.procedure=="III":
+                parts.append(t("Netz an 11 trennen."))
+            return " ".join((*parts,t("500 V am Tester prüfen, sofern geeignet.")))
         if self.step=="start":
-            return f"Prüfling sichern und einschalten. {self.key} am BENNING drücken. Danach Anzeige unten wählen."
+            return t("Prüfling sichern und einschalten. {key} am BENNING drücken. Danach Anzeige unten wählen.",key=t(self.key))
         if self.step=="low_continue":
-            return f"Erwartete geringe Last bestätigt. {self.key} am BENNING erneut drücken."
+            return t("Erwartete geringe Last bestätigt. {key} am BENNING erneut drücken.",key=t(self.key))
         if self.step=="leak":
-            extra=" Isoliert aufstellen, ohne Erdpfad." if self.procedure=="II" else ""
-            return ("Der nächste Schritt schaltet 230 V auf die Prüfsteckdose. "
-                    "Anschlüsse, Last und sicheren Lauf prüfen." + extra)
+            warning=t("Der nächste Schritt schaltet 230 V auf die Prüfsteckdose. Anschlüsse, Last und sicheren Lauf prüfen.")
+            return warning+" "+t("Isoliert aufstellen, ohne Erdpfad.") if self.procedure=="II" else warning
         if self.step=="save":
-            return f"{self.observed} am BENNING. Diskette (13) drücken, dann STORE und Slot prüfen."
-        return STEPS[self.step].instruction
+            return t("{verdict} am BENNING. Diskette (13) drücken, dann STORE und Slot prüfen.",verdict=self.observed)
+        return t(STEPS[self.step].instruction)
 
     def choose(self,index):
         choices=self.choices()
@@ -195,7 +196,7 @@ class Guide:
         return True
 
     def examination(self,examiner="",remarks=""):
-        return {"visual":self.visual,"functional":self.functional,"examiner":examiner.strip(),
-                "remarks":remarks.strip(),"procedure":self.procedure,"mode":self.mode,
+        return {"visual":self.visual,"functional":self.functional,"examiner":examiner,
+                "remarks":remarks,"procedure":self.procedure,"mode":self.mode,
                 "voltage_confirmed":self.voltage if self.stored else None,
                 "observed":self.observed}

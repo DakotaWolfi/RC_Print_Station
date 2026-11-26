@@ -1,55 +1,133 @@
 on hArt.up:
   if(iArt.val==0)
   {
-  pArt.pic=18
-  }
-  if(iArt.val==1)
+  if(home.lang.val==1)
   {
-  pArt.pic=19
-  }
-  if(iArt.val==2)
-  {
-  pArt.pic=20
-  }
-  if(iArt.val==3)
-  {
-  pArt.pic=21
-  }
-  if(iArt.val==4)
-  {
-  pArt.pic=22
-  }
-  if(iArt.val==5)
-  {
-  pArt.pic=23
-  }
-  if(iArt.val==6)
-  {
-  pArt.pic=24
-  }
-  if(iArt.val==7)
-  {
-  pArt.pic=25
-  }
-  if(iArt.val==8)
-  {
-  pArt.pic=26
-  }
-  if(iArt.val==9)
-  {
-  pArt.pic=27
-  }
-  if(iArt.val==10)
+  pArt.pic=29
+  }else
   {
   pArt.pic=28
   }
+  }
+  if(iArt.val==1)
+  {
+  if(home.lang.val==1)
+  {
+  pArt.pic=14
+  }else
+  {
+  pArt.pic=13
+  }
+  }
+  if(iArt.val==2)
+  {
+  if(home.lang.val==1)
+  {
+  pArt.pic=16
+  }else
+  {
+  pArt.pic=15
+  }
+  }
+  if(iArt.val==3)
+  {
+  if(home.lang.val==1)
+  {
+  pArt.pic=20
+  }else
+  {
+  pArt.pic=19
+  }
+  }
+  if(iArt.val==4)
+  {
+  if(home.lang.val==1)
+  {
+  pArt.pic=18
+  }else
+  {
+  pArt.pic=17
+  }
+  }
+  if(iArt.val==5)
+  {
+  if(home.lang.val==1)
+  {
+  pArt.pic=34
+  }else
+  {
+  pArt.pic=34
+  }
+  }
+  if(iArt.val==6)
+  {
+  if(home.lang.val==1)
+  {
+  pArt.pic=33
+  }else
+  {
+  pArt.pic=33
+  }
+  }
+  if(iArt.val==7)
+  {
+  if(home.lang.val==1)
+  {
+  pArt.pic=32
+  }else
+  {
+  pArt.pic=32
+  }
+  }
+  if(iArt.val==8)
+  {
+  if(home.lang.val==1)
+  {
+  pArt.pic=31
+  }else
+  {
+  pArt.pic=30
+  }
+  }
+  if(iArt.val==9)
+  {
+  if(home.lang.val==1)
+  {
+  pArt.pic=22
+  }else
+  {
+  pArt.pic=21
+  }
+  }
+  if(iArt.val==10)
+  {
+  if(home.lang.val==1)
+  {
+  pArt.pic=24
+  }else
+  {
+  pArt.pic=23
+  }
+  }
   if(iArt.val==11)
   {
-  pArt.pic=29
+  if(home.lang.val==1)
+  {
+  pArt.pic=26
+  }else
+  {
+  pArt.pic=25
+  }
   }
   if(iArt.val==12)
   {
-  pArt.pic=30
+  if(home.lang.val==1)
+  {
+  pArt.pic=27
+  }else
+  {
+  pArt.pic=27
+  }
   }
 
 on bManual.up:
@@ -59,7 +137,13 @@ on bManual.up:
   printh ff ff ff
   }else
   {
+  if(home.lang.val==1)
+  {
+  iMessage.txt="No confirmed import is available yet."
+  }else
+  {
   iMessage.txt="Noch kein bestätigter Speicherimport verfügbar."
+  }
   }
 
 on bBack.up:
@@ -94,7 +178,13 @@ on tmFlow.timer:
   }
   if(home.online.val==0)
   {
+  if(home.lang.val==1)
+  {
+  iStatus.txt="Host disconnected. Check the connection."
+  }else
+  {
   iStatus.txt="Host getrennt. Verbindung prüfen."
+  }
   iAvailable.val=0
   }
 
@@ -103,8 +193,59 @@ on tmLink.timer:
   if(home.age.val>6)
   {
   home.online.val=0
+  if(home.lang.val==1)
+  {
+  home.tLink.txt="Host disconnected"
+  }else
+  {
   home.tLink.txt="Host nicht verbunden"
+  }
+  }
+
+on hLocale.up:
+  if(home.lang.val==1)
+  {
+  iBody.txt="Waiting for host ..."
+  }else
+  {
+  iBody.txt="Warte auf Host ..."
+  }
+  if(home.lang.val==1)
+  {
+  bManual.txt="Select saved reading"
+  }else
+  {
+  bManual.txt="Vorhandene Messung wählen"
+  }
+  if(home.lang.val==1)
+  {
+  bBack.txt="Back"
+  }else
+  {
+  bBack.txt="Zurück"
+  }
+  if(home.lang.val==1)
+  {
+  bHelp.txt="Help"
+  }else
+  {
+  bHelp.txt="Hilfe"
+  }
+  if(home.lang.val==1)
+  {
+  pLabel0.pic=52
+  }else
+  {
+  pLabel0.pic=51
+  }
+  if(home.lang.val==1)
+  {
+  pLabel1.pic=54
+  }else
+  {
+  pLabel1.pic=53
   }
 
 on importer.loadend:
+  click hLocale,0
   sendme

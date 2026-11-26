@@ -14,7 +14,43 @@ x = 0
 y = 0
 w = 480
 h = 800
-pic = "printer"
+pic = "guide"
+
+[[component]]
+name = "pLabel0"
+type = "picture"
+x = 24
+y = 183
+w = 265
+h = 35
+pic = "printer_s0_de"
+
+[[component]]
+name = "pLabel1"
+type = "picture"
+x = 24
+y = 228
+w = 394
+h = 22
+pic = "printer_s1_de"
+
+[[component]]
+name = "pLabel2"
+type = "picture"
+x = 24
+y = 280
+w = 95
+h = 19
+pic = "printer_s2_de"
+
+[[component]]
+name = "pLabel3"
+type = "picture"
+x = 24
+y = 379
+w = 67
+h = 19
+pic = "printer_s3_de"
 
 [[component]]
 name = "pHost"
@@ -125,7 +161,7 @@ bco2 = "#ffc071"
 pco = "#101923"
 pco2 = "#101923"
 txt = "Testbeleg drucken"
-txt_maxl = 17
+txt_maxl = 18
 isbr = 0
 
 [[component]]
@@ -170,3 +206,11 @@ name = "tmLink"
 type = "timer"
 tim = 1000
 en = 1
+
+[[component]]
+name = "hLocale"
+type = "hotspot"
+x = 6
+y = 0
+w = 2
+h = 2

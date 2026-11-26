@@ -14,7 +14,25 @@ x = 0
 y = 0
 w = 480
 h = 800
-pic = "importer"
+pic = "guide"
+
+[[component]]
+name = "pLabel0"
+type = "picture"
+x = 24
+y = 183
+w = 298
+h = 35
+pic = "importer_s0_de"
+
+[[component]]
+name = "pLabel1"
+type = "picture"
+x = 24
+y = 228
+w = 311
+h = 22
+pic = "importer_s1_de"
 
 [[component]]
 name = "iAdvance"
@@ -173,3 +191,11 @@ name = "tmLink"
 type = "timer"
 tim = 1000
 en = 1
+
+[[component]]
+name = "hLocale"
+type = "hotspot"
+x = 6
+y = 0
+w = 2
+h = 2

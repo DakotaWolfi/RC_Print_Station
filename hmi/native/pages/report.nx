@@ -2,15 +2,33 @@ on bPrint.up:
   if(home.online.val==1&&ready.val==1&&printing.val==0)
   {
   printing.val=1
+  if(home.lang.val==1)
+  {
+  tStatus.txt="Sending print job ..."
+  }else
+  {
   tStatus.txt="Druckdaten werden gesendet ..."
+  }
   prints "RC3:PRINT",0
   printh ff ff ff
   }else if(home.online.val==0)
   {
+  if(home.lang.val==1)
+  {
+  tStatus.txt="Host disconnected. Print job was not sent."
+  }else
+  {
   tStatus.txt="Host nicht verbunden. Druck nicht gesendet."
+  }
   }else if(ready.val==0)
   {
+  if(home.lang.val==1)
+  {
+  tStatus.txt="Open the report again from history."
+  }else
+  {
   tStatus.txt="Bitte Bericht erneut im Verlauf öffnen."
+  }
   }
 
 on bQR.up:
@@ -35,6 +53,7 @@ on bValues.up:
   }
 
 on report.loadend:
+  click hLocale,0
   sendme
   vis tDetails,0
   if(vMore.val==0)
@@ -46,7 +65,13 @@ on tmFlow.timer:
   if(printing.val==1&&home.online.val==0)
   {
   printing.val=0
+  if(home.lang.val==1)
+  {
+  tStatus.txt="Connection lost. Check the receipt before reprinting."
+  }else
+  {
   tStatus.txt="Verbindung verloren. Beleg vor erneutem Druck prüfen."
+  }
   }
 
 on tmLink.timer:
@@ -54,5 +79,69 @@ on tmLink.timer:
   if(home.age.val>6)
   {
   home.online.val=0
+  if(home.lang.val==1)
+  {
+  home.tLink.txt="Host disconnected"
+  }else
+  {
   home.tLink.txt="Host nicht verbunden"
+  }
+  }
+
+on hLocale.up:
+  if(home.lang.val==1)
+  {
+  bPrint.txt="Print receipt"
+  }else
+  {
+  bPrint.txt="Beleg drucken"
+  }
+  if(home.lang.val==1)
+  {
+  bQR.txt="PDF / QR code"
+  }else
+  {
+  bQR.txt="PDF / QR-Code"
+  }
+  if(home.lang.val==1)
+  {
+  bHome.txt="Home"
+  }else
+  {
+  bHome.txt="Hauptmenü"
+  }
+  if(home.lang.val==1)
+  {
+  bInfo.txt="Test details"
+  }else
+  {
+  bInfo.txt="Prüfdetails"
+  }
+  if(home.lang.val==1)
+  {
+  bValues.txt="More readings"
+  }else
+  {
+  bValues.txt="Weitere Werte"
+  }
+  if(home.lang.val==1)
+  {
+  pLabel0.pic=91
+  }else
+  {
+  pLabel0.pic=90
+  }
+  if(home.lang.val==1)
+  {
+  pLabel1.pic=93
+  }else
+  {
+  pLabel1.pic=92
+  }
+  if(home.lang.val==1)
+  {
+  pLabel2.pic=95
+  }else
+  {
+  pLabel2.pic=94
   }

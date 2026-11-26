@@ -42,6 +42,19 @@ class WorkflowPanel:
         self.armed=False
         self.help=False
         self.import_view=None
+        self.language_override=None
+
+    @property
+    def report_language(self):
+        return self.language_override or self.ui.language
+
+    def switch_report_language(self):
+        target="de" if self.report_language=="en" else "en"
+        self.language_override=target
+        self.draw_language()
+
+    def draw_language(self):
+        self.ui.say("bReportLang","Bericht: {language}",22,language=self.report_language.upper())
 
     def start(self):
         self.reset()
@@ -52,6 +65,8 @@ class WorkflowPanel:
         page=self.ui.settings.page
         if page=="guide":
             self.draw_guide()
+        elif page=="entry":
+            self.draw_language()
         elif page=="importer":
             self.import_view=None
             self.poll()
@@ -62,20 +77,20 @@ class WorkflowPanel:
         ui=self.ui
         g=self.guide
         if g is None:
-            ui.text("gTitle","Eingaben prüfen",52)
-            ui.text("gBody","Zurück zur Eingabe. Angaben prüfen oder bei Host-Neustart neu beginnen.",230)
+            ui.say("gTitle","Eingaben prüfen",52)
+            ui.say("gBody","Zurück zur Eingabe. Angaben prüfen oder bei Host-Neustart neu beginnen.",230)
             ui.cmd("gCount.val=0")
             ui.cmd("gExam.val=0")
             ui.cmd("gBusy.val=0")
             return
         step=STEPS[g.step]
-        ui.text("gTitle",step.title,52)
-        ui.text("gProgress",f"Schritt {step.phase} von 7  ·  BENNING ST 725 CH",50)
-        ui.text("gBody",step.help if self.help else g.instruction(),230)
+        ui.say("gTitle",step.title,52)
+        ui.say("gProgress","Schritt {step} von 7  ·  BENNING ST 725 CH",50,step=step.phase)
+        ui.text("gBody",ui.tr(step.help) if self.help else g.instruction(ui.language),230)
         art="ports" if self.help and g.art in ("class1","class2","iec","extension") else g.art
         ui.cmd(f"gArt.val={ART.index(art)}")
         ui.cmd("click hArt,0")
-        ui.text("gDisplay",DISPLAY.get(g.step,""),40)
+        ui.say("gDisplay",DISPLAY.get(g.step,""),40)
         ui.cmd(f"vis gDisplay,{int(g.step in DISPLAY)}")
         ui.cmd(f"gExam.val={int(g.step=='exam')}")
         if g.step=="exam":
@@ -84,13 +99,13 @@ class WorkflowPanel:
             except (ValueError,sqlite3.Error):
                 self.examiner_id=None
                 examiner=""
-            ui.text("eName",examiner or "Keine Prüfperson gewählt",52)
-        ui.text("gFunction","Funktion: "+g.functional,34)
-        ui.text("gProceed","Zum Import" if g.stored else "Unvollständig speichern",30)
+            ui.text("eName",examiner or ui.tr("Keine Prüfperson gewählt"),52)
+        ui.say("gFunction","Funktion: {status}",34,status=ui.tr(g.functional))
+        ui.say("gProceed","Zum Import" if g.stored else "Unvollständig speichern",30)
         choices=g.choices()
         grid=len(choices)>5
         for idx,(label,_) in enumerate(choices):
-            ui.text(f"b{'Obs' if grid else 'Step'}{idx}",label,40)
+            ui.say(f"b{'Obs' if grid else 'Step'}{idx}",label,40)
         ui.cmd(f"gCount.val={len(choices)}")
         ui.cmd("click hLayout,0")
         ui.cmd("gBusy.val=0")
@@ -140,8 +155,9 @@ class WorkflowPanel:
         else:
             art="recall"
             body="Ergebnis zuerst per Diskette (13) speichern. Alle Leitungen und Prüflinge vom BENNING entfernen. USB verbinden und Ordner (14) ca. 5 s halten."
+        body=ui.tr(body)
         if self.help:
-            body+=" Alte Daten nur über «Vorhandene Messung» wählen."
+            body+=ui.tr(" Alte Daten nur über «Vorhandene Messung» wählen.")
         ui.text("iBody",body,220)
         ui.cmd(f"iArt.val={ART.index(art)}")
         ui.cmd("click hArt,0")
@@ -164,7 +180,7 @@ class WorkflowPanel:
             if selected:
                 self.choose_review(selected,message)
                 ui.cmd("iAdvance.val=1")
-        ui.text("iMessage",message,105)
+        ui.say("iMessage",message,105)
 
     def choose_review(self,selected=None,note="Vorhandene Messung bewusst auswählen."):
         self.tester.selected=selected
@@ -185,9 +201,9 @@ class WorkflowPanel:
             self.begin_import()
             self.ui.cmd("gAdvance.val=1")
         else:
-            ident,report=self.store.create_incomplete(*self.tester.pending,self.exam,examiner_id=self.examiner_id)
+            ident,report=self.store.create_incomplete(*self.tester.pending,self.exam,examiner_id=self.examiner_id,language=self.report_language)
             self.tester.pending=None
-            self.ui.load_report(ident,report)
+            self.ui.finish_draft(ident,report)
             self.ui.cmd("gAdvance.val=2")
 
     def save_selection(self,selected):
@@ -200,7 +216,7 @@ class WorkflowPanel:
             classes=expected.get(self.exam["procedure"],set())
             if classes and actual and actual not in classes:
                 raise ValueError("Schutzklasse passt nicht zur geführten Prüfung. Slot prüfen.")
-        return self.store.create_report(*self.tester.pending,selected,require_current=True,examination=self.exam,examiner_id=self.examiner_id if self.exam else None)
+        return self.store.create_report(*self.tester.pending,selected,require_current=True,examination=self.exam,examiner_id=self.examiner_id if self.exam else None,language=self.report_language)
 
     def handle(self,frame):
         command,_,payload=frame.partition(b"\x00")
@@ -236,9 +252,11 @@ class WorkflowPanel:
                 if self.guide is None or self.guide.step=="visual":
                     ui.cmd("gAdvance.val=3")
                 elif not self.guide.back():
-                    self.ui.text("gError","Abgebrochenen Lauf dokumentieren oder Vorgang beenden.",82)
+                    self.ui.say("gError","Abgebrochenen Lauf dokumentieren oder Vorgang beenden.",82)
             elif page=="guide" and command==b"RC6:CANCEL":
+                override=self.language_override
                 self.start()
+                self.language_override=override
                 self.tester.pending=self.tester.selected=None
                 ui.cmd("gAdvance.val=3")
             elif page=="guide" and command.startswith(b"RC6:STEP:") and self.guide:
@@ -266,12 +284,12 @@ class WorkflowPanel:
         except (sqlite3.Error,ValueError) as exc:
             message=str(exc) if isinstance(exc,ValueError) else "BENNING-Datenbank momentan nicht verfügbar."
             if page=="home":
-                ui.text("home.tHint",message,64)
+                ui.say("home.tHint",message,64)
             elif page=="entry":
-                ui.text("entry.tStatus",message,100)
+                ui.say("entry.tStatus",message,100)
                 ui.cmd("entry.busy.val=0")
             elif page=="guide":
-                ui.text("gError",message,82)
+                ui.say("gError",message,82)
             elif page=="importer":
-                ui.text("iMessage",message,105)
+                ui.say("iMessage",message,105)
         self.draw_guide()

@@ -67,8 +67,73 @@ on tmLink.timer:
   if(home.age.val>6)
   {
   home.online.val=0
+  if(home.lang.val==1)
+  {
+  home.tLink.txt="Host disconnected"
+  }else
+  {
   home.tLink.txt="Host nicht verbunden"
+  }
+  }
+
+on hLocale.up:
+  if(home.lang.val==1)
+  {
+  wCurrent.txt="Not connected"
+  }else
+  {
+  wCurrent.txt="Nicht verbunden"
+  }
+  if(home.lang.val==1)
+  {
+  bScan.txt="Scan networks"
+  }else
+  {
+  bScan.txt="Netzwerke suchen"
+  }
+  if(home.lang.val==1)
+  {
+  bPrev.txt="Back"
+  }else
+  {
+  bPrev.txt="Zurück"
+  }
+  if(home.lang.val==1)
+  {
+  bNext.txt="Next"
+  }else
+  {
+  bNext.txt="Weitere"
+  }
+  if(home.lang.val==1)
+  {
+  wStatus.txt="Scan for networks to set up Wi-Fi."
+  }else
+  {
+  wStatus.txt="Netzwerke suchen, um WLAN einzurichten."
+  }
+  if(home.lang.val==1)
+  {
+  bBack.txt="Back"
+  }else
+  {
+  bBack.txt="Zurück"
+  }
+  if(home.lang.val==1)
+  {
+  pLabel0.pic=111
+  }else
+  {
+  pLabel0.pic=110
+  }
+  if(home.lang.val==1)
+  {
+  pLabel1.pic=113
+  }else
+  {
+  pLabel1.pic=112
   }
 
 on wifi.loadend:
+  click hLocale,0
   sendme

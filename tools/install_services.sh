@@ -6,13 +6,17 @@ replace=0
 power=0
 render=
 db=
+printer_host=
+printer_port=
 while (($#)); do
   case "$1" in
     --replace) replace=1; shift;;
     --enable-local-power) power=1; shift;;
     --render) render="${2:?output directory required}"; shift 2;;
+    --printer-host) printer_host="${2:?IPv4 address required}"; shift 2;;
+    --printer-port) printer_port="${2:?TCP port required}"; shift 2;;
     --db) db="${2:?absolute database path required}"; shift 2;;
-    *) echo "Usage: $0 [--db ABSOLUTE_PATH] [--replace] [--enable-local-power] [--render DIR]"; exit 2;;
+    *) echo "Usage: $0 [--db ABSOLUTE_PATH] [--printer-host ADDRESS] [--printer-port PORT] [--replace] [--enable-local-power] [--render DIR]"; exit 2;;
   esac
 done
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -26,6 +30,8 @@ done
 backend=rc-printstation.service
 admin=rc-printstation-admin.service
 dest=/etc/systemd/system
+endpoint="$(/usr/bin/python3 "$root/tools/printer_endpoint.py" "$dest/$backend" "$printer_host" "$printer_port")"
+read -r printer_host printer_port <<<"$endpoint"
 unit_dir="$(mktemp -d)"
 trap 'rm -r -- "$unit_dir"' EXIT
 power_arg=
@@ -41,7 +47,7 @@ SupplementaryGroups=dialout
 Environment=HOME=$home
 EnvironmentFile=-/etc/rc-printstation/benning.env
 WorkingDirectory=$root
-ExecStart=/usr/bin/python3 $root/native_ui.py --port /dev/serial0 --baud 115200 --host 169.254.223.252 --db $db --auto-report-url$power_arg
+ExecStart=/usr/bin/python3 $root/native_ui.py --port /dev/serial0 --baud 115200 --host $printer_host --printer-port $printer_port --db $db --auto-report-url$power_arg
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=90

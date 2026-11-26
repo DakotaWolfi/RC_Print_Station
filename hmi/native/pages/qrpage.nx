@@ -2,6 +2,7 @@ on bBack.up:
   page report
 
 on qrpage.loadend:
+  click hLocale,0
   sendme
   shown.val=0
   vis qrReport,0
@@ -22,7 +23,13 @@ on tmFlow.timer:
   if(home.online.val==0)
   {
   qReady.val=2
+  if(home.lang.val==1)
+  {
+  tNote.txt="Host disconnected. Check the connection."
+  }else
+  {
   tNote.txt="Host nicht verbunden. Bitte Verbindung prüfen."
+  }
   }
 
 on tmLink.timer:
@@ -30,5 +37,34 @@ on tmLink.timer:
   if(home.age.val>6)
   {
   home.online.val=0
+  if(home.lang.val==1)
+  {
+  home.tLink.txt="Host disconnected"
+  }else
+  {
   home.tLink.txt="Host nicht verbunden"
+  }
+  }
+
+on hLocale.up:
+  if(home.lang.val==1)
+  {
+  bBack.txt="Back to report"
+  }else
+  {
+  bBack.txt="Zurück zum Bericht"
+  }
+  if(home.lang.val==1)
+  {
+  pLabel0.pic=78
+  }else
+  {
+  pLabel0.pic=77
+  }
+  if(home.lang.val==1)
+  {
+  pLabel1.pic=80
+  }else
+  {
+  pLabel1.pic=79
   }

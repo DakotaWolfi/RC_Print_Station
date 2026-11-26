@@ -1,5 +1,7 @@
 """Render every guide state and sample reports from the production output code."""
 import argparse
+from copy import deepcopy
+import re
 from pathlib import Path
 import sys
 import tempfile
@@ -16,8 +18,9 @@ from benning_receiver import ReceiverStatus
 from benning_store import Measurements, PHASES
 from native_ui import END, ENCODING, NativeUI
 from station_panel_settings import PAGES
-from panel_text import paginate
-from benning_output import report_checks
+from station_config import PRINTER_HOST
+from station_network import Network
+from i18n import LANGUAGES
 from report_web import render_pdf
 from station import receipt, simulate
 
@@ -41,6 +44,7 @@ def receipt_preview(data):
     font=ImageFont.truetype(str(TYPEFACE),19)
     y=10
     centred=False
+    codepage="cp850"
     prefix=b"\x1dv0\x00"
     while data:
         if data.startswith(prefix):
@@ -54,7 +58,10 @@ def receipt_preview(data):
         elif data.startswith(b"\x1ba"):
             centred=data[2]!=0
             data=data[3:]
-        elif data.startswith((b"\x1bt",b"\x1bE",b"\x1d!",b"\x1dV")):
+        elif data.startswith(b"\x1bt"):
+            codepage={0:"cp437",2:"cp850"}[data[2]]
+            data=data[3:]
+        elif data.startswith((b"\x1bE",b"\x1d!",b"\x1dV")):
             data=data[3:]
         elif data.startswith(b"\x1bJ"):
             y+=data[2]
@@ -63,9 +70,15 @@ def receipt_preview(data):
             data=data[2:]
         else:
             line,sep,remainder=data.partition(b"\n")
-            if any(byte<32 for byte in line):
-                raise ValueError(f"Unexpected preview byte {line[:8]!r}")
-            draw.text((width//2 if centred else 15,y+4),line.decode("cp850"),font=font,fill=0,
+            text=[]
+            for part in re.split(b"(\x1bt[\x00\x02])",line):
+                if part.startswith(b"\x1bt"):
+                    codepage={0:"cp437",2:"cp850"}[part[2]]
+                else:
+                    if any(byte<32 for byte in part):
+                        raise ValueError(f"Unexpected preview byte {part[:8]!r}")
+                    text.append(part.decode(codepage))
+            draw.text((width//2 if centred else 15,y+4),"".join(text),font=font,fill=0,
                       anchor="mt" if centred else "lt")
             data=remainder if sep else b""
             y+=26
@@ -77,9 +90,14 @@ def examples(store):
     row=captured[2].split(";")
     examination={"visual":"Ohne Befund","functional":"Ohne Befund","examiner":"Prüfperson Muster",
                  "remarks":"Synthetischer Beleg zur Layoutprüfung.","status":"Erfasst"}
-    for kind in ("PASS","FAIL","partial","exam-open","unknown","simulation"):
+    for kind in ("PASS","FAIL","partial","exam-open","incomplete","unknown","simulation"):
         if kind=="simulation":
             yield kind,simulate("MUSTER-006","Kaffeemühle (Layoutmuster)")
+            continue
+        if kind=="incomplete":
+            _,report=store.create_incomplete("MUSTER-007","Kaffeemühle (Layoutmuster)",PHASES[0],
+                                             {**examination,"visual":"Mangel","functional":"Offen"})
+            yield kind,report
             continue
         fields=row.copy()
         if kind=="FAIL":
@@ -102,14 +120,24 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("directory",type=Path)
     out=p.parse_args().directory
+    for language in LANGUAGES:
+        render(out/language,language)
+
+
+def render(out,language):
     for name in ("hmi","receipt","pdf"):
         (out/name).mkdir(parents=True,exist_ok=True)
     sim=HeadlessSimulation(ROOT/"hmi/native")
     receiver=SimpleNamespace(mode="usb",status=ReceiverStatus("waiting","usb"),close=lambda:None)
     with tempfile.TemporaryDirectory() as tmp:
-        ui=NativeUI(PreviewSerial(sim),"unused",Path(tmp)/"samples.sqlite3",tester_receiver=receiver)
+        ui=NativeUI(PreviewSerial(sim),PRINTER_HOST,Path(tmp)/"samples.sqlite3",tester_receiver=receiver,
+                    config_path=Path(tmp)/"config.json")
+        ui.language=language
+        sim.send(f"home.lang.val={int(language=='en')}")
+        sim.send("page home")
         sim.send("home.online.val=1")
-        sim.send('home.tLink.txt="Host verbunden"')
+        ui.say("home.tLink","Host verbunden",32)
+        ui.home_hint()
         def shot(name):
             (out/f"hmi/{name}.png").write_bytes(sim.screen()["png"])
 
@@ -121,6 +149,8 @@ def main():
         ui.settings.page="entry"
         ui.text("tTicketView","MUSTER-006",34)
         ui.text("tDeviceView","Kaffeemaschine mit Milchtank",66)
+        ui.workflow.draw_language()
+        ui.tester.update_entry()
         shot("entry")
         sim.send("page guide")
         ui.settings.page="guide"
@@ -134,11 +164,10 @@ def main():
                 sim.send('guide.eRemarks.txt="Visuell geprüft."')
             ui.workflow.draw_guide()
             shot("guide-"+each)
-            if each in ("connect1","connect2","iec","extension"):
-                ui.workflow.help=True
-                ui.workflow.draw_guide()
-                shot("guide-"+each+"-help")
-                ui.workflow.help=False
+            ui.workflow.help=True
+            ui.workflow.draw_guide()
+            shot("guide-"+each+"-help")
+            ui.workflow.help=False
         for state in ("start","low_continue","leak"):
             ui.workflow.guide=Guide(step=state,procedure="II")
             ui.workflow.draw_guide()
@@ -154,11 +183,13 @@ def main():
             shot("import-"+mode)
         sim.send("page tester")
         ui.settings.page="tester"
+        receiver.status=ReceiverStatus("waiting","usb")
         ui.measurements.import_bytes((ROOT/"tests/fixtures/benning_usbcsv_examples.txt").read_bytes(),"file-csv")
         ui.tester.review(["MUSTER-006","Kaffeemühle","033","0","0"])
         ui.tester.draw()
         shot("confirmation")
-        for kind,report in examples(ui.measurements):
+        for kind,original in examples(ui.measurements):
+            report={**deepcopy(original),"language":language}
             ui.settings.page="report"
             ui.load_report(1,report)
             sim.send("page report")
@@ -168,7 +199,7 @@ def main():
                 ui.detail_page=1
                 ui.draw_measurements(report)
                 shot("result-"+kind+"-details")
-                ui.detail_page=len(paginate("report.tDetails",(f"{k}: {v}" for k,v in report_checks(report))))
+                ui.detail_page=len(ui.report_details(report))
                 ui.draw_measurements(report)
                 shot("result-"+kind+"-protocol")
             preview=receipt(report,{"graphic":True,"density":"default","feed_mm":15})
@@ -177,17 +208,26 @@ def main():
         for name in ("keyboard","qrpage","history","settings","wifi","wjoin","printer","receipt","system","power"):
             sim.send(f"page {name}")
             ui.settings.page=name
+            if name in ("wifi","wjoin"):
+                network=Network("/example",b"Repair Cafe Riehen",82,"WPA2","wpa-psk")
+                ui.settings.networks=[network,Network("/guest",b"FMI Gast",55,"Offen","")]
+                ui.settings.selected=network
+                ui.settings.message("{count} Netze gefunden.",count=2)
             ui.settings.draw()
             if name=="qrpage":
                 sim.send('qrReport.txt="http://192.168.1.42:8080/r/DEMO"')
                 sim.send("qReady.val=1")
-                ui.text("tNote","Scan mit dem Handy im gleichen Netzwerk.",100)
+                ui.say("tNote","Mit dem Handy scannen. Handy und Station müssen im selben Netz sein.",100)
                 sim.wait(200)
             elif name=="history":
                 ui.refresh_history()
             elif name=="entry":
                 ui.text("tStatus","Prüfnummer und Gerät eingeben.",100)
             shot(name)
+            if name=="keyboard":
+                for key,variant in (("bShift","upper"),("bMode","symbols"),("bMode","accents")):
+                    sim.send(f"click {key},0")
+                    shot("keyboard-"+variant)
         sim.send("page picker")
         ui.settings.page="picker"
         ui.picker.open("appliance")
@@ -207,6 +247,17 @@ def main():
                         "keyboard","qrpage","history","settings","wifi","wjoin","printer","receipt","system","power"}
         assert captured_pages==set(PAGES)
         ui.close()
+    images=sorted((out/"hmi").glob("*.png"))
+    for start in range(0,len(images),24):
+        group=images[start:start+24]
+        sheet=Image.new("RGB",(1200,((len(group)+5)//6)*345),"#172431")
+        draw=ImageDraw.Draw(sheet)
+        for i,path in enumerate(group):
+            x,y=i%6*200,i//6*345
+            with Image.open(path) as screen:
+                sheet.paste(screen.resize((192,320)),(x+4,y+3))
+            draw.text((x+5,y+326),path.stem,fill="white")
+        sheet.save(out/f"contact-hmi-{start//24+1}.png")
 
 
 if __name__=="__main__":

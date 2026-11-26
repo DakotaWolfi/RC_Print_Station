@@ -158,7 +158,7 @@ class StoreTests(unittest.TestCase):
         data=receipt(report)
         self.assertIn(graphic_header(),data)
         self.assertIn(b"nicht bestanden",data)
-        self.assertIn(b">2,34 Ohm",data)
+        self.assertIn(b">2,34 \x1bt\x00\xea\x1bt\x02",data)
         self.assertNotIn(b"SIMULATION",data)
         self.assertTrue(render_pdf(report).startswith(b"%PDF-"))
         server=start_server(self.path,0)

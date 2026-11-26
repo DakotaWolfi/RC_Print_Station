@@ -1,4 +1,9 @@
+on bLang.up:
+  prints "RC70:LANG",0
+  printh ff ff ff
+
 on bNew.up:
+  entry.inProgress.val=1
   entry.tTicket.txt=""
   entry.tDevice.txt=""
   entry.tStatus.txt=""
@@ -14,6 +19,7 @@ on bNew.up:
   page entry
 
 on bDirect.up:
+  entry.inProgress.val=1
   entry.tTicket.txt=""
   entry.tDevice.txt=""
   entry.tStatus.txt=""
@@ -43,7 +49,25 @@ on bLast.up:
   printh ff ff ff
   }else
   {
+  if(home.lang.val==1)
+  {
+  tHint.txt="Check the host connection."
+  }else
+  {
   tHint.txt="Bitte Host-Verbindung prüfen."
+  }
+  }
+
+on bResume.up:
+  page entry
+
+on home.loadend:
+  click hLocale,0
+  sendme
+  vis bResume,0
+  if(entry.inProgress.val==1)
+  {
+  vis bResume,1
   }
 
 on tmFlow.timer:
@@ -55,7 +79,13 @@ on tmFlow.timer:
   if(pending.val==1&&online.val==0)
   {
   pending.val=0
+  if(home.lang.val==1)
+  {
+  tHint.txt="Host disconnected. Try again."
+  }else
+  {
   tHint.txt="Host nicht verbunden. Bitte erneut versuchen."
+  }
   }
 
 on tmLink.timer:
@@ -63,8 +93,76 @@ on tmLink.timer:
   if(home.age.val>6)
   {
   home.online.val=0
+  if(home.lang.val==1)
+  {
+  home.tLink.txt="Host disconnected"
+  }else
+  {
   home.tLink.txt="Host nicht verbunden"
   }
+  }
 
-on home.loadend:
-  sendme
+on hLocale.up:
+  if(home.lang.val==1)
+  {
+  bLang.txt="EN / DE"
+  }else
+  {
+  bLang.txt="DE / EN"
+  }
+  if(home.lang.val==1)
+  {
+  bNew.txt="Guided test"
+  }else
+  {
+  bNew.txt="Geführte Prüfung"
+  }
+  if(home.lang.val==1)
+  {
+  bDirect.txt="Direct"
+  }else
+  {
+  bDirect.txt="Direkt"
+  }
+  if(home.lang.val==1)
+  {
+  bHistory.txt="History"
+  }else
+  {
+  bHistory.txt="Verlauf"
+  }
+  if(home.lang.val==1)
+  {
+  bLast.txt="Last report"
+  }else
+  {
+  bLast.txt="Letztes Protokoll"
+  }
+  if(home.lang.val==1)
+  {
+  bResume.txt="Resume draft"
+  }else
+  {
+  bResume.txt="Entwurf fortsetzen"
+  }
+  if(home.lang.val==1)
+  {
+  pLabel0.pic=46
+  }else
+  {
+  pLabel0.pic=45
+  }
+  if(home.lang.val==1)
+  {
+  pLabel1.pic=48
+  }else
+  {
+  pLabel1.pic=47
+  }
+  if(home.lang.val==1)
+  {
+  pLabel2.pic=50
+  }else
+  {
+  pLabel2.pic=49
+  }

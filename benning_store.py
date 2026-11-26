@@ -8,6 +8,7 @@ import sqlite3
 
 from benning_csv import ImportErrorDetail, parse_csv
 from benning_rs232 import parse_printout
+from i18n import locale
 from operator_store import SCHEMA as OPERATOR_SCHEMA, record_use
 
 PHASES=("Eingangsprüfung","Zwischenprüfung","Ausgangsprüfung")
@@ -150,25 +151,25 @@ class Measurements:
     def repair_fields(ticket,device,phase):
         if not isinstance(ticket,str) or not isinstance(device,str):
             raise ValueError("Prüfnummer und Gerätebeschreibung erforderlich.")
-        ticket,device=ticket.strip(),device.strip()
-        if not ticket or not device or len(ticket)>32 or len(device)>64 or not all(
+
+        if not ticket.strip() or not device.strip() or len(ticket)>32 or len(device)>64 or not all(
                 c.isprintable() for c in ticket+device):
             raise ValueError("Prüfnummer und Gerätebeschreibung prüfen.")
         if phase not in PHASES:
             raise ValueError("Ungültige Prüfart.")
         return ticket,device,phase
 
-    def create_incomplete(self,ticket,device,phase,examination,*,examiner_id=None):
+    def create_incomplete(self,ticket,device,phase,examination,*,examiner_id=None,language="de"):
         ticket,device,phase=self.repair_fields(ticket,device,phase)
         report={"ticket":ticket,"device":device,"source":"EXAMINATION","phase":phase,
-                "created":now(),"verdict":None,"measurements":[],
+                "created":now(),"language":locale(language),"verdict":None,"measurements":[],
                 "examination":dict(examination,status="Unvollständig")}
         with closing(self.db()) as conn,conn:
             ident=conn.execute("INSERT INTO reports(data) VALUES(?)",(json.dumps(report),)).lastrowid
             record_use(conn,device,examiner_id,report["created"])
         return ident,report
 
-    def create_report(self,ticket,device,phase,selection,*,require_current=False,examination=None,examiner_id=None):
+    def create_report(self,ticket,device,phase,selection,*,require_current=False,examination=None,examiner_id=None,language="de"):
         ticket,device,phase=self.repair_fields(ticket,device,phase)
         # Resolve from the immutable batch, not from mutable slot metadata or UI fields.
         with closing(self.db()) as conn,conn:
@@ -187,7 +188,7 @@ class Measurements:
                 raise ValueError("Import geändert. Speicherplatz erneut auswählen.")
             record=json.loads(row["original"])
             report={"ticket":ticket,"device":device,"source":"BENNING","phase":phase,
-                    "created":now(),"verdict":record["verdict"],"measurements":record["measurements"],
+                    "created":now(),"language":locale(language),"verdict":record["verdict"],"measurements":record["measurements"],
                     "record":record,"record_id":row["id"],"imported":row["imported"],
                     "import_source":row["source"]}
             if examination:

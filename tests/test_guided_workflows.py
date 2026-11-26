@@ -111,7 +111,7 @@ class OutputTests(unittest.TestCase):
                 "measurements":[{"name":"IBer"},failed,partial]}
         self.assertEqual(visible_measurements(report),[failed,partial])
         self.assertEqual(result_kind(report),"FAIL")
-        self.assertEqual(measurement_summary(failed),("RPE",">2,34 Ohm","","nicht bestanden","FAIL"))
+        self.assertEqual(measurement_summary(failed),("RPE",">2,34 Ω","","nicht bestanden","FAIL"))
         self.assertEqual(measurement_summary(partial)[3],"unvollständig")
         report["record"]={"verdict":"bestanden"}
         self.assertEqual(result_kind(report),"PASS")

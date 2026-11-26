@@ -17,6 +17,24 @@ h = 800
 pic = "keyboard"
 
 [[component]]
+name = "pLabel0"
+type = "picture"
+x = 24
+y = 183
+w = 173
+h = 35
+pic = "keyboard_s0_de"
+
+[[component]]
+name = "pLabel1"
+type = "picture"
+x = 24
+y = 228
+w = 359
+h = 22
+pic = "keyboard_s1_de"
+
+[[component]]
 name = "mode"
 type = "variable"
 val = 0
@@ -1085,3 +1103,11 @@ name = "tmLink"
 type = "timer"
 tim = 1000
 en = 1
+
+[[component]]
+name = "hLocale"
+type = "hotspot"
+x = 6
+y = 0
+w = 2
+h = 2

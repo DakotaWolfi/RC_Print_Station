@@ -32,17 +32,17 @@ class Picker:
             return
         ui=self.ui
         people=self.mode=="people"
-        entries=self.store.examiners(include_inactive=self.include_inactive) if people else self.store.appliances()
+        entries=self.store.examiners(include_inactive=self.include_inactive) if people else self.store.appliances(ui.language)
         self.offset=min(self.offset,max(0,(len(entries)-1)//PAGE_SIZE*PAGE_SIZE))
         self.rows=entries[self.offset:self.offset+PAGE_SIZE]
-        ui.text("pTitle","Prüfperson auswählen" if people else "Gerät auswählen",52)
+        ui.say("pTitle","Prüfperson auswählen" if people else "Gerät auswählen",52)
         chosen=next((row for row in entries if people and row["id"]==self.selected),None)
         if not people:
-            detail="Zuletzt verwendet und Vorlagen"
+            detail=ui.tr("Zuletzt verwendet und Vorlagen")
         elif chosen:
-            detail=("Auswahl: " if chosen["active"] else "Inaktiv: ")+chosen["name"]
+            detail=ui.tr("Auswahl: {name}" if chosen["active"] else "Inaktiv: {name}",name=chosen["name"])
         else:
-            detail="Prüfperson antippen oder neu erfassen"
+            detail=ui.tr("Prüfperson antippen oder neu erfassen")
         ui.text("pSelected",detail,64)
         for i in range(PAGE_SIZE):
             label=""
@@ -51,13 +51,13 @@ class Picker:
                 if people:
                     label=("> " if row["id"]==self.selected else "")+row["name"]
                     if not row["active"]:
-                        label+="  (inaktiv)"
+                        label+=ui.tr("  (inaktiv)")
                 else:
                     label=row[0]
             ui.text(f"pRow{i}",label,67)
-        ui.text("pNote",self.note,94)
-        ui.text("bToggle","Nur aktive" if self.include_inactive else "Auch inaktive",14)
-        ui.text("bState","Bestätigen" if self.confirm is not None else
+        ui.say("pNote",self.note,94)
+        ui.say("bToggle","Nur aktive" if self.include_inactive else "Auch inaktive",14)
+        ui.say("bState","Bestätigen" if self.confirm is not None else
                 "Aktivieren" if chosen and not chosen["active"] else "Deaktivieren",16)
         for name,flag in (("pPeople",people),("pChoose",chosen and chosen["active"]),
                           ("pEditOk",chosen),("pPrev",self.offset>0),
@@ -71,7 +71,7 @@ class Picker:
             try:
                 self.draw()
             except (sqlite3.Error,ValueError) as exc:
-                self.ui.text("pNote",str(exc) if isinstance(exc,ValueError) else "Namensliste nicht verfügbar.",94)
+                self.ui.say("pNote",str(exc) if isinstance(exc,ValueError) else "Namensliste nicht verfügbar.",94)
 
     def handle(self,frame):
         action,_,payload=frame.partition(b"\x00")

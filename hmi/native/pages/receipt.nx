@@ -34,8 +34,66 @@ on tmLink.timer:
   if(home.age.val>6)
   {
   home.online.val=0
+  if(home.lang.val==1)
+  {
+  home.tLink.txt="Host disconnected"
+  }else
+  {
   home.tLink.txt="Host nicht verbunden"
+  }
+  }
+
+on hLocale.up:
+  if(home.lang.val==1)
+  {
+  rGraphic.txt="Header: graphic"
+  }else
+  {
+  rGraphic.txt="Kopf: Grafik"
+  }
+  if(home.lang.val==1)
+  {
+  rDensity.txt="Printer default"
+  }else
+  {
+  rDensity.txt="Druckervorgabe"
+  }
+  if(home.lang.val==1)
+  {
+  bBack.txt="Back"
+  }else
+  {
+  bBack.txt="Zurück"
+  }
+  if(home.lang.val==1)
+  {
+  pLabel0.pic=82
+  }else
+  {
+  pLabel0.pic=81
+  }
+  if(home.lang.val==1)
+  {
+  pLabel1.pic=84
+  }else
+  {
+  pLabel1.pic=83
+  }
+  if(home.lang.val==1)
+  {
+  pLabel2.pic=86
+  }else
+  {
+  pLabel2.pic=85
+  }
+  if(home.lang.val==1)
+  {
+  pLabel3.pic=88
+  }else
+  {
+  pLabel3.pic=87
   }
 
 on receipt.loadend:
+  click hLocale,0
   sendme

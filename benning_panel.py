@@ -5,7 +5,9 @@ import time
 from zoneinfo import ZoneInfo
 
 from benning_csv import outcome, slot_value
-from benning_store import PHASES, SOURCES
+from benning_store import PHASES
+from benning_output import RESULTS, date_format, tester_date, verdict_text
+from i18n import error_text
 
 MODE_NAME={"auto":"Auto","usb":"USB CSV","rs232":"RS232 (Test)","file":"Datei","simulation":"Simulation"}
 SOURCES_BY_MODE={"auto":("usb","rs232"),"usb":("usb",),"rs232":("rs232",),
@@ -77,15 +79,16 @@ class TesterPanel:
 
     def status_line(self):
         state=self.receiver.status
-        label=MODE_NAME[state.source or self.mode]
+        t=self.ui.tr
+        label=t(MODE_NAME[state.source or self.mode])
         if state.detail:
-            return f"{label}: {state.detail}"
+            return f"{label}: {error_text(self.ui.language,state.detail)}"
         if state.state=="receiving":
-            return f"{label}: Empfange {state.received} Bytes"
+            return t("{mode}: Empfange {count} Bytes",mode=label,count=state.received)
         if state.state in ("waiting","imported"):
             trigger="PRINT" if state.source=="rs232" else "RECALL"
-            return f"{label}: verbunden / wartet auf {trigger}"
-        return f"{label}: {STATUS.get(state.state,'Kommunikationsfehler')}"
+            return t("{mode}: verbunden / wartet auf {action}",mode=label,action=trigger)
+        return f"{label}: "+t(STATUS.get(state.state,"Kommunikationsfehler"))
 
     def freshness(self,row):
         if not row:
@@ -130,10 +133,13 @@ class TesterPanel:
         t=self.ui.text
         c=self.ui.cmd
         t("mLink",self.status_line(),92)
-        stamp="Noch kein Import"
+        language=self.ui.language
+        stamp=self.ui.tr("Noch kein Import")
         if self.batch:
             ts=datetime.fromisoformat(self.batch["imported"]).astimezone(ZoneInfo("Europe/Zurich"))
-            stamp=f'{self.batch["records"]} importiert / {len(self.slots)} Slots · {ts:%d.%m. %H:%M}'
+            timestamp=ts.strftime(date_format(language)+" %H:%M")
+            stamp=self.ui.tr("{mode} importiert / {count} Slots · {stamp}",
+                             mode=self.batch["records"],count=len(self.slots),stamp=timestamp)
         t("mImport",stamp,52)
         page=self.slots[self.offset:self.offset+4]
         for index in range(4):
@@ -141,18 +147,19 @@ class TesterPanel:
             if index<len(page):
                 item=page[index]
                 r=item["original"]
-                value=f'{item["slot"]}   {r["tester_date"]}   {outcome(r["verdict"])}'
+                label=self.ui.tr(RESULTS[outcome(r["verdict"]) or "unknown"][0])
+                value=f'{item["slot"]}   {tester_date(r,language)}   {label}'
             t(f"mRow{index}",value,42)
         c(f"mCount.val={len(page)}")
         c(f"mPrev.val={int(self.offset>0)}")
         c(f"mNext.val={int(self.offset+4<len(self.slots))}")
         if self.selected:
             r=self.selected["original"]
-            selection=f'{self.selected["slot"]} · {r["tester_date"]} · {r["verdict"]}'
+            selection=f'{self.selected["slot"]} · {tester_date(r,language)} · {verdict_text(r["verdict"],language)}'
         else:
-            selection="Keine Messung ausgewählt"
+            selection=self.ui.tr("Keine Messung ausgewählt")
         t("mSelected",selection,55)
-        t("mNote",self.note or self.freshness(self.selected),100)
+        t("mNote",error_text(language,self.note or self.freshness(self.selected)),100)
         c(f'mReady.val={int(self.selected is not None and self.pending is not None and self.receiver.status.state!="receiving")}')
 
     def poll(self):
@@ -170,10 +177,10 @@ class TesterPanel:
         except sqlite3.Error:
             message="BENNING-Datenbank gerade nicht verfügbar."
             if self.ui.settings.page=="tester":
-                self.ui.text("mNote",message,86)
+                self.ui.say("mNote",message,86)
                 self.ui.cmd("mReady.val=0")
             elif self.ui.settings.page=="entry":
-                self.ui.text("entry.tTester",message,92)
+                self.ui.say("entry.tTester",message,92)
 
     def review(self,fields):
         if len(fields)!=5 or fields[3] not in ("0","1","2") or fields[4] not in ("0","1"):
@@ -236,12 +243,12 @@ class TesterPanel:
                 else:
                     ident,report=self.ui.workflow.save_selection(self.selected)
                     self.pending=None
-                    self.ui.load_report(ident,report)
+                    self.ui.finish_draft(ident,report)
             else:
                 return
         except (ValueError,sqlite3.Error) as exc:
             self.note=str(exc) if isinstance(exc,ValueError) else "BENNING-Datenbank gerade nicht verfügbar."
             if page=="entry":
                 self.pending=self.selected=None
-                self.ui.text("entry.tStatus",self.note,80)
+                self.ui.text("entry.tStatus",error_text(self.ui.language,self.note),80)
         self.draw()

@@ -1,4 +1,4 @@
-"""Backend for the v0.6.1 native Nextion candidate; legacy nextion_ui is unchanged.
+"""Backend for the v0.7 native Nextion display.
 
 The panel renders and edits locally. The host handles reports, printing,
 LAN downloads and operator-requested settings. It never flashes the display.
@@ -16,7 +16,9 @@ from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
 from station import database, receipt, send, simulate
-from benning_output import RESULTS, measurement_summary, report_checks, report_timestamp, result_kind, visible_measurements
+from benning_output import (RESULTS, date_format, measurement_summary, protection_class,
+                            report_checks, report_timestamp, result_kind, tester_date,
+                            verdict_text, visible_measurements, voltage_text)
 from benning_workflow import WorkflowPanel
 from operator_panel import Picker
 from panel_text import fit, paginate, quote
@@ -25,10 +27,12 @@ from benning_receiver import MODES, Receiver
 from benning_store import Measurements, SOURCES
 from station_panel_settings import PanelSettings
 from station_network import NetworkManager
+from i18n import tr
+from station_config import PRINTER_HOST, PRINTER_PORT, save
 
 END = b"\xff\xff\xff"
 ENCODING = "iso-8859-15"
-PROTOCOL = 61
+PROTOCOL = 70
 LOG = logging.getLogger(__name__)
 
 
@@ -105,7 +109,7 @@ def verify_panel(ser, timeout=3):
 
 
 class NativeUI:
-    def __init__(self, ser, host, db, printer_port=9100, base_url="", *,
+    def __init__(self, ser, host, db, printer_port=PRINTER_PORT, base_url="", *,
                  sender=send, publisher=None, config_path=None, network=None,
                  enable_power=False, tester_mode="auto", tester_device=None, tester_rs232=None,
                  tester_encoding="auto", tester_idle=1.8, tester_receiver=None,
@@ -134,6 +138,7 @@ class NativeUI:
                                                  tester_rs232,tester_encoding,tester_idle,hmi_port)
         self.tester=TesterPanel(self,self.measurements,self.receiver)
         self.settings = PanelSettings(self,network,config_path,enable_power,**settings_hooks)
+        self.language = self.settings.cfg()["language"]
         self.workflow=WorkflowPanel(self)
         self.picker=Picker(self)
         self.detail_page=0
@@ -150,9 +155,37 @@ class NativeUI:
     def text(self, component, value, limit):
         self.cmd(f"{component}.txt={quote(fit(self.settings.page,component,value,limit))}")
 
+    def tr(self, message, **values):
+        return tr(self.language,message,**values)
+
+    def say(self, component, message, limit, **values):
+        self.text(component,self.tr(message,**values),limit)
+
+    def set_language(self):
+        target = "de" if self.language=="en" else "en"
+        try:
+            save({"language":target},self.settings.path)
+        except (OSError,ValueError):
+            self.say("home.tHint","Stationssprache konnte nicht gespeichert werden.",64)
+            return
+        self.language = target
+        self.cmd(f"home.lang.val={int(target=='en')}")
+        self.cmd("click hLocale,0")
+        self.home_hint()
+        self.heartbeat(force=True)
+
+    def home_hint(self):
+        self.say("home.tHint","Simulation aktiv." if self.tester.mode=="simulation"
+                 else "BENNING: Messung speichern und Export auslösen.",64)
+
+    def report_details(self,report):
+        return paginate("report.tDetails",(f"{self.tr(key)}: {value}"
+                        for key,value in report_checks(report,self.language)))
+
     def initialise(self):
         self.cmd("bkcmd=3")
         self.cmd("sendxy=0")
+        self.cmd(f"home.lang.val={int(self.language=='en')}")
         self.workflow.reset()
         self.picker.reset()
         self.settings.page = None
@@ -166,17 +199,17 @@ class NativeUI:
         try:
             self.tester.start_draft()
         except sqlite3.Error:
-            self.text("entry.tTester","BENNING-Datenbank gerade nicht verfügbar.",92)
+            self.say("entry.tTester","BENNING-Datenbank gerade nicht verfügbar.",92)
         self.cmd("report.printing.val=0")
         self.cmd("home.pending.val=0")
         self.cmd("history.pending.val=0")
         # A restarted host must not offer printing for an HMI-only old report.
         self.cmd("report.ready.val=0")
         self.cmd("qrpage.qReady.val=2")
-        self.text("qrpage.tNote", "Bitte Bericht erneut im Verlauf öffnen.", 100)
-        self.text("entry.tStatus", "Host verbunden. Eingaben bleiben erhalten.", 80)
-        self.text("report.tStatus", "Host verbunden. Bericht bitte im Verlauf öffnen.", 80)
-        self.text("home.tHint", "Simulation aktiv." if self.tester.mode=="simulation" else "BENNING: Messung speichern und Export auslösen.", 64)
+        self.say("qrpage.tNote","Bitte Bericht erneut im Verlauf öffnen.",100)
+        self.say("entry.tStatus","Host verbunden. Eingaben bleiben erhalten.",80)
+        self.say("report.tStatus","Host verbunden. Bericht bitte im Verlauf öffnen.",80)
+        self.say("home.tHint","Simulation aktiv." if self.tester.mode=="simulation" else "BENNING: Messung speichern und Export auslösen.",64)
         self.heartbeat(force=True)
         self.ser.flush()
 
@@ -185,8 +218,8 @@ class NativeUI:
         if force or now - self.last_heartbeat >= 2:
             self.cmd("home.age.val=0")
             self.cmd("home.online.val=1")
-            self.text("home.tLink", "Host verbunden", 32)
-            stamp = datetime.now(ZoneInfo("Europe/Zurich")).strftime("%d.%m.%Y  %H:%M")
+            self.say("home.tLink","Host verbunden",32)
+            stamp = datetime.now(ZoneInfo("Europe/Zurich")).strftime(date_format(self.language)+"  %H:%M")
             if force or stamp != self.last_clock:
                 self.text("home.tClock", stamp, 24)
                 self.last_clock = stamp
@@ -197,15 +230,15 @@ class NativeUI:
         for i in range(3):
             self.cmd(f"vis tValue{i},{int(not self.detail_page)}")
         if self.detail_page:
-            pages=paginate("report.tDetails",(f"{label}: {value}" for label,value in report_checks(report)))
+            pages=self.report_details(report)
             self.text("tDetails",pages[self.detail_page-1],255)
-            self.text("bInfo","Messwerte",14)
-            self.text("bValues","Weitere Angaben",18)
+            self.say("bInfo","Messwerte",14)
+            self.say("bValues","Weitere Angaben",18)
             self.cmd(f"vMore.val={int(len(pages)>1)}")
             self.cmd(f"vis bValues,{int(len(pages)>1)}")
             return
-        self.text("bInfo","Prüfdetails",14)
-        self.text("bValues","Weitere Werte",18)
+        self.say("bInfo","Prüfdetails",14)
+        self.say("bValues","Weitere Werte",18)
         rows=visible_measurements(report)
         csv_source=report.get("import_source") in ("usb","file-csv")
         for i in range(3):
@@ -213,10 +246,8 @@ class NativeUI:
             label,colour="",RESULTS["unknown"][1]
             index=self.measurement_offset+i
             if index<len(rows):
-                name,value,limit,state,kind=measurement_summary(rows[index],csv_source=csv_source)
-                value=value.replace("Ω","Ohm")
-                limit=limit.replace("Ω","Ohm")
-                label="  ·  ".join(filter(None,(name,value,state,"Grenze "+limit if limit else "")))
+                name,value,limit,state,kind=measurement_summary(rows[index],csv_source=csv_source,language=self.language)
+                label="  ·  ".join(filter(None,(name,value,state,self.tr("Grenze {limit}",limit=limit) if limit else "")))
                 colour=RESULTS[kind][1]
             self.text(component,label,94)
             self.cmd(f"{component}.pco={panel_colour(colour)}")
@@ -239,18 +270,18 @@ class NativeUI:
         self.cmd("report.ready.val=0")
         self.text("report.tTicket",report["ticket"],32)
         self.text("report.tDevice",report["device"],64)
-        self.text("report.tResult",label,40)
+        self.say("report.tResult",label,40)
         self.cmd(f"report.tResult.pco={panel_colour(colour)}")
         meta=" / ".join(filter(None,(f'Slot {record["slot"]}' if record.get("slot") else "",
-                                  report.get("phase"),record.get("protection_class"))))
+                                  self.tr(report.get("phase","")),protection_class(record.get("protection_class"),self.language))))
         self.text("report.tMeta",meta,69)
-        date=record.get("tester_date","") if record else report_timestamp(report)
+        date=" · ".join(filter(None,(tester_date(record,self.language),voltage_text(record.get("voltage"))))) if record else report_timestamp(report,self.language)
         if source=="BENNING":
-            origin=f'Tester-Original: {record.get("verdict") or "unbekannt"}'
+            origin=self.tr("Tester-Original: {verdict}",verdict=verdict_text(record.get("verdict"),self.language) or self.tr("Unbekannt"))
             note="Messwerte und Prüfergebnis vom BENNING ST 725 übernommen."
-            protocol=dict(report_checks(report))["Protokoll"]
-            if protocol.startswith("Offen:"):
-                note="Protokoll offen:"+protocol.partition(":")[2]
+            protocol=dict(report_checks(report,self.language))["Protokoll"]
+            if protocol!=self.tr("Dokumentiert"):
+                note=self.tr("Protokoll offen: {reasons}",reasons=protocol.partition(": ")[2])
             qr="BENNING-Import / Originalergebnis"
         elif source=="EXAMINATION":
             origin="Kein Testergebnis übernommen"
@@ -260,10 +291,10 @@ class NativeUI:
             origin="KEINE ELEKTRISCHE PRÜFUNG"
             note="Keine Messwerte. Kein Sicherheitsnachweis."
             qr="SIMULATION / keine elektrische Prüfung"
-        self.text("report.tOrigin",origin,55)
-        self.text("report.tStatus",note,90)
+        self.say("report.tOrigin",origin,55)
+        self.say("report.tStatus",note,90)
         self.text("report.tDate",date,42)
-        self.text("qrpage.tKind",qr,56)
+        self.say("qrpage.tKind",qr,56)
         self.measurement_offset=0
         self.detail_page=0
         self.cmd("report.printing.val=0")
@@ -274,19 +305,23 @@ class NativeUI:
         fields = payload.split(b"\x00")
         if len(fields) != 3 or len(fields[1]) > 32 or len(fields[2]) > 64:
             raise ValueError("Ungültige Eingabe; bitte erneut eingeben.")
-        ticket, device = (s.decode(ENCODING).strip() for s in fields[1:])
-        if not ticket or not device or any(not c.isprintable() for c in ticket + device):
+        ticket, device = (s.decode(ENCODING) for s in fields[1:])
+        if not ticket.strip() or not device.strip() or any(not c.isprintable() for c in ticket + device):
             raise ValueError("Bitte beide Felder ausfüllen.")
-        report = simulate(ticket, device)
+        report = simulate(ticket, device,language=self.workflow.report_language)
         with database(self.db) as db:
             ident = db.execute("INSERT INTO reports(data) VALUES (?)", (json.dumps(report),)).lastrowid
-        self.load_report(ident, report)
+        self.finish_draft(ident, report)
+
+    def finish_draft(self, ident, report):
+        self.cmd("entry.inProgress.val=0")
+        self.load_report(ident,report)
 
     def refresh_history(self):
         with database(self.db) as db:
             self.history = db.execute("SELECT id,data FROM reports ORDER BY id DESC LIMIT 5").fetchall()
         for i in range(5):
-            label = "Keine weiteren Protokolle"
+            label = self.tr("Keine weiteren Protokolle")
             if i < len(self.history):
                 ident, data = self.history[i]
                 r = json.loads(data)
@@ -294,20 +329,20 @@ class NativeUI:
                     raise ValueError("Ungültiger gespeicherter Bericht.")
                 label = f"#{ident}  {r.get('ticket', '?')}"
             self.text(f"history.bRow{i}", label, 40)
-        self.text("history.tStatus", "Gespeicherte BENNING-Berichte und Simulationen", 80)
+        self.say("history.tStatus","Gespeicherte BENNING-Berichte und Simulationen",80)
 
     def last_report(self):
         with database(self.db) as db:
             row = db.execute("SELECT id,data FROM reports ORDER BY id DESC LIMIT 1").fetchone()
         if row is None:
-            self.text("home.tHint", "Noch keine Protokolle gespeichert.", 64)
+            self.say("home.tHint","Noch keine Protokolle gespeichert.",64)
             self.cmd("home.pending.val=0")
             return
         self.load_report(row[0], json.loads(row[1]))
 
     def open_report(self, index):
         if index >= len(self.history):
-            self.text("history.tStatus", "Dieser Eintrag ist leer.", 80)
+            self.say("history.tStatus","Dieser Eintrag ist leer.",80)
             self.cmd("history.pending.val=0")
             return
         ident, data = self.history[index]
@@ -315,7 +350,7 @@ class NativeUI:
 
     def print_report(self):
         if self.print_job is not None:
-            self.text("report.tStatus", "Ein Druckauftrag läuft bereits.", 80)
+            self.say("report.tStatus","Ein Druckauftrag läuft bereits.",80)
             return
         if self.report is None:
             raise ValueError("Bitte zuerst einen Bericht öffnen.")
@@ -332,7 +367,7 @@ class NativeUI:
             self.settings.printer_note="Ein Druckauftrag läuft bereits."
             return
         self.settings.printer_note="Testbeleg wird gesendet ..."
-        self.queue_receipt(simulate("DRUCKTEST","Epson / ESC-POS Verbindungstest"),"test")
+        self.queue_receipt(simulate(self.tr("DRUCKTEST"),self.tr("Epson / ESC-POS Verbindungstest"),language=self.language),"test")
 
     def finish_print(self):
         if self.print_job is None or not self.print_job[0].done():
@@ -349,14 +384,14 @@ class NativeUI:
             self.settings.printer_note=status
             self.settings.draw()
         elif ident == self.report_id:
-            self.text("report.tStatus", status, 80)
+            self.say("report.tStatus", status, 80)
             self.cmd("report.printing.val=0")
         else:
-            self.text("home.tHint", status, 64)
+            self.say("home.tHint", status, 64)
 
     def show_qr(self):
         if not self.base_url:
-            self.text("qrpage.tNote", "PDF aus: Host mit --report-url und erreichbarer LAN-Adresse starten.", 100)
+            self.say("qrpage.tNote","PDF aus: Host mit --report-url und erreichbarer LAN-Adresse starten.",100)
             self.cmd("qrpage.qReady.val=2")
             return
         if self.report is None:
@@ -367,14 +402,14 @@ class NativeUI:
         if len(url.encode(ENCODING)) > 78:
             raise ValueError("PDF-Link ist zu lang für den QR-Code.")
         self.text("qrpage.qrReport", url, 78)
-        self.text("qrpage.tNote", "Mit dem Handy scannen. Handy und Station müssen im selben Netz sein.", 100)
+        self.say("qrpage.tNote","Mit dem Handy scannen. Handy und Station müssen im selben Netz sein.",100)
         self.cmd("qrpage.qReady.val=1")
 
     def error(self, message):
         # Release all pending native transitions; inputs are not erased.
         for field, limit in (("entry.tStatus",80),("report.tStatus",80),
                              ("history.tStatus",80),("home.tHint",64),("qrpage.tNote",100)):
-            self.text(field, message, limit)
+            self.say(field, message, limit)
         for field in ("entry.busy", "home.pending", "history.pending"):
             self.cmd(field + ".val=0")
         if self.print_job is None:
@@ -384,10 +419,18 @@ class NativeUI:
     def handle(self, frame):
         if len(frame)==2 and frame[0]==0x66:
             self.settings.enter(frame[1])
+            if self.settings.page=="home":
+                self.cmd("click hLocale,0")
             self.tester.enter()
             self.workflow.enter()
             self.picker.enter()
             self.measurement_preview_pending=self.settings.page=="report"
+            return
+        if frame==b"RC70:LANG" and self.settings.page=="home":
+            self.set_language()
+            return
+        if frame==b"RC70:REPORTLANG" and self.settings.page=="entry":
+            self.workflow.switch_report_language()
             return
         if frame==b"RC61:DETAILS" and self.settings.page=="report" and self.report:
             self.detail_page=0 if self.detail_page else 1
@@ -398,7 +441,7 @@ class NativeUI:
             return
         if frame==b"RC6:VALUES" and self.settings.page=="report" and self.report:
             if self.detail_page:
-                pages=paginate("report.tDetails",(f"{k}: {v}" for k,v in report_checks(self.report)))
+                pages=self.report_details(self.report)
                 self.detail_page=self.detail_page%len(pages)+1
             else:
                 self.measurement_offset+=3
@@ -478,8 +521,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", default="/dev/serial0")
     parser.add_argument("--baud", type=int, default=115200)
-    parser.add_argument("--host", default="169.254.223.252")
-    parser.add_argument("--printer-port", type=int, default=9100)
+    parser.add_argument("--host", default=PRINTER_HOST)
+    parser.add_argument("--printer-port", type=int, default=PRINTER_PORT)
     parser.add_argument("--db", default="reports.sqlite3")
     parser.add_argument("--report-url", default="", help="Reachable LAN origin, e.g. http://192.168.1.42:8080")
     parser.add_argument("--web-port", type=int, default=8080)

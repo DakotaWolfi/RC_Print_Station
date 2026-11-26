@@ -30,8 +30,66 @@ on tmLink.timer:
   if(home.age.val>6)
   {
   home.online.val=0
+  if(home.lang.val==1)
+  {
+  home.tLink.txt="Host disconnected"
+  }else
+  {
   home.tLink.txt="Host nicht verbunden"
+  }
+  }
+
+on hLocale.up:
+  if(home.lang.val==1)
+  {
+  sStand.txt="Off"
+  }else
+  {
+  sStand.txt="Aus"
+  }
+  if(home.lang.val==1)
+  {
+  bStand.txt="Change"
+  }else
+  {
+  bStand.txt="Ändern"
+  }
+  if(home.lang.val==1)
+  {
+  bPower.txt="Restart / shut down"
+  }else
+  {
+  bPower.txt="Neustart / Ausschalten"
+  }
+  if(home.lang.val==1)
+  {
+  bBack.txt="Back"
+  }else
+  {
+  bBack.txt="Zurück"
+  }
+  if(home.lang.val==1)
+  {
+  pLabel0.pic=101
+  }else
+  {
+  pLabel0.pic=100
+  }
+  if(home.lang.val==1)
+  {
+  pLabel1.pic=103
+  }else
+  {
+  pLabel1.pic=102
+  }
+  if(home.lang.val==1)
+  {
+  pLabel2.pic=105
+  }else
+  {
+  pLabel2.pic=104
   }
 
 on system.loadend:
+  click hLocale,0
   sendme

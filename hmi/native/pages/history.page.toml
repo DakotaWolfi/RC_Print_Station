@@ -14,7 +14,25 @@ x = 0
 y = 0
 w = 480
 h = 800
-pic = "history"
+pic = "guide"
+
+[[component]]
+name = "pLabel0"
+type = "picture"
+x = 24
+y = 183
+w = 227
+h = 35
+pic = "history_s0_de"
+
+[[component]]
+name = "pLabel1"
+type = "picture"
+x = 24
+y = 228
+w = 332
+h = 22
+pic = "history_s1_de"
 
 [[component]]
 name = "pending"
@@ -170,3 +188,11 @@ name = "tmLink"
 type = "timer"
 tim = 1000
 en = 1
+
+[[component]]
+name = "hLocale"
+type = "hotspot"
+x = 6
+y = 0
+w = 2
+h = 2

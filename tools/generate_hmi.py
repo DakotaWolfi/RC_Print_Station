@@ -3,19 +3,24 @@
 Run with the build environment, then run nxwright build/check. The original
 Editor project in hmi/reference is never an output of this script.
 """
+from dataclasses import replace
 from pathlib import Path
+import hashlib
 import json
 import re
 import sys
 import tomli_w
+import tomllib
 from PIL import Image, ImageDraw, ImageFont
-from nxwright.project.font_drawing import draw_font_block
+from nxwright.project.font_drawing import draw_font
 from nxwright.project.truetype import TrueTypeFont
-from nxwright.project.zi_font import decode_font
+from nxwright.project.zi_font import decode_font, encode_font
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
-from panel_text import quote as text_quote, word_lines
+from panel_text import printable, quote as text_quote, word_lines
+from i18n import tr
+from benning_workflow import ART
 APP = ROOT / "hmi/native"
 DESIGN = ROOT / "hmi/design"
 BG, PANEL, EDGE = "#101923", "#1d2c3a", "#344858"
@@ -23,7 +28,8 @@ WHITE, MUTED, ORANGE, CYAN = "#f5f6f7", "#afc2d0", "#ff941f", "#42d9dd"
 WARN = "#ffd08a"
 PAGES = ["home", "entry", "keyboard", "report", "qrpage", "history", "settings",
          "wifi", "wjoin", "printer", "receipt", "system", "power", "tester", "guide", "importer", "picker"]
-FLAT = set(PAGES[6:]) | {"home","entry","report","qrpage","history"}
+FLAT = set(PAGES)-{"keyboard"}
+SIZES = (20, 24, 28, 36)
 
 # Swiss letter order, direct umlauts, plus two symbol banks. A touchscreen
 # shift intentionally provides uppercase umlauts directly (Ä/Ö/Ü).
@@ -55,6 +61,7 @@ class Page:
         self.doc = {"page": {"name": name, "type": "page", "x": 0, "y": 0,
                              "w": 480, "h": 800, "bco": BG}, "component": []}
         self.code = ""
+        self.labels = []
         self.art = Image.new("RGB", (960, 1600), BG)
         self.draw = ImageDraw.Draw(self.art)
         banner = Image.open(DESIGN / "brand.png").convert("RGB")
@@ -63,13 +70,16 @@ class Page:
         self.label(24, 183, title, 30, WHITE)
         self.label(24, 228, subtitle, 17, MUTED)
         self.label(24, 777, "FMI  /  REPAIR CAFÉ RIEHEN", 12, MUTED)
-        self.label(390, 777, "v0.6.1 RC", 12, MUTED)
+        self.label(390, 777, "v0.7 RC", 12, MUTED)
         self.shapes = []
         self.add("pBg", "picture", x=0, y=0, w=480, h=800, pic=name)
 
     def label(self, x, y, text, size=20, color=WHITE):
-        font = ImageFont.truetype(str(DESIGN / "typeface/NotoSans-Regular.ttf"), size * 2)
-        self.draw.text((x * 2, y * 2), text, font=font, fill=color, anchor="lt")
+        if text==tr("en",text):
+            font=ImageFont.truetype(str(DESIGN/"typeface/NotoSans-Regular.ttf"), size*2)
+            self.draw.text((x*2,y*2),text,font=font,fill=color,anchor="lt")
+            return
+        self.labels.append((x,y,text,size,color))
 
     def box(self, x, y, w, h, color=PANEL, radius=12, outline=None):
         rect = (x * 2, y * 2, (x + w) * 2 - 1, (y + h) * 2 - 1)
@@ -121,11 +131,43 @@ class Page:
 
     def save(self):
         self.watchdog()
+        self.add("hLocale","hotspot",x=6,y=0,w=2,h=2)
+        locale_lines=[]
+        for comp in self.doc["component"]:
+            value=comp.get("txt","")
+            if not value or comp["type"] not in ("text","button") or tr("en",value)==value:
+                continue
+            english=tr("en",value)
+            comp["txt_maxl"]=max(comp["txt_maxl"],len(english))
+            if not comp.get("vscope"):
+                locale_lines.append(f'{comp["name"]}.txt={quote(value)}')
+        static=[]
+        # These components have their own redraw state and retain their labels
+        # when the host changes other widgets. Keep each crop clear of controls.
+        for i,(x,y,value,size,color) in enumerate(self.labels):
+            right=140 if self.name=="report" and y==365 else 432 if self.name=="home" and x==40 else 456
+            font=ImageFont.truetype(str(DESIGN/"typeface/NotoSans-Regular.ttf"),size*2)
+            variants={language:tr(language,value) for language in ("de","en")}
+            width=2+max(round(font.getlength(label)/2) for label in variants.values())
+            if x+width>right:
+                raise ValueError(f"{self.name} label exceeds {right-x} px: {value}")
+            height=size+5
+            name=f"{self.name}_s{i}"
+            for language,label in variants.items():
+                crop=self.art.crop((x*2,y*2,(x+width)*2,(y+height)*2))
+                ImageDraw.Draw(crop).text((0,0),label,fill=color,font=font,anchor="lt")
+                crop.resize((width,height),Image.Resampling.LANCZOS).save(APP/f"pictures/{name}_{language}.png")
+            comp=f"pLabel{i}"
+            static.append(dict(name=comp,type="picture",x=x,y=y,w=width,h=height,pic=name+"_de"))
+            locale_lines+=["if(home.lang.val==1)","{",f"{comp}.pic=@{name}_en",
+                           "}else","{",f"{comp}.pic=@{name}_de","}"]
+        self.doc["component"][1:1]=static
+        self.on("hLocale.up",locale_lines or ["ref hLocale"])
         load = f"on {self.name}.loadend:\n"
         if load in self.code:
-            self.code = self.code.replace(load,load+"  sendme\n",1)
+            self.code=self.code.replace(load,load+"  click hLocale,0\n  sendme\n",1)
         else:
-            self.on(self.name+".loadend",["sendme"])
+            self.on(self.name+".loadend",["click hLocale,0","sendme"])
         (APP / f"pages/{self.name}.page.toml").write_text(tomli_w.dumps(self.doc), encoding="utf-8")
         (APP / f"pages/{self.name}.nx").write_text(self.code.rstrip()+"\n", encoding="utf-8")
         self.art.resize((480, 800), Image.Resampling.LANCZOS).save(APP / f"pictures/{self.name}.png")
@@ -141,15 +183,18 @@ class Page:
 
 def make_home():
     p = Page("home", "Reparieren. Weitergeben.", "Ein zweites Leben beginnt mit einer Reparatur.")
-    p.var("proto", 61)
+    p.var("proto", 70)
+    p.var("lang")
     for name in ("online", "age", "pending"):
         p.var(name)
     p.box(24, 273, 432, 115)
     p.label(40, 289, "PRÜFPROTOKOLLE", 14, ORANGE)
     p.label(40, 315, "BENNING ST 725 / Repair Café", 18, WARN)
-    p.text("tLink", 40, 348, 400, 27, "Host nicht verbunden", size=20,
+    p.text("tLink", 40, 348, 259, 27, "Host nicht verbunden", size=20,
            color=MUTED, global_=True, limit=32)
-    reset=['entry.tTicket.txt=""','entry.tDevice.txt=""','entry.tStatus.txt=""',
+    p.button("bLang",320,339,117,42,"DE / EN",emit("RC70:LANG"),size=20)
+    p.doc["component"][-1].update(bco="#365164",bco2="#517183")
+    reset=['entry.inProgress.val=1','entry.tTicket.txt=""','entry.tDevice.txt=""','entry.tStatus.txt=""',
            'entry.tSlot.txt=""','guide.eRemarks.txt=""',
            "entry.phase.val=0","entry.useLast.val=1","entry.busy.val=0","entry.route.val=0"]
     p.button("bNew",24,412,313,82,"Geführte Prüfung",
@@ -158,9 +203,11 @@ def make_home():
              [*reset,"entry.guided.val=0",*emit("RC6:NEW"),"page entry"],size=20)
     p.button("bHistory", 24, 510, 210, 72, "Verlauf", ["page history"])
     p.button("bSettings", 246, 510, 210, 72, "Station", ["page settings"])
-    p.button("bLast", 24, 598, 432, 68, "Letztes Protokoll öffnen", [
+    p.button("bLast", 246, 598, 210, 68, "Letztes Protokoll", [
         "if(home.online.val==1)", "{", "report.ready.val=0", "pending.val=1",
-        *emit("RC3:LAST"), "}else", "{", 'tHint.txt="Bitte Host-Verbindung prüfen."', "}"])
+        *emit("RC3:LAST"), "}else", "{", 'tHint.txt="Bitte Host-Verbindung prüfen."', "}"],size=20)
+    p.button("bResume",24,598,210,68,"Entwurf fortsetzen",["page entry"],size=20)
+    p.on("home.loadend",["vis bResume,0","if(entry.inProgress.val==1)","{","vis bResume,1","}"])
     p.text("tHint", 24, 680, 432, 40, "", size=20, color=WARN, bg=BG,
            global_=True, limit=64)
     p.text("tClock", 24, 733, 432, 28, "", size=20, color=MUTED, bg=BG,
@@ -173,7 +220,7 @@ def make_home():
 
 def make_entry():
     p = Page("entry", "Prüfung erfassen", "01  Angaben   /   02  Messung   /   03  Ausgabe")
-    for name,initial in (("field",0),("busy",0),("phase",0),("useLast",1),("sim",0),("guided",0),("route",0)):
+    for name,initial in (("field",0),("busy",0),("phase",0),("useLast",1),("sim",0),("guided",0),("route",0),("inProgress",0)):
         p.var(name,initial)
     for field,(name,label,y,w,limit) in enumerate((
             ("tTicket","PRÜFNUMMER",258,432,32),
@@ -197,9 +244,11 @@ def make_entry():
     p.label(228,475,"Letzten Speicherplatz verwenden",14)
     p.on("cLast.up",["useLast.val=cLast.val","if(useLast.val==1)","{",*emit("RC5:AUTOON"),
                      "}else","{",*emit("RC5:AUTOOFF"),"}"])
-    p.button("bPhase",24,523,432,50,"Eingangsprüfung",[
+    p.button("bPhase",24,523,220,50,"Eingangsprüfung",[
         "phase.val++","if(phase.val>2)","{","phase.val=0","}","click hPhase,0"],size=20)
     p.doc["component"][-1]["txt_maxl"]=20
+    p.button("bReportLang",256,523,200,50,"Bericht: DE",emit("RC70:REPORTLANG"),size=20)
+    p.doc["component"][-1]["txt_maxl"]=22
     p.add("hPhase","hotspot",x=0,y=0,w=2,h=2)
     p.on("hPhase.up",["if(phase.val==0)","{",'bPhase.txt="Eingangsprüfung"',
                        "}else if(phase.val==1)","{",'bPhase.txt="Zwischenprüfung"',
@@ -576,18 +625,16 @@ def make_tester():
     p.save()
 
 
-ART=("lcd","class1","class2","iec","extension","store","recall","print","ports","key_i","key_ii","key_leak","key_voltage")
-PICTURES=[s for p in PAGES for s in ((p,) if p in FLAT else (p,p+"_press"))]+[f"g_{s}" for s in ART]
 
 
-def make_guide_art():
+def make_guide_art(language):
     """Independent schematics checked against the CH manual, Figs. 1–6b."""
     face=DESIGN/"typeface/NotoSans-Regular.ttf"
     for name in ART:
         im=Image.new("RGB",(432,96),BG)
         d=ImageDraw.Draw(im)
         def txt(x,y,label,size=16,colour=WHITE,anchor="lm"):
-            d.text((x,y),label,font=ImageFont.truetype(str(face),size),fill=colour,anchor=anchor)
+            d.text((x,y),tr(language,label),font=ImageFont.truetype(str(face),size),fill=colour,anchor=anchor)
         def box(bounds,colour=PANEL):
             d.rounded_rectangle(bounds,8,fill=colour,outline=EDGE,width=2)
         def line(points,width=3,colour=CYAN):
@@ -625,7 +672,8 @@ def make_guide_art():
                 txt(x,48,"IB",15,colour=stroke,anchor="mm")
             else:
                 txt(x,40,label,11,colour=stroke,anchor="mm")
-            txt(x,81,label,14,colour=yellow if active else MUTED,anchor="mm")
+            txt(x,81,{"Diskette":"STORE","Ordner":"RECALL","Drucker":"PRINT"}.get(label,label),14,
+                colour=yellow if active else MUTED,anchor="mm")
         if name in ("key_i","key_ii","key_leak"):
             selected={"key_i":0,"key_ii":1,"key_leak":2}[name]
             for idx,(x,label) in enumerate(zip((72,216,360),("Erdzeichen (2)","Doppelquadrat (3)","IPE/IB (4)"))):
@@ -672,7 +720,8 @@ def make_guide_art():
             txt(214,22,"11 · Netz getrennt",14,MUTED,anchor="mm")
             txt(315,47,"IEC-Kupplung" if name=="iec" else "via IEC-Adapter",13,CYAN)
             txt(315,72,"Netzstecker",14,ORANGE)
-        im.save(APP/f"pictures/g_{name}.png")
+        suffix="_en" if language=="en" else ""
+        im.save(APP/f"pictures/g_{name}{suffix}.png")
 
 
 def add_guide_art(p,var,y):
@@ -680,7 +729,9 @@ def add_guide_art(p,var,y):
     p.add("pArt","picture",x=24,y=y,w=432,h=96,pic="g_lcd")
     p.add("hArt","hotspot",x=2,y=0,w=2,h=2)
     p.on("hArt.up",[line for i,name in enumerate(ART) for line in
-                    (f"if({var}.val=={i})","{",f"pArt.pic={PICTURES.index('g_'+name)}","}")])
+                    (f"if({var}.val=={i})","{","if(home.lang.val==1)","{",
+                     f"pArt.pic=@g_{name}_en","}else","{",
+                     f"pArt.pic=@g_{name}","}","}")])
 
 
 def make_guide():
@@ -800,11 +851,36 @@ def make_picker():
     p.save()
 
 
+def deduplicate_pictures():
+    """Basic stores full RGB565 images in flash, including identical art."""
+    unique={}
+    aliases={}
+    for path in sorted((APP/"pictures").glob("*.png")):
+        digest=hashlib.sha256(path.read_bytes()).hexdigest()
+        name=unique.setdefault(digest,path.stem)
+        aliases[path.stem]=name
+        if name!=path.stem:
+            path.unlink()
+    names=list(unique.values())
+    picture_ids={alias:names.index(name) for alias,name in aliases.items()}
+    for page in PAGES:
+        path=APP/f"pages/{page}.page.toml"
+        doc=tomllib.loads(path.read_text())
+        for comp in doc["component"]:
+            for attr in ("pic","picc","picc2"):
+                if attr in comp:
+                    comp[attr]=aliases[comp[attr]]
+        path.write_text(tomli_w.dumps(doc),encoding="utf-8")
+        code=APP/f"pages/{page}.nx"
+        code.write_text(re.sub(r"(?<=\.pic=)@(\w+)",lambda m:str(picture_ids[m[1]]),
+                               code.read_text()),encoding="utf-8")
+    return names
+
+
 def write_text_layout():
-    import tomllib
     widgets={}
     fonts={}
-    for size in (20,24,28,36):
+    for size in SIZES:
         font=decode_font((APP/f"fonts/UI{size}.zi").read_bytes())
         fonts[str(size)]=[g.advance for g in font.characters_of(bytes(range(256)))]
     for page in PAGES:
@@ -821,9 +897,32 @@ def write_text_layout():
                 if len(c.get("txt",""))>1:
                     c["txt"]=word_lines(c["txt"],measure,c["w"]-4,c["h"],size,c["txt_maxl"],sy)
         path.write_text(tomli_w.dumps(project),encoding="utf-8")
-    from panel_text import fit, layout
     (DESIGN/"text-layout.json").write_text(json.dumps(dict(widgets=widgets,fonts=fonts),
                                                         ensure_ascii=False,separators=(",",":"))+"\n")
+    from panel_text import fit
+    for page in PAGES:
+        path=APP/f"pages/{page}.nx"
+        lines=[]
+        for line in path.read_text().splitlines():
+            assign=re.fullmatch(r'  ([\w.]+)\.txt(\+?=)("(?:\\.|[^"\\])*")',line)
+            if not assign:
+                lines.append(line)
+                continue
+            literal=json.loads(assign[3])
+            english=tr("en",literal)
+            if english==literal:
+                lines.append(line)
+                continue
+            target,op,_=assign.groups()
+            address=target if "." in target else f"{page}.{target}"
+            if op=="=" and address in widgets:
+                literal=fit(page,target,literal,1000)
+                english=fit(page,target,english,1000)
+            prefix=f"{target}.txt{op}"
+            lines.extend(["  if(home.lang.val==1)","  {",
+                          "  "+prefix+text_quote(printable(english)),"  }else","  {",
+                          "  "+prefix+text_quote(printable(literal)),"  }"])
+        path.write_text("\n".join(lines)+"\n",encoding="utf-8")
 
 
 
@@ -832,27 +931,31 @@ def main():
         for path in (APP/folder).glob("*"):
             if path.is_file():
                 path.unlink()
-    app = {"format":1,"name":"Repair Café Riehen · FMI Printstation v0.6.1",
+    app = {"format":1,"name":"Repair Café Riehen · FMI Printstation v0.7",
            "language":"nextion_do_not_change_manually","screen":"NX8048T070",
            "rotation":270,"encoding":"iso-8859-15","pages":PAGES,
-           "pictures":PICTURES,
-           "fonts":["UI20","UI24","UI28","UI36"]}
-    (APP/"app.toml").write_text(tomli_w.dumps(app),encoding="utf-8")
+           "fonts":[f"UI{size}" for size in SIZES]}
     typeface = TrueTypeFont((DESIGN/"typeface/NotoSans-Regular.ttf").read_bytes())
-    for size in (20,24,28,36):
-        (APP/f"fonts/UI{size}.zi").write_bytes(draw_font_block(
-            f"UI{size}",typeface,size,"iso-8859-15",270))
+    for size in SIZES:
+        glyphs=draw_font(typeface,size,"iso-8859-15")
+        omega=next(g for g in draw_font(typeface,size,"utf-8",characters=[ord("Ω")]) if g.code==ord("Ω"))
+        glyphs=[replace(omega,code=0xad) if g.code==0xad else g for g in glyphs]
+        if not any(g.code==0xad for g in glyphs):
+            glyphs=sorted([*glyphs,replace(omega,code=0xad)],key=lambda g:g.code)
+        (APP/f"fonts/UI{size}.zi").write_bytes(encode_font(f"UI{size}","iso-8859-15",size,270,glyphs))
     (APP/"program.nx").write_text(
         'int sys0=0,sys1=0,sys2=0\nbaud=115200\ndim=100\nrecmod=0\nsendxy=0\n'
         'printh 00 00 00 ff ff ff 88 ff ff ff\nprints "RC3:BOOT",0\nprinth ff ff ff\npage home\n',
         encoding="utf-8")
     make_home(); make_entry(); make_keyboard(); make_report(); make_qr(); make_history(); make_settings()
     make_wifi(); make_join(); make_printer(); make_receipt(); make_system(); make_power(); make_tester()
-    make_guide_art(); make_guide(); make_importer(); make_picker()
+    make_guide_art("de"); make_guide_art("en"); make_guide(); make_importer(); make_picker()
+    app["pictures"]=deduplicate_pictures()
+    (APP/"app.toml").write_text(tomli_w.dumps(app),encoding="utf-8")
     write_text_layout()
     (ROOT/"hmi/design/keyboard-layout.json").write_text(json.dumps(
         dict(lower=LOWER,upper=UPPER,symbols=SYMBOL1,accents=SYMBOL2),ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
-    print("Generated native v0.6.1 pages; reference HMI left untouched.")
+    print("Generated native bilingual v0.7 pages; reference HMI left untouched.")
 
 
 if __name__ == "__main__":

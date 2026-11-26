@@ -11,8 +11,10 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from benning_output import (RESULTS, examination_fields, measurement_summary,
-                            report_checks, result_kind, selected_fields, visible_measurements)
+from benning_output import (RESULTS, compact_checks, measurement_summary,
+                            report_language, result_kind, selected_fields, visible_measurements)
+
+from i18n import tr
 
 DESIGN=Path(__file__).resolve().parent/"hmi"/"design"
 NAVY=HexColor("#101923")
@@ -26,6 +28,8 @@ AMBER=HexColor("#845113")
 
 
 def render(report):
+    language=report_language(report)
+    t=lambda key:tr(language,key)
     font="FMINoto"
     try:
         pdfmetrics.getFont(font)
@@ -41,7 +45,7 @@ def render(report):
     out=BytesIO()
     doc=SimpleDocTemplate(out,pagesize=A4,leftMargin=42,rightMargin=42,
                           topMargin=137,bottomMargin=55,
-                          title="Repair Café Riehen - "+("Simulationsprotokoll" if simulated else "BENNING Prüfprotokoll"),
+                          title="Repair Café Riehen - "+t("Simulationsprotokoll" if simulated else "BENNING Prüfprotokoll"),
                           author="FMI Printstation / Repair Café Riehen")
     width,height=A4
     area=width-84
@@ -56,7 +60,7 @@ def render(report):
                       width=area,height=62,preserveAspectRatio=True,anchor="c")
         pdf.setFillColor(white)
         pdf.setFont("Helvetica-Bold",20)
-        pdf.drawString(42,height-96,"Simulationsprotokoll" if simulated else "BENNING ST 725  /  Prüfprotokoll")
+        pdf.drawString(42,height-96,t("Simulationsprotokoll" if simulated else "BENNING ST 725  /  Prüfprotokoll"))
         pdf.setStrokeColor(PALE)
         pdf.line(42,49,width-42,49)
         pdf.setFillColor(MUTED)
@@ -68,8 +72,8 @@ def render(report):
     status=result_kind(report)
     label,_,colour,paper=RESULTS[status]
     heading="PRÜFPROTOKOLL" if report.get("source")=="EXAMINATION" else "TESTERGEBNIS"
-    summary=Table([[cell(heading,10,MUTED)],
-                   [cell(label,32,HexColor(colour),"Helvetica-Bold")]],colWidths=[area])
+    summary=Table([[cell(t(heading),10,MUTED)],
+                   [cell(t(label),32,HexColor(colour),"Helvetica-Bold")]],colWidths=[area])
     summary.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,-1),HexColor(paper)),
                                  ("LINEBEFORE",(0,0),(0,-1),4,HexColor(colour)),
                                  ("LEFTPADDING",(0,0),(-1,-1),14),
@@ -77,7 +81,7 @@ def render(report):
                                  ("BOTTOMPADDING",(0,-1),(-1,-1),10)]))
 
     def details(fields):
-        table=Table([[cell(key,9,MUTED),cell(value)] for key,value in fields],
+        table=Table([[cell(t(key),9,MUTED),cell(value)] for key,value in fields],
                     colWidths=[135,area-135],hAlign="LEFT")
         table.setStyle(TableStyle([("TOPPADDING",(0,0),(-1,-1),2),
                                    ("BOTTOMPADDING",(0,0),(-1,-1),2),
@@ -86,12 +90,12 @@ def render(report):
 
     fields=list(selected_fields(report))
     story=[summary,Spacer(1,10),details(fields)]
-    compact=[measurement_summary(row,csv_source=report.get("import_source") in ("usb","file-csv"))
+    compact=[measurement_summary(row,csv_source=report.get("import_source") in ("usb","file-csv"), language=language)
              for row in visible_measurements(report)]
     if compact:
         has_limits=any(row[2] for row in compact)
         headers=["Messung","Originalwert"]+(["Grenzwert"] if has_limits else [])+["Einzelergebnis"]
-        rows=[[cell(title,9,white,"Helvetica-Bold") for title in headers]]
+        rows=[[cell(t(title),9,white,"Helvetica-Bold") for title in headers]]
         for name,value,limit,state,kind in compact:
             row=[cell(name),cell(value)]
             if has_limits:
@@ -105,27 +109,15 @@ def render(report):
                                    ("VALIGN",(0,0),(-1,-1),"TOP"),
                                    ("TOPPADDING",(0,0),(-1,-1),4),
                                    ("BOTTOMPADDING",(0,0),(-1,-1),4)]))
-        story.extend((Spacer(1,10),cell("Messwerte",13,INK,"Helvetica-Bold"),Spacer(1,4),table))
-    checks=[]
-    for key,value in report_checks(report):
-        if key=="Elektrische Messung" and value=="Messdaten vollständig":
-            continue
-        if key=="Protokoll":
-            if value.startswith("Offen: "):
-                checks.append(("Offene Punkte",value[len("Offen: "):]))
-            continue
-        if key=="Freigabe" and value=="Nicht erfasst · Entscheid der Prüfperson":
-            continue
-        checks.append((key,value))
-    checks.extend((key,value) for key,value in examination_fields(report)
-                  if key in ("Prüfperson","Bemerkung"))
+        story.extend((Spacer(1,10),cell(t("Messwerte"),13,INK,"Helvetica-Bold"),Spacer(1,4),table))
+    checks=compact_checks(report)
     if checks:
-        story.extend((Spacer(1,8),cell("Weitere Prüfangaben",13,INK,"Helvetica-Bold"),
+        story.extend((Spacer(1,8),cell(t("Weitere Prüfangaben"),13,INK,"Helvetica-Bold"),
                       details(checks)))
     if simulated:
         note="SIMULATION / KEINE ELEKTRISCHE PRÜFUNG. Keine Messwerte vorhanden."
     else:
         note="Die Freigabe des Geräts obliegt der verantwortlichen Prüfperson."
-    story.extend((Spacer(1,10),cell(note,9,MUTED)))
+    story.extend((Spacer(1,10),cell(t(note),9,MUTED)))
     doc.build(story,onFirstPage=frame,onLaterPages=frame)
     return out.getvalue()

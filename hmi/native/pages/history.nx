@@ -47,6 +47,7 @@ on bBack.up:
   page home
 
 on history.loadend:
+  click hLocale,0
   sendme
   pending.val=0
   prints "RC3:HISTORY",0
@@ -61,7 +62,13 @@ on tmFlow.timer:
   if(pending.val==1&&home.online.val==0)
   {
   pending.val=0
+  if(home.lang.val==1)
+  {
+  tStatus.txt="Host disconnected. Try again."
+  }else
+  {
   tStatus.txt="Host nicht verbunden. Bitte erneut versuchen."
+  }
   }
 
 on tmLink.timer:
@@ -69,5 +76,34 @@ on tmLink.timer:
   if(home.age.val>6)
   {
   home.online.val=0
+  if(home.lang.val==1)
+  {
+  home.tLink.txt="Host disconnected"
+  }else
+  {
   home.tLink.txt="Host nicht verbunden"
+  }
+  }
+
+on hLocale.up:
+  if(home.lang.val==1)
+  {
+  bBack.txt="Home"
+  }else
+  {
+  bBack.txt="Hauptmenü"
+  }
+  if(home.lang.val==1)
+  {
+  pLabel0.pic=41
+  }else
+  {
+  pLabel0.pic=40
+  }
+  if(home.lang.val==1)
+  {
+  pLabel1.pic=43
+  }else
+  {
+  pLabel1.pic=42
   }

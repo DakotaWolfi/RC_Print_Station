@@ -3,6 +3,8 @@ from contextlib import closing
 import json
 from unicodedata import normalize
 
+from i18n import tr
+
 APPLIANCES=("Kaffeemaschine","Wasserkocher","Leuchte","Bügeleisen","Haartrockner",
             "Ventilator","Küchengerät","Heizgerät")
 SCHEMA="""
@@ -34,7 +36,6 @@ class Operators:
     def rename(self, name, ident=None):
         if not name.strip() or len(name)>48 or any(not char.isprintable() for char in name):
             raise ValueError("Prüfperson mit gültigem Namen eingeben.")
-        name=" ".join(name.split())
         with closing(self.db()) as conn,conn:
             conn.execute("BEGIN IMMEDIATE")
             lookup=conn.execute("SELECT id,active FROM examiners WHERE name_key=?",(name_key(name),)).fetchone()
@@ -63,7 +64,7 @@ class Operators:
             raise ValueError("Prüfperson ist nicht mehr aktiv. Bitte neu wählen.")
         return row["name"]
 
-    def appliances(self):
+    def appliances(self,language="de"):
         with closing(self.db()) as conn:
             recent=[row["description"] for row in conn.execute("""SELECT description
                 FROM recent_appliances ORDER BY last_used DESC,name_key LIMIT 8""")]
@@ -88,7 +89,8 @@ class Operators:
                         if len(recent)==8:
                             break
         keys={name_key(value) for value in recent}
-        return [(label,True) for label in recent]+[(label,False) for label in APPLIANCES if name_key(label) not in keys]
+        templates=[tr(language,label) for label in APPLIANCES]
+        return [(label,True) for label in recent]+[(label,False) for label in templates if name_key(label) not in keys]
 
 
 def record_use(conn,description,examiner_id,timestamp):

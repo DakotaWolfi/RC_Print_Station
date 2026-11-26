@@ -17,6 +17,33 @@ h = 800
 pic = "system"
 
 [[component]]
+name = "pLabel0"
+type = "picture"
+x = 24
+y = 183
+w = 244
+h = 35
+pic = "system_s0_de"
+
+[[component]]
+name = "pLabel1"
+type = "picture"
+x = 24
+y = 328
+w = 87
+h = 19
+pic = "system_s1_de"
+
+[[component]]
+name = "pLabel2"
+type = "picture"
+x = 24
+y = 425
+w = 254
+h = 19
+pic = "system_s2_de"
+
+[[component]]
 name = "sModel"
 type = "text"
 x = 24
@@ -188,3 +215,11 @@ name = "tmLink"
 type = "timer"
 tim = 1000
 en = 1
+
+[[component]]
+name = "hLocale"
+type = "hotspot"
+x = 6
+y = 0
+w = 2
+h = 2

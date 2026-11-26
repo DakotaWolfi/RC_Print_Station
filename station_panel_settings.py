@@ -45,7 +45,7 @@ class PanelSettings:
         self.hotspot_password=""
         self.offset=0
         self.ssid=self.ip=""
-        self.status="Netzwerke suchen, um WLAN einzurichten."
+        self._status=("Netzwerke suchen, um WLAN einzurichten.",{})
         self.printer_note=""
         self.receipt_note=""
         self.system_note=""
@@ -59,6 +59,21 @@ class PanelSettings:
             self.model=Path("/proc/device-tree/model").read_bytes().rstrip(b"\x00").decode()
         except (OSError,UnicodeError):
             self.model=f"Linux / {platform.machine()}"
+
+    @property
+    def status(self):
+        return self._status[0]
+
+    @status.setter
+    def status(self,value):
+        self._status=(value,{})
+
+    @property
+    def status_args(self):
+        return self._status[1]
+
+    def message(self,key,**values):
+        self._status=(key,values)
 
     def cfg(self):
         return config.load(self.path)
@@ -93,16 +108,19 @@ class PanelSettings:
     def draw(self):
         t=self.ui.text
         c=self.ui.cmd
+        tr=self.ui.tr
+        say=self.ui.say
+        status=tr(self.status,**self.status_args)
         p=self.page
         if p=="wifi":
-            t("wCurrent",f"{self.ssid or 'Nicht verbunden'} / {self.ip or 'keine IPv4'}",56)
+            t("wCurrent",f"{self.ssid or tr('Nicht verbunden')} / {self.ip or tr('keine IPv4')}",56)
             choices=self.choices()
             page=choices[self.offset:self.offset+ROWS]
             for i in range(ROWS):
                 label="-"
                 if i<len(page):
                     net=page[i]
-                    label=net.name if net.path.startswith("hotspot-") else f"{net.signal:3d}% {net.security} | {net.name}"+(" [gesp.]" if getattr(net,"saved","") else "")
+                    label=tr(net.name) if net.path.startswith("hotspot-") else f"{net.signal:3d}% {tr(net.security)} | {net.name}"+(tr(" [gesp.]") if getattr(net,"saved","") else "")
                 t(f"wRow{i}",label,54)
             c(f"wCount.val={len(page)}")
             c(f"wBusy.val={int(self.job is not None and self.job[0]!='status')}")
@@ -110,33 +128,33 @@ class PanelSettings:
             c(f"wPrev.val={int(self.offset>0)}")
             total=(len(choices)+ROWS-1)//ROWS
             t("wIndex",f"{self.offset//ROWS+1} / {total}" if total else "",16)
-            t("wStatus",f"Hotspot-Passwort: {self.hotspot_password}" if self.hotspot_password and self.ssid=="FMI-RC-Printstation" and (not self.job or self.job[0]=="status") else self.status,76)
+            t("wStatus",tr("Hotspot-Passwort: ")+self.hotspot_password if self.hotspot_password and self.ssid=="FMI-RC-Printstation" and (not self.job or self.job[0]=="status") else status,76)
         elif p=="wjoin":
             net=self.selected
-            t("jName",net.name if net else "Netz nicht verfügbar",42)
-            t("jStatus",self.status,86)
+            t("jName",tr(net.name) if net and net.path.startswith("hotspot-") else net.name if net else tr("Netz nicht verfügbar"),42)
+            t("jStatus",status,86)
             supported=(1 if net.key_mgmt=="" or getattr(net,"saved","") else 2) if net and net.key_mgmt is not None else 0
             c(f"jMode.val={0 if self.joined or (self.job and self.job[0] in ('connect','hotspot','hotspot-stop')) else supported}")
         elif p=="printer":
             host,port=self.endpoint(self.cfg())
             t("pHost",host,16)
             t("pPort",port,5)
-            t("pStatus",self.printer_note,76)
+            say("pStatus",self.printer_note,76)
         elif p=="receipt":
             s=self.cfg()
-            t("rGraphic","Kopf: Grafik" if s["graphic"] else "Kopf: Text",28)
+            say("rGraphic","Kopf: Grafik" if s["graphic"] else "Kopf: Text",28)
             t("rFeed",f'{s["feed_mm"]} mm',16)
-            t("rDensity",DENSITY_LABELS[s["density"]],30)
-            t("rStatus",self.receipt_note,68)
+            say("rDensity",DENSITY_LABELS[s["density"]],30)
+            say("rStatus",self.receipt_note,68)
         elif p=="system":
             s=self.cfg()
             t("sModel",self.model,50)
             t("sBright",f'{s["brightness"]} %',16)
-            t("sStand",f'{s["standby"]} s' if s["standby"] else "Aus",16)
-            t("sStatus",self.system_note,60)
+            t("sStand",f'{s["standby"]} s' if s["standby"] else tr("Aus"),16)
+            say("sStatus",self.system_note,60)
         elif p=="power":
             c(f"xEnabled.val={int(self.enable_power and self.armed_until>time.monotonic() and self.power_job is None)}")
-            t("xStatus",self.power_note or "Bestätigung innerhalb von 20 Sekunden.",76)
+            say("xStatus",self.power_note or "Bestätigung innerhalb von 20 Sekunden.",76)
 
     def start_network(self, kind, fn, *args):
         if self.job and self.job[0]!="status":
@@ -154,12 +172,12 @@ class PanelSettings:
                 self.ui.base_url=url
                 self.ui.urls.clear()
                 self.ui.cmd("qrpage.qReady.val=2")
-                self.ui.text("qrpage.tNote","WLAN / IP geändert. Kein aktueller Download-Link.",100)
+                self.ui.say("qrpage.tNote","WLAN / IP geändert. Kein aktueller Download-Link.",100)
                 if self.page=="qrpage" and self.ui.report:
                     try:
                         self.ui.show_qr()
                     except (OSError,ValueError, sqlite3.Error):
-                        self.ui.text("qrpage.tNote","PDF-Link nicht verfügbar. Bitte erneut öffnen.",100)
+                        self.ui.say("qrpage.tNote","PDF-Link nicht verfügbar. Bitte erneut öffnen.",100)
 
     def poll(self):
         now=time.monotonic()
@@ -170,13 +188,16 @@ class PanelSettings:
                 result=future.result()
                 if kind=="scan":
                     self.networks=result
-                    self.status=f"{len(result)} Netze gefunden." if result else "Keine WLAN-Netze gefunden."
+                    if result:
+                        self.message("{count} Netze gefunden.",count=len(result))
+                    else:
+                        self.status="Keine WLAN-Netze gefunden."
                 elif kind=="hotspot":
                     ssid,ip,password=result
                     self.hotspot_password=password
                     self.set_status(ssid,ip)
                     self.offset=0
-                    self.status=f"Offener Hotspot aktiv. IP: {ip}"
+                    self.message("Offener Hotspot aktiv. IP: {ip}",ip=ip)
                     self.joined=True
                 elif kind=="hotspot-stop":
                     self.hotspot_password=""
@@ -188,7 +209,7 @@ class PanelSettings:
                 else:
                     self.set_status(*result)
                     if kind=="connect":
-                        self.status=f"Verbunden · IP: {self.ip}"
+                        self.message("Verbunden · IP: {ip}",ip=self.ip)
                         self.joined=True
             except Exception as exc:
                 if kind!="status":
@@ -254,8 +275,11 @@ class PanelSettings:
                 self.selected=choices[index] if index<len(choices) else None
                 net=self.selected
                 self.joined=False
-                self.status=(f"{net.security} / {net.signal}% · Verbindung bestätigen."
-                             if net and net.key_mgmt is not None else "Netztyp nicht unterstützt oder Netz nicht verfügbar.")
+                if net and net.key_mgmt is not None:
+                    self.message("{security} / {signal}% · Verbindung bestätigen.",
+                                 security=self.ui.tr(net.security),signal=net.signal)
+                else:
+                    self.status="Netztyp nicht unterstützt oder Netz nicht verfügbar."
                 if net and net.path.startswith("hotspot-"):
                     self.status="WLAN wird getrennt. Hotspot starten?" if net.path=="hotspot-start" else "Hotspot beenden und WLAN wieder nutzen?"
                 elif net and getattr(net,"saved",""):

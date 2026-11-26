@@ -14,7 +14,25 @@ x = 0
 y = 0
 w = 480
 h = 800
-pic = "wjoin"
+pic = "guide"
+
+[[component]]
+name = "pLabel0"
+type = "picture"
+x = 24
+y = 183
+w = 239
+h = 35
+pic = "wjoin_s0_de"
+
+[[component]]
+name = "pLabel1"
+type = "picture"
+x = 24
+y = 228
+w = 348
+h = 22
+pic = "wjoin_s1_de"
 
 [[component]]
 name = "jMode"
@@ -101,3 +119,11 @@ name = "tmLink"
 type = "timer"
 tim = 1000
 en = 1
+
+[[component]]
+name = "hLocale"
+type = "hotspot"
+x = 6
+y = 0
+w = 2
+h = 2
