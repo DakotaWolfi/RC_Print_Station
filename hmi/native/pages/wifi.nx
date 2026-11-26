@@ -121,19 +121,19 @@ on hLocale.up:
   }
   if(home.lang.val==1)
   {
-  pLabel0.pic=111
+  pLabel0.pic=116
   }else
   {
-  pLabel0.pic=110
+  pLabel0.pic=115
   }
   if(home.lang.val==1)
   {
-  pLabel1.pic=113
+  pLabel1.pic=118
   }else
   {
-  pLabel1.pic=112
+  pLabel1.pic=117
   }
 
 on wifi.loadend:
-  click hLocale,0
+  click 20,0
   sendme

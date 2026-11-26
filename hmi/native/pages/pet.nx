@@ -1,0 +1,60 @@
+on bPet.up:
+  printh 52 43 37 31 3a 50 45 54 ff ff ff
+
+on bBack.up:
+  page home
+
+on tmLink.timer:
+  home.age.val++
+  if(home.age.val>6)
+  {
+  home.online.val=0
+  if(home.lang.val==1)
+  {
+  home.tLink.txt="Host disconnected"
+  }else
+  {
+  home.tLink.txt="Host nicht verbunden"
+  }
+  }
+
+on hLocale.up:
+  if(home.lang.val==1)
+  {
+  tPetReply.txt="A little workshop wolf says hello."
+  }else
+  {
+  tPetReply.txt="Ein kleiner Werkstattwolf sagt hallo."
+  }
+  if(home.lang.val==1)
+  {
+  bPet.txt="Pet the wolf"
+  }else
+  {
+  bPet.txt="Streicheln"
+  }
+  if(home.lang.val==1)
+  {
+  bBack.txt="Back"
+  }else
+  {
+  bBack.txt="Zurück"
+  }
+  if(home.lang.val==1)
+  {
+  pLabel0.pic=63
+  }else
+  {
+  pLabel0.pic=62
+  }
+  if(home.lang.val==1)
+  {
+  pLabel1.pic=65
+  }else
+  {
+  pLabel1.pic=64
+  }
+
+on pet.loadend:
+  click 9,0
+  sendme

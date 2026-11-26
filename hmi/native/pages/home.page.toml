@@ -19,34 +19,16 @@ pic = "home"
 [[component]]
 name = "pLabel0"
 type = "picture"
-x = 24
-y = 183
-w = 362
-h = 35
-pic = "home_s0_de"
-
-[[component]]
-name = "pLabel1"
-type = "picture"
-x = 24
-y = 228
-w = 373
-h = 22
-pic = "home_s1_de"
-
-[[component]]
-name = "pLabel2"
-type = "picture"
 x = 40
 y = 289
 w = 125
 h = 19
-pic = "home_s2_de"
+pic = "home_s0_de"
 
 [[component]]
 name = "proto"
 type = "variable"
-val = 70
+val = 71
 vscope = 1
 
 [[component]]
@@ -54,6 +36,52 @@ name = "lang"
 type = "variable"
 val = 0
 vscope = 1
+
+[[component]]
+name = "shownLang"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "tSlogan"
+type = "text"
+x = 24
+y = 177
+w = 432
+h = 82
+txt = "Ein zweites Leben beginnt mit einer\r\nReparatur."
+txt_maxl = 90
+font = "UI28"
+pco = "#f5f6f7"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 0
+
+[[component]]
+name = "hLogo"
+type = "hotspot"
+x = 385
+y = 5
+w = 93
+h = 151
+
+[[component]]
+name = "hVersion"
+type = "hotspot"
+x = 378
+y = 770
+w = 98
+h = 30
+
+[[component]]
+name = "tmEng"
+type = "timer"
+tim = 1000
+en = 0
 
 [[component]]
 name = "online"
@@ -94,10 +122,10 @@ isbr = 0
 [[component]]
 name = "bLang"
 type = "button"
-x = 320
-y = 339
-w = 117
-h = 42
+x = 313
+y = 335
+w = 127
+h = 47
 sta = 1
 style = 0
 borderw = 0

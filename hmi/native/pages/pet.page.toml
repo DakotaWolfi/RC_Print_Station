@@ -1,0 +1,123 @@
+[page]
+name = "pet"
+type = "page"
+x = 0
+y = 0
+w = 480
+h = 800
+bco = "#101923"
+
+[[component]]
+name = "pBg"
+type = "picture"
+x = 0
+y = 0
+w = 480
+h = 800
+pic = "pet"
+
+[[component]]
+name = "pLabel0"
+type = "picture"
+x = 24
+y = 183
+w = 213
+h = 35
+pic = "pet_s0_de"
+
+[[component]]
+name = "pLabel1"
+type = "picture"
+x = 24
+y = 228
+w = 280
+h = 22
+pic = "pet_s1_de"
+
+[[component]]
+name = "tPetReply"
+type = "text"
+x = 24
+y = 435
+w = 432
+h = 65
+txt = "Ein kleiner Werkstattwolf sagt hallo."
+txt_maxl = 90
+font = "UI24"
+pco = "#f5f6f7"
+bco = "#101923"
+borderw = 0
+xcen = 1
+ycen = 1
+vscope = 0
+isbr = 0
+
+[[component]]
+name = "tPets"
+type = "text"
+x = 24
+y = 512
+w = 432
+h = 38
+txt = ""
+txt_maxl = 46
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#101923"
+borderw = 0
+xcen = 1
+ycen = 1
+vscope = 0
+isbr = 0
+
+[[component]]
+name = "bPet"
+type = "button"
+x = 24
+y = 573
+w = 432
+h = 66
+sta = 1
+style = 0
+borderw = 0
+font = "UI24"
+bco = "#ff941f"
+bco2 = "#ffc071"
+pco = "#101923"
+pco2 = "#101923"
+txt = "Streicheln"
+txt_maxl = 12
+isbr = 0
+
+[[component]]
+name = "bBack"
+type = "button"
+x = 24
+y = 715
+w = 432
+h = 50
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Zurück"
+txt_maxl = 6
+isbr = 0
+
+[[component]]
+name = "tmLink"
+type = "timer"
+tim = 1000
+en = 1
+
+[[component]]
+name = "hLocale"
+type = "hotspot"
+x = 6
+y = 0
+w = 2
+h = 2

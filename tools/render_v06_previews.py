@@ -19,6 +19,7 @@ from benning_store import Measurements, PHASES
 from native_ui import END, ENCODING, NativeUI
 from station_panel_settings import PAGES
 from station_config import PRINTER_HOST
+from slogan_store import OFFLINE
 from station_network import Network
 from i18n import LANGUAGES
 from report_web import render_pdf
@@ -141,7 +142,15 @@ def render(out,language):
         def shot(name):
             (out/f"hmi/{name}.png").write_bytes(sim.screen()["png"])
 
+        ui.settings.page="home"
+        ui.personality.slogan=OFFLINE[8]
+        ui.personality.draw_home()
         shot("home")
+        ui.personality.milestone=50
+        ui.personality.milestone_until=ui.personality.clock()+20
+        ui.personality.draw_home()
+        shot("home-milestone")
+        ui.personality.milestone=0
         sim.send("entry.guided.val=1")
         sim.send("page entry")
         sim.send('tTicket.txt="MUSTER-006"')
@@ -243,8 +252,25 @@ def render(out,language):
         ui.picker.confirm=ident
         ui.picker.draw()
         shot("picker-confirm-deactivation")
+        sim.send("page pet")
+        ui.settings.page="pet"
+        ui.personality.pet_count=42
+        ui.personality.pet_reply="Eine Pfote voller Dank."
+        ui.personality.draw_pet()
+        shot("pet")
+        sim.send("page engineering")
+        ui.settings.page="engineering"
+        ui.personality.total_reports=55
+        ui.personality.draw_diagnostic(((44.5,0.38,29,25,90600,True),
+                                        (50,39,0),(42,(1,1475,0))))
+        shot("engineering")
+        sim.send("page power")
+        ui.settings.page="power"
+        ui.settings.power_note="Bis bald, Werkstattteam!"
+        ui.settings.draw()
+        shot("power-farewell")
         captured_pages={"home","entry","guide","importer","tester","report","picker",
-                        "keyboard","qrpage","history","settings","wifi","wjoin","printer","receipt","system","power"}
+                        "keyboard","qrpage","history","settings","wifi","wjoin","printer","receipt","system","power","pet","engineering"}
         assert captured_pages==set(PAGES)
         ui.close()
     images=sorted((out/"hmi").glob("*.png"))

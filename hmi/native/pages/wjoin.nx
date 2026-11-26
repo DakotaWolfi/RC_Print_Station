@@ -54,19 +54,19 @@ on hLocale.up:
   }
   if(home.lang.val==1)
   {
-  pLabel0.pic=115
+  pLabel0.pic=120
   }else
   {
-  pLabel0.pic=114
+  pLabel0.pic=119
   }
   if(home.lang.val==1)
   {
-  pLabel1.pic=117
+  pLabel1.pic=122
   }else
   {
-  pLabel1.pic=116
+  pLabel1.pic=121
   }
 
 on wjoin.loadend:
-  click hLocale,0
+  click 10,0
   sendme

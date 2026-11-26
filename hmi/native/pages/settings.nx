@@ -65,12 +65,12 @@ on hLocale.up:
   }
   if(home.lang.val==1)
   {
-  pLabel0.pic=98
+  pLabel0.pic=103
   }else
   {
-  pLabel0.pic=97
+  pLabel0.pic=102
   }
 
 on settings.loadend:
-  click hLocale,0
+  click 10,0
   sendme

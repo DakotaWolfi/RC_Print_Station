@@ -3,83 +3,113 @@ on hArt.up:
   {
   if(home.lang.val==1)
   {
-  pArt.pic=29
+  pArt.pic=34
   }else
   {
-  pArt.pic=28
+  pArt.pic=33
   }
   }
   if(gArt.val==1)
   {
   if(home.lang.val==1)
   {
-  pArt.pic=14
+  pArt.pic=19
   }else
   {
-  pArt.pic=13
+  pArt.pic=18
   }
   }
   if(gArt.val==2)
   {
   if(home.lang.val==1)
   {
-  pArt.pic=16
+  pArt.pic=21
   }else
   {
-  pArt.pic=15
+  pArt.pic=20
   }
   }
   if(gArt.val==3)
   {
   if(home.lang.val==1)
   {
-  pArt.pic=20
+  pArt.pic=25
   }else
   {
-  pArt.pic=19
+  pArt.pic=24
   }
   }
   if(gArt.val==4)
   {
   if(home.lang.val==1)
   {
-  pArt.pic=18
+  pArt.pic=23
   }else
   {
-  pArt.pic=17
+  pArt.pic=22
   }
   }
   if(gArt.val==5)
   {
   if(home.lang.val==1)
   {
-  pArt.pic=34
+  pArt.pic=39
   }else
   {
-  pArt.pic=34
+  pArt.pic=39
   }
   }
   if(gArt.val==6)
   {
   if(home.lang.val==1)
   {
-  pArt.pic=33
+  pArt.pic=38
   }else
   {
-  pArt.pic=33
+  pArt.pic=38
   }
   }
   if(gArt.val==7)
   {
   if(home.lang.val==1)
   {
-  pArt.pic=32
+  pArt.pic=37
   }else
   {
-  pArt.pic=32
+  pArt.pic=37
   }
   }
   if(gArt.val==8)
+  {
+  if(home.lang.val==1)
+  {
+  pArt.pic=36
+  }else
+  {
+  pArt.pic=35
+  }
+  }
+  if(gArt.val==9)
+  {
+  if(home.lang.val==1)
+  {
+  pArt.pic=27
+  }else
+  {
+  pArt.pic=26
+  }
+  }
+  if(gArt.val==10)
+  {
+  if(home.lang.val==1)
+  {
+  pArt.pic=29
+  }else
+  {
+  pArt.pic=28
+  }
+  }
+  if(gArt.val==11)
   {
   if(home.lang.val==1)
   {
@@ -89,44 +119,14 @@ on hArt.up:
   pArt.pic=30
   }
   }
-  if(gArt.val==9)
-  {
-  if(home.lang.val==1)
-  {
-  pArt.pic=22
-  }else
-  {
-  pArt.pic=21
-  }
-  }
-  if(gArt.val==10)
-  {
-  if(home.lang.val==1)
-  {
-  pArt.pic=24
-  }else
-  {
-  pArt.pic=23
-  }
-  }
-  if(gArt.val==11)
-  {
-  if(home.lang.val==1)
-  {
-  pArt.pic=26
-  }else
-  {
-  pArt.pic=25
-  }
-  }
   if(gArt.val==12)
   {
   if(home.lang.val==1)
   {
-  pArt.pic=27
+  pArt.pic=32
   }else
   {
-  pArt.pic=27
+  pArt.pic=32
   }
   }
 
@@ -366,7 +366,7 @@ on bCancel.up:
   }
 
 on guide.loadend:
-  click hLocale,0
+  click 42,0
   sendme
   vis gDisplay,0
   click hLayout,0
@@ -470,15 +470,15 @@ on hLocale.up:
   }
   if(home.lang.val==1)
   {
-  pLabel0.pic=37
+  pLabel0.pic=41
   }else
   {
-  pLabel0.pic=36
+  pLabel0.pic=40
   }
   if(home.lang.val==1)
   {
-  pLabel1.pic=39
+  pLabel1.pic=43
   }else
   {
-  pLabel1.pic=38
+  pLabel1.pic=42
   }

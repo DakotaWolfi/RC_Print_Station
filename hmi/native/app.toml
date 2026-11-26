@@ -1,5 +1,5 @@
 format = 1
-name = "Repair Café Riehen · FMI Printstation v0.7"
+name = "Repair Café Riehen · FMI Printstation v0.7.1"
 language = "nextion_do_not_change_manually"
 screen = "NX8048T070"
 rotation = 270
@@ -22,6 +22,8 @@ pages = [
     "guide",
     "importer",
     "picker",
+    "pet",
+    "engineering",
 ]
 fonts = [
     "UI20",
@@ -30,6 +32,11 @@ fonts = [
     "UI36",
 ]
 pictures = [
+    "engineering",
+    "engineering_s0_de",
+    "engineering_s0_en",
+    "engineering_s1_de",
+    "engineering_s1_en",
     "entry",
     "entry_s0_de",
     "entry_s0_en",
@@ -65,7 +72,6 @@ pictures = [
     "g_print",
     "g_recall",
     "g_store",
-    "guide",
     "guide_s0_de",
     "guide_s0_en",
     "guide_s1_de",
@@ -77,10 +83,6 @@ pictures = [
     "home",
     "home_s0_de",
     "home_s0_en",
-    "home_s1_de",
-    "home_s1_en",
-    "home_s2_de",
-    "home_s2_en",
     "importer_s0_de",
     "importer_s0_en",
     "importer_s1_de",
@@ -91,6 +93,11 @@ pictures = [
     "keyboard_s0_en",
     "keyboard_s1_de",
     "keyboard_s1_en",
+    "pet",
+    "pet_s0_de",
+    "pet_s0_en",
+    "pet_s1_de",
+    "pet_s1_en",
     "picker",
     "picker_s0_de",
     "picker_s0_en",

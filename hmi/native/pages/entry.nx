@@ -49,8 +49,11 @@ on bPhase.up:
   click hPhase,0
 
 on bReportLang.up:
-  prints "RC70:REPORTLANG",0
-  printh ff ff ff
+  if(busy.val==0)
+  {
+  sendme
+  printh 52 43 37 30 3a 52 45 50 4f 52 54 4c 41 4e 47 ff ff ff
+  }
 
 on hPhase.up:
   if(phase.val==0)
@@ -83,7 +86,7 @@ on hPhase.up:
   }
 
 on entry.loadend:
-  click hLocale,0
+  click 39,0
   sendme
   strlen tTicket.txt,draftLen.val
   if(draftLen.val>21)
@@ -352,7 +355,13 @@ on hLocale.up:
   bReportLang.txt="Report: EN"
   }else
   {
+  if(home.lang.val==1)
+  {
+  bReportLang.txt="Report: EN"
+  }else
+  {
   bReportLang.txt="Bericht: DE"
+  }
   }
   if(home.lang.val==1)
   {
@@ -384,43 +393,43 @@ on hLocale.up:
   }
   if(home.lang.val==1)
   {
-  pLabel0.pic=2
+  pLabel0.pic=7
   }else
   {
-  pLabel0.pic=1
+  pLabel0.pic=6
   }
   if(home.lang.val==1)
   {
-  pLabel1.pic=4
+  pLabel1.pic=9
   }else
   {
-  pLabel1.pic=3
+  pLabel1.pic=8
   }
   if(home.lang.val==1)
   {
-  pLabel2.pic=6
+  pLabel2.pic=11
   }else
   {
-  pLabel2.pic=5
+  pLabel2.pic=10
   }
   if(home.lang.val==1)
   {
-  pLabel3.pic=8
+  pLabel3.pic=13
   }else
   {
-  pLabel3.pic=7
+  pLabel3.pic=12
   }
   if(home.lang.val==1)
   {
-  pLabel4.pic=10
+  pLabel4.pic=15
   }else
   {
-  pLabel4.pic=9
+  pLabel4.pic=14
   }
   if(home.lang.val==1)
   {
-  pLabel5.pic=12
+  pLabel5.pic=17
   }else
   {
-  pLabel5.pic=11
+  pLabel5.pic=16
   }

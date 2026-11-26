@@ -28,6 +28,16 @@ python3 station.py display-test --port /dev/ttyUSB0 --baud 9600
 
 `station.py simulate` writes a visibly marked simulation. Imported BENNING records preserve the original tester verdict and do not constitute independent certification by the station. The installed Epson is at `169.254.25.23:9100`. The Pi Ethernet address is `169.254.100.1/16`.
 
+## v0.7.1 candidate
+
+The bilingual controls now confirm receipt and rendering over UART. The home screen rotates bilingual repair slogans and includes a workshop wolf and read-only diagnostics. Offline operation is the default.
+
+![Bilingual v0.7.1 simulator preview](hmi/previews/overview-v071.png)
+
+- [Language diagnostics, optional slogan providers, installation and rollback](docs/personality-v071.md)
+- [Editable HMI archive](hmi/build/FMI_RC_native_v0_7_1.zip) and [checksums](hmi/build/manifest-v071.json)
+- [Artifact validation and bench checklist](hmi/VALIDATION-v071.md)
+
 ## v0.7 candidate · Deutsch / English
 
 One native HMI switches between German and English. Each saved report keeps its selected language. The compact v0.6.2 receipt and A4 layouts use localised verdicts, dates and resistance units.

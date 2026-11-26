@@ -47,7 +47,7 @@ on bBack.up:
   page home
 
 on history.loadend:
-  click hLocale,0
+  click 14,0
   sendme
   pending.val=0
   prints "RC3:HISTORY",0
@@ -95,15 +95,15 @@ on hLocale.up:
   }
   if(home.lang.val==1)
   {
-  pLabel0.pic=41
+  pLabel0.pic=45
   }else
   {
-  pLabel0.pic=40
+  pLabel0.pic=44
   }
   if(home.lang.val==1)
   {
-  pLabel1.pic=43
+  pLabel1.pic=47
   }else
   {
-  pLabel1.pic=42
+  pLabel1.pic=46
   }

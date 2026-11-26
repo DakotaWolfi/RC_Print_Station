@@ -70,26 +70,26 @@ on hLocale.up:
   }
   if(home.lang.val==1)
   {
-  pLabel0.pic=101
+  pLabel0.pic=106
   }else
   {
-  pLabel0.pic=100
+  pLabel0.pic=105
   }
   if(home.lang.val==1)
   {
-  pLabel1.pic=103
+  pLabel1.pic=108
   }else
   {
-  pLabel1.pic=102
+  pLabel1.pic=107
   }
   if(home.lang.val==1)
   {
-  pLabel2.pic=105
+  pLabel2.pic=110
   }else
   {
-  pLabel2.pic=104
+  pLabel2.pic=109
   }
 
 on system.loadend:
-  click hLocale,0
+  click 15,0
   sendme

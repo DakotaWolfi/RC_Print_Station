@@ -1,6 +1,6 @@
 # Native Nextion HMI
 
-The current `native/` source builds the v0.7 bilingual candidate. See the [rebuild and deployment guide](../docs/bilingual-v07.md), [validation](VALIDATION-v07.md), [editable HMI archive](build/FMI_RC_native_v0_7.zip) and [manifest](build/manifest-v07.json). Older HMI archives are kept for reference.
+The current `native/` source builds the v0.7.1 personality candidate. See the [v0.7.1 guide](../docs/personality-v071.md) and [artifact validation](VALIDATION-v071.md). See the [rebuild and deployment guide](../docs/bilingual-v07.md), [validation](VALIDATION-v07.md), [editable HMI archive](build/FMI_RC_native_v0_7.zip) and [manifest](build/manifest-v07.json). Older HMI archives are kept for reference.
 
 
 ## Build v0.6.1

@@ -67,33 +67,33 @@ on hLocale.up:
   }
   if(home.lang.val==1)
   {
-  pLabel0.pic=82
+  pLabel0.pic=87
   }else
   {
-  pLabel0.pic=81
+  pLabel0.pic=86
   }
   if(home.lang.val==1)
   {
-  pLabel1.pic=84
+  pLabel1.pic=89
   }else
   {
-  pLabel1.pic=83
+  pLabel1.pic=88
   }
   if(home.lang.val==1)
   {
-  pLabel2.pic=86
+  pLabel2.pic=91
   }else
   {
-  pLabel2.pic=85
+  pLabel2.pic=90
   }
   if(home.lang.val==1)
   {
-  pLabel3.pic=88
+  pLabel3.pic=93
   }else
   {
-  pLabel3.pic=87
+  pLabel3.pic=92
   }
 
 on receipt.loadend:
-  click hLocale,0
+  click 14,0
   sendme

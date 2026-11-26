@@ -1,0 +1,43 @@
+on bBack.up:
+  page home
+
+on tmLink.timer:
+  home.age.val++
+  if(home.age.val>6)
+  {
+  home.online.val=0
+  if(home.lang.val==1)
+  {
+  home.tLink.txt="Host disconnected"
+  }else
+  {
+  home.tLink.txt="Host nicht verbunden"
+  }
+  }
+
+on hLocale.up:
+  if(home.lang.val==1)
+  {
+  bBack.txt="Back"
+  }else
+  {
+  bBack.txt="Zurück"
+  }
+  if(home.lang.val==1)
+  {
+  pLabel0.pic=2
+  }else
+  {
+  pLabel0.pic=1
+  }
+  if(home.lang.val==1)
+  {
+  pLabel1.pic=4
+  }else
+  {
+  pLabel1.pic=3
+  }
+
+on engineering.loadend:
+  click 18,0
+  sendme

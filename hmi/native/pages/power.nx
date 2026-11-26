@@ -65,19 +65,19 @@ on hLocale.up:
   }
   if(home.lang.val==1)
   {
-  pLabel0.pic=65
+  pLabel0.pic=70
   }else
   {
-  pLabel0.pic=64
+  pLabel0.pic=69
   }
   if(home.lang.val==1)
   {
-  pLabel1.pic=67
+  pLabel1.pic=72
   }else
   {
-  pLabel1.pic=66
+  pLabel1.pic=71
   }
 
 on power.loadend:
-  click hLocale,0
+  click 11,0
   sendme

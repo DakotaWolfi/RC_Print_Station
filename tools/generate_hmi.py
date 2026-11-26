@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 from panel_text import printable, quote as text_quote, word_lines
 from i18n import tr
+from slogan_store import LIMIT, OFFLINE
 from benning_workflow import ART
 APP = ROOT / "hmi/native"
 DESIGN = ROOT / "hmi/design"
@@ -27,7 +28,7 @@ BG, PANEL, EDGE = "#101923", "#1d2c3a", "#344858"
 WHITE, MUTED, ORANGE, CYAN = "#f5f6f7", "#afc2d0", "#ff941f", "#42d9dd"
 WARN = "#ffd08a"
 PAGES = ["home", "entry", "keyboard", "report", "qrpage", "history", "settings",
-         "wifi", "wjoin", "printer", "receipt", "system", "power", "tester", "guide", "importer", "picker"]
+         "wifi", "wjoin", "printer", "receipt", "system", "power", "tester", "guide", "importer", "picker", "pet", "engineering"]
 FLAT = set(PAGES)-{"keyboard"}
 SIZES = (20, 24, 28, 36)
 
@@ -51,6 +52,10 @@ def emit(message):
     return [f"prints {quote(message)},0", "printh ff ff ff"]
 
 
+def wire(message):
+    return "printh "+(message.encode("ascii")+b"\xff\xff\xff").hex(" ")
+
+
 def event(name, lines):
     return f"on {name}:\n" + "".join("  " + line + "\n" for line in lines) + "\n"
 
@@ -67,10 +72,12 @@ class Page:
         banner = Image.open(DESIGN / "brand.png").convert("RGB")
         self.art.paste(banner.resize((960, 320), Image.Resampling.LANCZOS), (0, 0))
         self.draw.line((48, 326, 912, 326), fill=EDGE, width=2)
-        self.label(24, 183, title, 30, WHITE)
-        self.label(24, 228, subtitle, 17, MUTED)
+        if title:
+            self.label(24,183,title,30,WHITE)
+        if subtitle:
+            self.label(24,228,subtitle,17,MUTED)
         self.label(24, 777, "FMI  /  REPAIR CAFÉ RIEHEN", 12, MUTED)
-        self.label(390, 777, "v0.7 RC", 12, MUTED)
+        self.label(390, 777, "v0.7.1 RC", 12, MUTED)
         self.shapes = []
         self.add("pBg", "picture", x=0, y=0, w=480, h=800, pic=name)
 
@@ -135,12 +142,19 @@ class Page:
         locale_lines=[]
         for comp in self.doc["component"]:
             value=comp.get("txt","")
-            if not value or comp["type"] not in ("text","button") or tr("en",value)==value:
+            if not value or comp["type"] not in ("text","button") or (tr("en",value)==value and comp["name"]!="tSlogan"):
                 continue
             english=tr("en",value)
             comp["txt_maxl"]=max(comp["txt_maxl"],len(english))
             if not comp.get("vscope"):
-                locale_lines.append(f'{comp["name"]}.txt={quote(value)}')
+                if comp["name"]=="bReportLang":
+                    locale_lines.extend(["if(home.lang.val==1)","{",'bReportLang.txt="Report: EN"',
+                                         "}else","{",'bReportLang.txt="Bericht: DE"',"}"])
+                elif comp["name"]=="tSlogan":
+                    locale_lines.extend(["if(home.lang.val==1)","{",f'tSlogan.txt={quote(OFFLINE[0][1])}',
+                                         "}else","{",f'tSlogan.txt={quote(value)}',"}"])
+                else:
+                    locale_lines.append(f'{comp["name"]}.txt={quote(value)}')
         static=[]
         # These components have their own redraw state and retain their labels
         # when the host changes other widgets. Keep each crop clear of controls.
@@ -162,12 +176,18 @@ class Page:
             locale_lines+=["if(home.lang.val==1)","{",f"{comp}.pic=@{name}_en",
                            "}else","{",f"{comp}.pic=@{name}_de","}"]
         self.doc["component"][1:1]=static
+        if self.name=="home":
+            locale_lines.extend(["shownLang.val=lang.val","if(home.lang.val==1)","{",wire("RC71:LOCALE:EN"),
+                                 "}else","{",wire("RC71:LOCALE:DE"),"}"])
         self.on("hLocale.up",locale_lines or ["ref hLocale"])
         load = f"on {self.name}.loadend:\n"
+        # The local button IDs stay attached to their actual compiled order.
+        refresh=f"click {len(self.doc['component'])},0"
+        self.code=self.code.replace("click hLocale,0",refresh)
         if load in self.code:
-            self.code=self.code.replace(load,load+"  click hLocale,0\n  sendme\n",1)
+            self.code=self.code.replace(load,load+f"  {refresh}\n  sendme\n",1)
         else:
-            self.on(self.name+".loadend",["click hLocale,0","sendme"])
+            self.on(self.name+".loadend",[refresh,"sendme"])
         (APP / f"pages/{self.name}.page.toml").write_text(tomli_w.dumps(self.doc), encoding="utf-8")
         (APP / f"pages/{self.name}.nx").write_text(self.code.rstrip()+"\n", encoding="utf-8")
         self.art.resize((480, 800), Image.Resampling.LANCZOS).save(APP / f"pictures/{self.name}.png")
@@ -182,9 +202,19 @@ class Page:
 
 
 def make_home():
-    p = Page("home", "Reparieren. Weitergeben.", "Ein zweites Leben beginnt mit einer Reparatur.")
-    p.var("proto", 70)
+    p = Page("home", "", "")
+    p.var("proto", 71)
     p.var("lang")
+    p.var("shownLang",global_=False)
+    p.text("tSlogan",24,177,432,82,OFFLINE[0][0],size=28,
+           color=WHITE,bg=BG,limit=LIMIT)
+    p.add("hLogo","hotspot",x=385,y=5,w=93,h=151)
+    p.on("hLogo.up",[wire("RC71:LOGO")])
+    p.add("hVersion","hotspot",x=378,y=770,w=98,h=30)
+    p.add("tmEng","timer",tim=1000,en=0)
+    p.on("hVersion.down",["tmEng.en=0","tmEng.en=1"])
+    p.on("hVersion.up",["tmEng.en=0"])
+    p.on("tmEng.timer",["tmEng.en=0",wire("RC71:ENGINEER")])
     for name in ("online", "age", "pending"):
         p.var(name)
     p.box(24, 273, 432, 115)
@@ -192,7 +222,7 @@ def make_home():
     p.label(40, 315, "BENNING ST 725 / Repair Café", 18, WARN)
     p.text("tLink", 40, 348, 259, 27, "Host nicht verbunden", size=20,
            color=MUTED, global_=True, limit=32)
-    p.button("bLang",320,339,117,42,"DE / EN",emit("RC70:LANG"),size=20)
+    p.button("bLang",313,335,127,47,"DE / EN",["sendme",wire("RC70:LANG")],size=20)
     p.doc["component"][-1].update(bco="#365164",bco2="#517183")
     reset=['entry.inProgress.val=1','entry.tTicket.txt=""','entry.tDevice.txt=""','entry.tStatus.txt=""',
            'entry.tSlot.txt=""','guide.eRemarks.txt=""',
@@ -212,7 +242,8 @@ def make_home():
            global_=True, limit=64)
     p.text("tClock", 24, 733, 432, 28, "", size=20, color=MUTED, bg=BG,
            global_=True, limit=24)
-    p.flow(["if(pending.val==1&&report.ready.val==1)", "{", "pending.val=0", "page report", "}",
+    p.flow(["if(shownLang.val!=lang.val)","{","click hLocale,0","}",
+            "if(pending.val==1&&report.ready.val==1)", "{", "pending.val=0", "page report", "}",
             "if(pending.val==1&&online.val==0)", "{", "pending.val=0",
             'tHint.txt="Host nicht verbunden. Bitte erneut versuchen."', "}"])
     p.save()
@@ -247,8 +278,9 @@ def make_entry():
     p.button("bPhase",24,523,220,50,"Eingangsprüfung",[
         "phase.val++","if(phase.val>2)","{","phase.val=0","}","click hPhase,0"],size=20)
     p.doc["component"][-1]["txt_maxl"]=20
-    p.button("bReportLang",256,523,200,50,"Bericht: DE",emit("RC70:REPORTLANG"),size=20)
-    p.doc["component"][-1]["txt_maxl"]=22
+    p.button("bReportLang",256,523,200,50,"Bericht: DE",
+             ["if(busy.val==0)","{","sendme",wire("RC70:REPORTLANG"),"}"],size=20)
+    p.doc["component"][-1].update(txt_maxl=22,bco="#365164",bco2="#517183")
     p.add("hPhase","hotspot",x=0,y=0,w=2,h=2)
     p.on("hPhase.up",["if(phase.val==0)","{",'bPhase.txt="Eingangsprüfung"',
                        "}else if(phase.val==1)","{",'bPhase.txt="Zwischenprüfung"',
@@ -851,6 +883,38 @@ def make_picker():
     p.save()
 
 
+def make_pet():
+    p=Page("pet","Werkstattwolf","Ein kleiner Besuch in der Werkstatt")
+    wolf=Image.new("RGB",(180,152),BG)
+    draw=ImageDraw.Draw(wolf)
+    draw.ellipse((20,1,160,141),fill=PANEL,outline=EDGE,width=2)
+    draw.polygon(((46,67),(47,20),(72,47),(103,47),(130,20),(134,67),
+                  (149,82),(117,112),(90,131),(63,112),(31,82)),fill="#8497a5")
+    draw.polygon(((51,34),(55,61),(70,55)),fill=EDGE)
+    draw.polygon(((126,34),(109,56),(125,61)),fill=EDGE)
+    draw.polygon(((40,84),(68,76),(90,96),(111,76),(140,84),(116,111),
+                  (90,132),(63,111)),fill=WHITE)
+    draw.ellipse((63,69,76,80),fill=BG)
+    draw.ellipse((104,69,117,80),fill=BG)
+    draw.polygon(((80,98),(100,98),(90,108)),fill=BG)
+    draw.arc((75,102,105,122),8,172,fill=EDGE,width=2)
+    p.art.paste(wolf.resize((360,304),Image.Resampling.LANCZOS),(300,518))
+    p.text("tPetReply",24,435,432,65,"Ein kleiner Werkstattwolf sagt hallo.",
+           size=24,bg=BG,align=1,limit=LIMIT)
+    p.text("tPets",24,512,432,38,"",size=20,bg=BG,align=1,limit=46)
+    p.button("bPet",24,573,432,66,"Streicheln",[wire("RC71:PET")],True,24)
+    p.button("bBack",24,715,432,50,"Zurück",["page home"],size=20)
+    p.save()
+
+
+def make_engineering():
+    p=Page("engineering","Engineering-Modus","Diagnose · nur Anzeige")
+    for i in range(12):
+        p.text(f"tD{i}",24,255+i*36,432,34,"",size=20,bg=PANEL if i%2==0 else BG,limit=62)
+    p.button("bBack",24,715,432,50,"Zurück",["page home"],size=20)
+    p.save()
+
+
 def deduplicate_pictures():
     """Basic stores full RGB565 images in flash, including identical art."""
     unique={}
@@ -931,7 +995,7 @@ def main():
         for path in (APP/folder).glob("*"):
             if path.is_file():
                 path.unlink()
-    app = {"format":1,"name":"Repair Café Riehen · FMI Printstation v0.7",
+    app = {"format":1,"name":"Repair Café Riehen · FMI Printstation v0.7.1",
            "language":"nextion_do_not_change_manually","screen":"NX8048T070",
            "rotation":270,"encoding":"iso-8859-15","pages":PAGES,
            "fonts":[f"UI{size}" for size in SIZES]}
@@ -949,13 +1013,13 @@ def main():
         encoding="utf-8")
     make_home(); make_entry(); make_keyboard(); make_report(); make_qr(); make_history(); make_settings()
     make_wifi(); make_join(); make_printer(); make_receipt(); make_system(); make_power(); make_tester()
-    make_guide_art("de"); make_guide_art("en"); make_guide(); make_importer(); make_picker()
+    make_guide_art("de"); make_guide_art("en"); make_guide(); make_importer(); make_picker(); make_pet(); make_engineering()
     app["pictures"]=deduplicate_pictures()
     (APP/"app.toml").write_text(tomli_w.dumps(app),encoding="utf-8")
     write_text_layout()
     (ROOT/"hmi/design/keyboard-layout.json").write_text(json.dumps(
         dict(lower=LOWER,upper=UPPER,symbols=SYMBOL1,accents=SYMBOL2),ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
-    print("Generated native bilingual v0.7 pages; reference HMI left untouched.")
+    print("Generated native v0.7.1 pages; reference HMI left untouched.")
 
 
 if __name__ == "__main__":

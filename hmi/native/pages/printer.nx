@@ -83,33 +83,33 @@ on hLocale.up:
   }
   if(home.lang.val==1)
   {
-  pLabel0.pic=69
+  pLabel0.pic=74
   }else
   {
-  pLabel0.pic=68
+  pLabel0.pic=73
   }
   if(home.lang.val==1)
   {
-  pLabel1.pic=71
+  pLabel1.pic=76
   }else
   {
-  pLabel1.pic=70
+  pLabel1.pic=75
   }
   if(home.lang.val==1)
   {
-  pLabel2.pic=73
+  pLabel2.pic=78
   }else
   {
-  pLabel2.pic=72
+  pLabel2.pic=77
   }
   if(home.lang.val==1)
   {
-  pLabel3.pic=75
+  pLabel3.pic=80
   }else
   {
-  pLabel3.pic=74
+  pLabel3.pic=79
   }
 
 on printer.loadend:
-  click hLocale,0
+  click 15,0
   sendme

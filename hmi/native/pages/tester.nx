@@ -125,19 +125,19 @@ on hLocale.up:
   }
   if(home.lang.val==1)
   {
-  pLabel0.pic=107
+  pLabel0.pic=112
   }else
   {
-  pLabel0.pic=106
+  pLabel0.pic=111
   }
   if(home.lang.val==1)
   {
-  pLabel1.pic=109
+  pLabel1.pic=114
   }else
   {
-  pLabel1.pic=108
+  pLabel1.pic=113
   }
 
 on tester.loadend:
-  click hLocale,0
+  click 23,0
   sendme

@@ -12,7 +12,7 @@ import station_config as config
 from station_network import Network, NetworkError, NetworkManager
 
 PAGES = ("home","entry","keyboard","report","qrpage","history","settings",
-         "wifi","wjoin","printer","receipt","system","power","tester","guide","importer","picker")
+         "wifi","wjoin","printer","receipt","system","power","tester","guide","importer","picker","pet","engineering")
 ROWS = 4
 DENSITY_LABELS = {"default":"Druckervorgabe","light":"Hell (GS ( K)","dark":"Dunkel (GS ( K)"}
 
@@ -53,6 +53,7 @@ class PanelSettings:
         self.armed_until=0
         self.printer_probe=None
         self.power_job=None
+        self.power_action=None
         self.last_check=float("-inf")
         self.display_values=None
         try:
@@ -233,7 +234,8 @@ class PanelSettings:
         if self.power_job and self.power_job.done():
             try:
                 self.power_job.result()
-                self.power_note="Systemaktion wurde angefordert."
+                if self.power_action!="HALT" or not self.ui.personality.eggs:
+                    self.power_note="Systemaktion wurde angefordert."
             except Exception:
                 self.power_note="Systemaktion nicht erlaubt oder fehlgeschlagen."
             self.power_job=None
@@ -340,8 +342,10 @@ class PanelSettings:
                     self.power_note="Bitte laufende Aktionen abwarten."
                 elif self.power_job is None:
                     self.armed_until=0
-                    self.power_note="Systemaktion wird angefordert ..."
-                    self.power_job=self.ui.executor.submit(self.power_fn,action[4:].decode("ascii"))
+                    self.power_action=action[4:].decode("ascii")
+                    self.power_note=("Bis bald, Werkstattteam!" if action==b"RC4:HALT" and self.ui.personality.eggs
+                                     else "Systemaktion wird angefordert ...")
+                    self.power_job=self.ui.executor.submit(self.power_fn,self.power_action)
             else:
                 return
         except (OSError,ValueError,TypeError):

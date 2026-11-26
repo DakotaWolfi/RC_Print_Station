@@ -2,7 +2,7 @@ on bBack.up:
   page report
 
 on qrpage.loadend:
-  click hLocale,0
+  click 12,0
   sendme
   shown.val=0
   vis qrReport,0
@@ -56,15 +56,15 @@ on hLocale.up:
   }
   if(home.lang.val==1)
   {
-  pLabel0.pic=78
+  pLabel0.pic=83
   }else
   {
-  pLabel0.pic=77
+  pLabel0.pic=82
   }
   if(home.lang.val==1)
   {
-  pLabel1.pic=80
+  pLabel1.pic=85
   }else
   {
-  pLabel1.pic=79
+  pLabel1.pic=84
   }

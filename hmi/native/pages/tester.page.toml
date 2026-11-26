@@ -14,7 +14,7 @@ x = 0
 y = 0
 w = 480
 h = 800
-pic = "guide"
+pic = "engineering"
 
 [[component]]
 name = "pLabel0"

@@ -53,7 +53,7 @@ on bValues.up:
   }
 
 on report.loadend:
-  click hLocale,0
+  click 26,0
   sendme
   vis tDetails,0
   if(vMore.val==0)
@@ -126,22 +126,22 @@ on hLocale.up:
   }
   if(home.lang.val==1)
   {
-  pLabel0.pic=91
+  pLabel0.pic=96
   }else
   {
-  pLabel0.pic=90
+  pLabel0.pic=95
   }
   if(home.lang.val==1)
   {
-  pLabel1.pic=93
+  pLabel1.pic=98
   }else
   {
-  pLabel1.pic=92
+  pLabel1.pic=97
   }
   if(home.lang.val==1)
   {
-  pLabel2.pic=95
+  pLabel2.pic=100
   }else
   {
-  pLabel2.pic=94
+  pLabel2.pic=99
   }

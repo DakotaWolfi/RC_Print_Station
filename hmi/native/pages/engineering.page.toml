@@ -1,0 +1,284 @@
+[page]
+name = "engineering"
+type = "page"
+x = 0
+y = 0
+w = 480
+h = 800
+bco = "#101923"
+
+[[component]]
+name = "pBg"
+type = "picture"
+x = 0
+y = 0
+w = 480
+h = 800
+pic = "engineering"
+
+[[component]]
+name = "pLabel0"
+type = "picture"
+x = 24
+y = 183
+w = 279
+h = 35
+pic = "engineering_s0_de"
+
+[[component]]
+name = "pLabel1"
+type = "picture"
+x = 24
+y = 228
+w = 187
+h = 22
+pic = "engineering_s1_de"
+
+[[component]]
+name = "tD0"
+type = "text"
+x = 24
+y = 255
+w = 432
+h = 34
+txt = ""
+txt_maxl = 62
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#1d2c3a"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 0
+
+[[component]]
+name = "tD1"
+type = "text"
+x = 24
+y = 291
+w = 432
+h = 34
+txt = ""
+txt_maxl = 62
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 0
+
+[[component]]
+name = "tD2"
+type = "text"
+x = 24
+y = 327
+w = 432
+h = 34
+txt = ""
+txt_maxl = 62
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#1d2c3a"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 0
+
+[[component]]
+name = "tD3"
+type = "text"
+x = 24
+y = 363
+w = 432
+h = 34
+txt = ""
+txt_maxl = 62
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 0
+
+[[component]]
+name = "tD4"
+type = "text"
+x = 24
+y = 399
+w = 432
+h = 34
+txt = ""
+txt_maxl = 62
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#1d2c3a"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 0
+
+[[component]]
+name = "tD5"
+type = "text"
+x = 24
+y = 435
+w = 432
+h = 34
+txt = ""
+txt_maxl = 62
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 0
+
+[[component]]
+name = "tD6"
+type = "text"
+x = 24
+y = 471
+w = 432
+h = 34
+txt = ""
+txt_maxl = 62
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#1d2c3a"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 0
+
+[[component]]
+name = "tD7"
+type = "text"
+x = 24
+y = 507
+w = 432
+h = 34
+txt = ""
+txt_maxl = 62
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 0
+
+[[component]]
+name = "tD8"
+type = "text"
+x = 24
+y = 543
+w = 432
+h = 34
+txt = ""
+txt_maxl = 62
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#1d2c3a"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 0
+
+[[component]]
+name = "tD9"
+type = "text"
+x = 24
+y = 579
+w = 432
+h = 34
+txt = ""
+txt_maxl = 62
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 0
+
+[[component]]
+name = "tD10"
+type = "text"
+x = 24
+y = 615
+w = 432
+h = 34
+txt = ""
+txt_maxl = 62
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#1d2c3a"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 0
+
+[[component]]
+name = "tD11"
+type = "text"
+x = 24
+y = 651
+w = 432
+h = 34
+txt = ""
+txt_maxl = 62
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 0
+
+[[component]]
+name = "bBack"
+type = "button"
+x = 24
+y = 715
+w = 432
+h = 50
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Zurück"
+txt_maxl = 6
+isbr = 0
+
+[[component]]
+name = "tmLink"
+type = "timer"
+tim = 1000
+en = 1
+
+[[component]]
+name = "hLocale"
+type = "hotspot"
+x = 6
+y = 0
+w = 2
+h = 2

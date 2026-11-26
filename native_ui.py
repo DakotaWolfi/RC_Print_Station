@@ -1,10 +1,11 @@
-"""Backend for the v0.7 native Nextion display.
+"""Backend for the v0.7.1 native Nextion display.
 
 The panel renders and edits locally. The host handles reports, printing,
 LAN downloads and operator-requested settings. It never flashes the display.
 """
 import argparse
 import os
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import json
@@ -21,6 +22,8 @@ from benning_output import (RESULTS, date_format, measurement_summary, protectio
                             verdict_text, visible_measurements, voltage_text)
 from benning_workflow import WorkflowPanel
 from operator_panel import Picker
+from personality import PROTOCOL, VERSION, Personality
+from slogan_store import CACHE
 from panel_text import fit, paginate, quote
 from benning_panel import TesterPanel
 from benning_receiver import MODES, Receiver
@@ -32,7 +35,6 @@ from station_config import PRINTER_HOST, PRINTER_PORT, save
 
 END = b"\xff\xff\xff"
 ENCODING = "iso-8859-15"
-PROTOCOL = 70
 LOG = logging.getLogger(__name__)
 
 
@@ -113,7 +115,7 @@ class NativeUI:
                  sender=send, publisher=None, config_path=None, network=None,
                  enable_power=False, tester_mode="auto", tester_device=None, tester_rs232=None,
                  tester_encoding="auto", tester_idle=1.8, tester_receiver=None,
-                 hmi_port=None, **settings_hooks):
+                 hmi_port=None, personality_cache=None, **settings_hooks):
         self.ser, self.host, self.db = ser, host, db
         self.printer_port = printer_port
         self.base_url = report_base(base_url) if base_url else ""
@@ -144,6 +146,10 @@ class NativeUI:
         self.detail_page=0
         self.measurement_offset=0
         self.measurement_preview_pending=False
+        self.language_route=None
+        self.language_ack=None
+        self.personality=Personality(self,db,personality_cache or Path(db).with_suffix(".slogans.sqlite3"),
+                                     eggs=os.environ.get("FMI_EASTER_EGGS","1")!="0")
 
     def cmd(self, command):
         # Commands and text come from our fixed schema, never raw HMI input.
@@ -161,18 +167,63 @@ class NativeUI:
     def say(self, component, message, limit, **values):
         self.text(component,self.tr(message,**values),limit)
 
-    def set_language(self):
-        target = "de" if self.language=="en" else "en"
+    def expect_language_ack(self, kind, expected):
+        self.language_ack=(kind,expected,time.monotonic()+3)
+
+    def handle_language(self, frame):
+        station=frame==b"RC70:LANG"
+        kind="station" if station else "report"
+        expected="home" if station else "entry"
+        if self.settings.page!=expected:
+            LOG.warning("Language event %s needs page resync (tracked=%s, expected=%s)",
+                        kind,self.settings.page,expected)
+            self.language_route=(frame,expected,time.monotonic()+2)
+            self.cmd("sendme")
+            return
+        LOG.info("Language event %s received on %s",kind,expected)
+        if not station:
+            self.workflow.switch_report_language()
+            expected_label=self.tr("Bericht: {language}",language=self.workflow.report_language.upper())
+            self.expect_language_ack(kind,expected_label)
+            self.cmd("get bReportLang.txt")
+            LOG.info("Report language selected: %s",self.workflow.report_language)
+            return
+
+        target="de" if self.language=="en" else "en"
         try:
             save({"language":target},self.settings.path)
-        except (OSError,ValueError):
+        except (OSError,ValueError) as exc:
+            LOG.warning("Station language persistence failed (%s)",type(exc).__name__)
             self.say("home.tHint","Stationssprache konnte nicht gespeichert werden.",64)
             return
-        self.language = target
+        self.language=target
+        self.expect_language_ack(kind,target)
         self.cmd(f"home.lang.val={int(target=='en')}")
-        self.cmd("click hLocale,0")
+        # The home firmware refreshes its own component IDs. Navigating
+        # during the write does not send a click to a different page.
         self.home_hint()
         self.heartbeat(force=True)
+        LOG.info("Station language persisted: %s",target)
+
+    def acknowledge_language(self, kind, value):
+        if self.language_ack is None or self.language_ack[0]!=kind:
+            return
+        _,expected,_=self.language_ack
+        self.language_ack=None
+        if expected==value:
+            LOG.info("Panel confirmed %s language render",kind)
+        else:
+            LOG.warning("Panel %s language render differs from saved selection",kind)
+
+    def check_language_timeouts(self):
+        now=time.monotonic()
+        if self.language_route and now>=self.language_route[2]:
+            self.language_route=None
+            LOG.warning("Language request dropped because panel page was unconfirmed")
+        if self.language_ack and now>=self.language_ack[2]:
+            kind=self.language_ack[0]
+            self.language_ack=None
+            LOG.warning("Panel did not acknowledge %s language render",kind)
 
     def home_hint(self):
         self.say("home.tHint","Simulation aktiv." if self.tester.mode=="simulation"
@@ -186,6 +237,7 @@ class NativeUI:
         self.cmd("bkcmd=3")
         self.cmd("sendxy=0")
         self.cmd(f"home.lang.val={int(self.language=='en')}")
+        LOG.info("Printstation v%s, native HMI protocol %s, saved station language %s",VERSION,PROTOCOL,self.language)
         self.workflow.reset()
         self.picker.reset()
         self.settings.page = None
@@ -315,6 +367,8 @@ class NativeUI:
 
     def finish_draft(self, ident, report):
         self.cmd("entry.inProgress.val=0")
+        self.personality.stats_dirty=True
+        self.workflow.guide=None
         self.load_report(ident,report)
 
     def refresh_history(self):
@@ -419,18 +473,31 @@ class NativeUI:
     def handle(self, frame):
         if len(frame)==2 and frame[0]==0x66:
             self.settings.enter(frame[1])
-            if self.settings.page=="home":
-                self.cmd("click hLocale,0")
             self.tester.enter()
             self.workflow.enter()
             self.picker.enter()
+            self.personality.enter()
             self.measurement_preview_pending=self.settings.page=="report"
+            if self.language_route:
+                pending,page,deadline=self.language_route
+                self.language_route=None
+                if self.settings.page==page and time.monotonic()<deadline:
+                    self.handle_language(pending)
+                else:
+                    LOG.warning("Language request rejected after page resync (%s)",self.settings.page)
             return
-        if frame==b"RC70:LANG" and self.settings.page=="home":
-            self.set_language()
+        if frame in (b"RC70:LANG",b"RC70:REPORTLANG"):
+            self.handle_language(frame)
             return
-        if frame==b"RC70:REPORTLANG" and self.settings.page=="entry":
-            self.workflow.switch_report_language()
+        if frame in (b"RC71:LOCALE:DE",b"RC71:LOCALE:EN"):
+            self.acknowledge_language("station",frame[-2:].decode().lower())
+            self.personality.redraw_home=True
+            return
+        if frame.startswith(b"\x70") and self.language_ack and self.language_ack[0]=="report":
+            self.acknowledge_language("report",frame[1:].decode(ENCODING))
+            return
+        if frame in (b"RC71:LOGO",b"RC71:ENGINEER",b"RC71:PET"):
+            self.personality.event(frame)
             return
         if frame==b"RC61:DETAILS" and self.settings.page=="report" and self.report:
             self.detail_page=0 if self.detail_page else 1
@@ -460,7 +527,11 @@ class NativeUI:
             return
         if not frame.startswith(b"RC3:"):
             if len(frame) == 1 and frame[0] not in (0x00,0x01,0x86,0x87,0x88):
-                LOG.warning("Nextion response: 0x%02x", frame[0])
+                if self.language_ack:
+                    LOG.warning("Nextion response 0x%02x during %s language render (page=%s)",
+                                frame[0],self.language_ack[0],self.settings.page)
+                else:
+                    LOG.warning("Nextion response: 0x%02x",frame[0])
             return
         try:
             if frame == b"RC3:BOOT":
@@ -491,10 +562,12 @@ class NativeUI:
 
     def tick(self):
         self.finish_print()
+        self.check_language_timeouts()
         self.heartbeat()
         self.settings.poll()
         self.tester.poll()
         self.workflow.poll()
+        self.personality.tick()
         if self.measurement_preview_pending and self.settings.page=="report" and self.report:
             self.measurement_preview_pending=False
             self.draw_measurements(self.report)
@@ -504,6 +577,7 @@ class NativeUI:
         # Never cancel/retry a receipt whose bytes may already have arrived.
         self.executor.shutdown(wait=True)
         self.settings.close()
+        self.personality.close()
         self.receiver.close()
 
     def run(self):
@@ -551,6 +625,7 @@ def main():
             server = start_server(args.db, args.web_port)
         ui = NativeUI(ser,args.host,args.db,args.printer_port,args.report_url,
                       network=NetworkManager(args.wifi_interface),enable_power=args.enable_local_power,
+                      personality_cache=CACHE,
                       tester_mode=args.tester_mode,tester_device=args.tester_device,
                       tester_rs232=args.tester_rs232_device,tester_encoding=args.tester_encoding,
                       tester_idle=args.tester_idle,hmi_port=args.port)

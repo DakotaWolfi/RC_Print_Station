@@ -2,6 +2,15 @@
 
 The station has a physically validated v0.6.2 baseline for Class I output. The v0.7 branch adds bilingual operation and has a separate [physical acceptance checklist](hmi/VALIDATION-v07.md). Older milestones remain below.
 
+## v0.7.1 bilingual diagnostics and personality
+
+- [x] Audit language controls in both the editable HMI and the compiled TFT.
+- [x] Add explicit UART page routing, diagnostic acknowledgments and offline slogans.
+- [x] Add a persistent workshop wolf, documented examination milestones and engineering diagnostics.
+- [x] Add isolated optional cloud and Pi 4 slogan workers.
+- [ ] Confirm language switching on the physical Nextion with protocol 71.
+- [ ] Measure optional inference resource use on the Pi 4 and confirm the Orange Pi service setup.
+
 ## v0.7 bilingual candidate
 
 - [x] German and English station interface, guided procedures and per-report language selection.

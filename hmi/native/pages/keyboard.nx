@@ -1025,7 +1025,7 @@ on keyboard.unload:
   input.txt=""
 
 on keyboard.loadend:
-  click hLocale,0
+  click 75,0
   sendme
   mode.val=0
   shift.val=0

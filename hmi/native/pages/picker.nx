@@ -148,7 +148,7 @@ on hLayout.up:
   }
 
 on picker.loadend:
-  click hLocale,0
+  click 32,0
   sendme
   click hLayout,0
 
@@ -245,8 +245,8 @@ on hLocale.up:
   }
   if(home.lang.val==1)
   {
-  pLabel0.pic=63
+  pLabel0.pic=68
   }else
   {
-  pLabel0.pic=62
+  pLabel0.pic=67
   }
