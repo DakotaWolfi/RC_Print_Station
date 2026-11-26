@@ -2,7 +2,7 @@
 import unittest
 
 from benning_guide import Guide, STEPS
-from benning_output import measurement_summary, result_kind, visible_measurements
+from benning_output import electrical_check, measurement_summary, report_checks, result_kind, visible_measurements
 from benning_workflow import fresh_slot
 
 
@@ -15,73 +15,81 @@ def path(*choices):
 
 
 class GuideTests(unittest.TestCase):
-    def test_supported_procedures_start_and_complete_on_observed_pass(self):
-        for route,procedure,mode,key in (
-                ((0,0,0,0,0),"I","Batterie","Erdzeichen"),
-                ((0,0,1,0,1),"I","Netz","Erdzeichen"),
-                ((0,1,0,0,1),"II","Batterie","Doppelquadrat"),
-                ((0,1,1,0,0),"II","Netz","Doppelquadrat"),
-                ((0,2,0,0,0),"III","Batterie","Doppelquadrat"),
-                ((0,3,0,0),"IEC","Batterie","Erdzeichen"),
-                ((0,3,1,0),"Verlängerung","Batterie","Erdzeichen")):
-            with self.subTest(procedure=procedure,mode=mode):
+    def test_standard_and_special_procedures_have_the_expected_mode_and_voltage(self):
+        for route,procedure,mode,voltage,key in (
+                ((0,0,0),"I","Netz",500,"Erdzeichen"),
+                ((0,1,0),"II","Netz",500,"Doppelquadrat"),
+                ((0,0,1,0),"I","Netz",250,"Erdzeichen"),
+                ((0,1,1,1),"II","Batterie",500,"Doppelquadrat"),
+                ((0,0,1,2),"I","Batterie",250,"Erdzeichen"),
+                ((0,2,0,0),"III","Batterie",500,"Doppelquadrat"),
+                ((0,2,0,1,0),"III","Batterie",250,"Doppelquadrat"),
+                ((0,3,0,0),"IEC","Batterie",500,"Erdzeichen"),
+                ((0,3,1,0),"Verlängerung","Batterie",500,"Erdzeichen")):
+            with self.subTest(procedure=procedure,mode=mode,voltage=voltage):
                 g=path(*route)
-                self.assertEqual((g.step,g.procedure,g.mode),("start",procedure,mode))
+                self.assertEqual((g.step,g.procedure,g.mode,g.voltage),("start",procedure,mode,voltage))
                 self.assertIn(key,g.instruction())
-                g.choose(0)
-                self.assertEqual(g.step,"observed")
+                self.assertIn("PASS",dict(g.choices()))
                 self.assertFalse(g.stored)
-                if mode=="Netz":
-                    g.choose(2)
-                    self.assertEqual(g.step,"leak")
-                    g.choose(0)
-                    self.assertEqual(g.step,"polarity")
-                    g.choose(0)
-                g.choose(0)
+                g.choose(3)
                 self.assertEqual(g.step,"save")
                 g.choose(0)
-                self.assertEqual(g.step,"exam")
-                self.assertEqual(g.examination()["status"],"Unvollständig")
-                g.functional="Ohne Befund"
-                self.assertEqual(g.examination("Prüfperson")["status"],"Erfasst")
+                self.assertEqual(g.examination()["voltage_confirmed"],voltage)
 
-    def test_warnings_stop_or_require_explicit_observation(self):
-        normal=(0,0,1,0,0,0)
-        for index,step in enumerate(("low","high","table","hot","wrong")):
-            with self.subTest(step=step):
-                g=path(*normal,3,index)
-                self.assertEqual(g.step,step)
-                self.assertFalse(g.stored)
-                if step in ("low","table"):
-                    self.assertTrue(g.choose(0))
-                    self.assertEqual(g.step,"observed")
-                    self.assertEqual(g.observed,"")
-                else:
-                    self.assertFalse(g.back())
-                    self.assertFalse(g.choose(1))
-                    g.choose(0)
-                    self.assertEqual(g.examination()["status"],"Unvollständig")
-        self.assertEqual(path(0,1,0,0,0,0,2).step,"wrong")
-        self.assertEqual(path(0,1,1,0,0,0,3,2).step,"wrong")
+    def test_mains_and_voltage_confirmed_on_the_tester(self):
+        g=path(0,0)
+        self.assertEqual(g.step,"connect1")
+        self.assertIn("Netz an 11 prüfen",g.instruction())
+        self.assertIn("500 V am Tester prüfen",g.instruction())
+        self.assertNotIn("250",g.instruction())
+        self.assertIn("Abweichendes Verfahren",dict(g.choices()))
+        self.assertIsNone(g.examination()["voltage_confirmed"])
 
-    def test_failed_or_unavailable_measurement_is_not_reclassified(self):
-        g=path(0,2,0,0,0,0,1)
-        self.assertIn("RISO",g.instruction())
-        self.assertEqual(g.observed,"FAIL")
+    def test_low_load_explicit_check_then_correct_button_for_each_class(self):
+        for number,art,key in ((0,"key_i","Erdzeichen"),(1,"key_ii","Doppelquadrat")):
+            g=path(0,number,0,0)
+            self.assertEqual(g.step,"low")
+            self.assertIn("eingeschaltet",g.instruction())
+            self.assertEqual(g.art,"lcd")
+            self.assertFalse(g.stored)
+            g.choose(0)
+            self.assertEqual((g.step,g.art),("low_continue",art))
+            self.assertIn(key,g.instruction())
+            self.assertIn("erneut",g.instruction())
+            self.assertIn("I LEAK blinkt",dict(g.choices()))
+        self.assertEqual(path(0,0,0,0,1).step,"stop")
+
+    def test_flashing_leak_requires_a_separate_safety_confirmation(self):
+        g=path(0,1,0,1)
+        self.assertEqual(g.step,"leak")
+        self.assertIn("230 V",g.instruction())
+        self.assertIn("ohne Erdpfad",g.instruction())
+        self.assertEqual(g.art,"lcd")
         g.choose(0)
+        self.assertEqual((g.step,g.art),("energise","key_leak"))
+        g.choose(2)
+        self.assertEqual(g.step,"running")
+        self.assertIn("PASS",dict(g.choices()))
+        self.assertEqual(path(0,1,1,1,1).step,"wrong")
+
+    def test_warnings_and_fail_do_not_get_turned_into_pass(self):
+        for route,expected in (((0,0,0,5),"high"),((0,0,0,6,0),"table"),
+                               ((0,0,0,6,1),"hot"),((0,0,0,6,2),"wrong"),
+                               ((0,1,0,6,0),"wrong"),((1,),"stop"),
+                               ((2,),"stop"),((0,2,1),"stop"),((0,4),"special")):
+            with self.subTest(expected=expected):
+                g=path(*route)
+                self.assertEqual(g.step,expected)
+                self.assertFalse(g.stored)
+                self.assertNotIn("PASS",dict(g.choices()))
+        g=path(0,2,0,0,4)
+        self.assertEqual(g.step,"save")
+        self.assertIn("RISO",STEPS["save"].help)
+        self.assertEqual(g.observed,"FAIL")
         g.choose(1)
         self.assertEqual(g.step,"unsaved")
         self.assertFalse(g.stored)
-        g.choose(0)
-        self.assertEqual(g.examination()["observed"],"FAIL")
-        self.assertEqual(g.examination()["status"],"Unvollständig")
-
-    def test_unclear_and_special_procedures_do_not_offer_a_start(self):
-        for route,expected in (((1,),"stop"),((0,2,1),"stop"),((0,4),"special"),
-                               ((0,0,2),"stop"),((0,3,1,1),"stop")):
-            g=path(*route)
-            self.assertEqual(g.step,expected)
-            self.assertNotIn("start",[target for _,target in STEPS[g.step].choices])
 
     def test_only_one_new_slot_compared_with_workflow_baseline_advances(self):
         old={"usb":(3,{"001":"a","002":"b"})}
@@ -106,7 +114,8 @@ class OutputTests(unittest.TestCase):
         self.assertEqual(measurement_summary(failed),("RPE",">2,34 Ohm","","nicht bestanden","FAIL"))
         self.assertEqual(measurement_summary(partial)[3],"unvollständig")
         report["record"]={"verdict":"bestanden"}
-        self.assertEqual(result_kind(report),"partial")
+        self.assertEqual(result_kind(report),"PASS")
+        self.assertTrue(electrical_check(report)[1])
 
     def test_rs232_keeps_limits_without_inventing_individual_verdicts(self):
         row={"name":"RISO","value":">19,99","unit":"MΩ","limit":"2,00","limit_unit":"MΩ"}

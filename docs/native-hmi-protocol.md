@@ -70,3 +70,7 @@ Der v0.6 Host erwartet `home.proto.val=6`. Seiten 14 `guide` und 15 `importer` k
 | `RC6:VALUES` | Weitere sichtbare Messwerte des aktuellen Protokolls |
 
 Die Bestätigung nutzt `RC5:USE`. Tastaturziel 6 ist die Prüfperson (48 Byte), Ziel 7 die Bemerkung (64 Byte). Zur Prüfverfahrenslogik siehe [Verfahrensmatrix](benning-guided-workflows.md).
+
+## v6.1 Bedienoberfläche
+
+Protokollkennung 61. Seite 16 `picker` verwendet `RC61:APPLIANCES/PEOPLE`, `ROW:n`, `PREV/NEXT`, `ADD/EDIT`, `NAME` (NUL + Name), `STATE`, `TOGGLE` und `USE`. `RC6:EXAM` enthält jetzt NUL + Bemerkung. `RC61:DRAFT` meldet NUL + Prüfnummer + NUL + die rohe Beschreibung, um beide Felder passend darzustellen. Die Prüfperson wird aus der Namensliste aufgelöst und als Text im Bericht eingefroren. `RC61:DETAILS` schaltet zwischen Messwerten und Prüfdetails, `RC6:VALUES` blättert in der sichtbaren Ansicht. Automatisch umbrochene Feldtexte nutzen Nextion-CRLF-Escapes an Wortgrenzen. UART- und serielle BENNING-Verbindungen bleiben getrennt.

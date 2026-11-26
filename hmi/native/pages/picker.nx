@@ -1,0 +1,173 @@
+on pRow0.up:
+  if(home.online.val==1&&pCount.val>0)
+  {
+  prints "RC61:ROW:0",0
+  printh ff ff ff
+  }
+
+on pRow1.up:
+  if(home.online.val==1&&pCount.val>1)
+  {
+  prints "RC61:ROW:1",0
+  printh ff ff ff
+  }
+
+on pRow2.up:
+  if(home.online.val==1&&pCount.val>2)
+  {
+  prints "RC61:ROW:2",0
+  printh ff ff ff
+  }
+
+on pRow3.up:
+  if(home.online.val==1&&pCount.val>3)
+  {
+  prints "RC61:ROW:3",0
+  printh ff ff ff
+  }
+
+on pRow4.up:
+  if(home.online.val==1&&pCount.val>4)
+  {
+  prints "RC61:ROW:4",0
+  printh ff ff ff
+  }
+
+on pRow5.up:
+  if(home.online.val==1&&pCount.val>5)
+  {
+  prints "RC61:ROW:5",0
+  printh ff ff ff
+  }
+
+on bPrev.up:
+  if(pPrev.val==1&&home.online.val==1)
+  {
+  prints "RC61:PREV",0
+  printh ff ff ff
+  }
+
+on bNext.up:
+  if(pNext.val==1&&home.online.val==1)
+  {
+  prints "RC61:NEXT",0
+  printh ff ff ff
+  }
+
+on bAdd.up:
+  if(pPeople.val==1&&home.online.val==1)
+  {
+  prints "RC61:ADD",0
+  printh ff ff ff
+  }
+
+on bEdit.up:
+  if(pEditOk.val==1&&home.online.val==1)
+  {
+  prints "RC61:EDIT",0
+  printh ff ff ff
+  }
+
+on bState.up:
+  if(pEditOk.val==1&&home.online.val==1)
+  {
+  prints "RC61:STATE",0
+  printh ff ff ff
+  }
+
+on bToggle.up:
+  if(pPeople.val==1&&home.online.val==1)
+  {
+  prints "RC61:TOGGLE",0
+  printh ff ff ff
+  }
+
+on bUse.up:
+  if(pChoose.val==1&&home.online.val==1)
+  {
+  prints "RC61:USE",0
+  printh ff ff ff
+  }
+
+on bBack.up:
+  if(pBack.val==1)
+  {
+  page guide
+  }else
+  {
+  page entry
+  }
+
+on hLayout.up:
+  vis bAdd,pPeople.val
+  vis bEdit,pEditOk.val
+  vis bState,pEditOk.val
+  vis bToggle,pPeople.val
+  vis bUse,pChoose.val
+  if(pCount.val>0)
+  {
+  vis pRow0,1
+  }else
+  {
+  vis pRow0,0
+  }
+  if(pCount.val>1)
+  {
+  vis pRow1,1
+  }else
+  {
+  vis pRow1,0
+  }
+  if(pCount.val>2)
+  {
+  vis pRow2,1
+  }else
+  {
+  vis pRow2,0
+  }
+  if(pCount.val>3)
+  {
+  vis pRow3,1
+  }else
+  {
+  vis pRow3,0
+  }
+  if(pCount.val>4)
+  {
+  vis pRow4,1
+  }else
+  {
+  vis pRow4,0
+  }
+  if(pCount.val>5)
+  {
+  vis pRow5,1
+  }else
+  {
+  vis pRow5,0
+  }
+
+on picker.loadend:
+  sendme
+  click hLayout,0
+
+on tmFlow.timer:
+  if(pRoute.val==1)
+  {
+  entry.field.val=6
+  page keyboard
+  }else if(pRoute.val==2)
+  {
+  page entry
+  }else if(pRoute.val==3)
+  {
+  page guide
+  }
+
+on tmLink.timer:
+  home.age.val++
+  if(home.age.val>6)
+  {
+  home.online.val=0
+  home.tLink.txt="Host nicht verbunden"
+  }

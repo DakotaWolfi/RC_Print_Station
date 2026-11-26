@@ -67,7 +67,7 @@ borderw = 0
 xcen = 0
 ycen = 1
 vscope = 0
-isbr = 1
+isbr = 0
 
 [[component]]
 name = "iStatus"
@@ -85,7 +85,7 @@ borderw = 0
 xcen = 0
 ycen = 1
 vscope = 0
-isbr = 1
+isbr = 0
 
 [[component]]
 name = "iMessage"
@@ -103,7 +103,7 @@ borderw = 0
 xcen = 0
 ycen = 1
 vscope = 0
-isbr = 1
+isbr = 0
 
 [[component]]
 name = "bManual"

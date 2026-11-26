@@ -12,93 +12,83 @@ class Step:
     art: str = "lcd"
 
 
+OBSERVATIONS = (("Lo LOAD", "low"), ("I LEAK blinkt", "leak"),
+                ("Messung läuft", "running"), ("PASS", "save"), ("FAIL", "save"),
+                ("HIGH LOAD", "high"), ("Andere Warnung", "warnings"))
+STOP = ("Abbrechen / unsicher", "stop")
+
 STEPS = {
-    "visual": Step("Sichtprüfung", "Prüfling, BENNING und Leitungen auf Schäden prüfen. Trockenen Arbeitsplatz und Kalibrierstatus prüfen.",
-                   "Nur geschult oder unter fachlicher Aufsicht arbeiten. Bei Schäden, Feuchtigkeit oder Unsicherheit stoppen. §§2, 8.1, 11.",
-                   1, (("Ohne Befund", "kind"), ("Mangel / unklar", "stop"))),
-    "kind": Step("Prüfling einordnen", "Schutzklasse bzw. Leitungsart durch die Fachperson bestimmen.",
-                  "Typenschild, Aufbau und PE-Verbindung prüfen. Keine Schutzklasse aus einem Stecker allein ableiten. §§8.4, 9.",
-                  2, (("Schutzklasse I", "mode1"), ("Schutzklasse II", "mode2"), ("Schutzklasse III", "class3"),
+    "visual": Step("Sichtprüfung", "Prüfling, Messgerät und Leitungen auf Schäden prüfen. Arbeitsplatz und Kalibrierstatus prüfen.",
+                   "Nur geschult oder unter Aufsicht arbeiten. Bei Schäden, Feuchtigkeit oder Unsicherheit stoppen. §§2, 8.1, 11.",
+                   1, (("Ohne Befund", "kind"), ("Mangel", "stop"), ("Ungeklärt", "stop"))),
+    "kind": Step("Prüfling einordnen", "Schutzklasse oder Leitungsart am Prüfling bestimmen.",
+                  "Typenschild, Aufbau und Schutzleiter prüfen. Eine Beschreibung oder der Stecker allein reicht nicht. §§8.4, 9.",
+                  2, (("Schutzklasse I", "connect1"), ("Schutzklasse II", "connect2"), ("Schutzklasse III", "class3"),
                       ("Leitung", "cable"), ("Fachverfahren", "special"))),
-    "mode1": Step("Betriebsart · Klasse I", "Batterie nur bei bekanntem Aufbau ohne netzabhängige Schalter. Bei unklarem Aufbau oder netzabhängiger Schaltung Netzverfahren prüfen.",
-                   "Batterie: Ersatzableitstrom. Netz: IPE im Differenzverfahren. Lastdaten und sicheren Betrieb zuerst prüfen. §8.4, §9.1.",
-                   2, (("Batterie geeignet", "connect1"), ("Netz fachlich geprüft", "connect1"), ("Unklar / Stopp", "stop"))),
-    "mode2": Step("Betriebsart · Klasse II", "Batterie nur bei bekanntem Aufbau ohne netzabhängige Schalter. Netzbetrieb erfordert isolierte Aufstellung für den direkten Berührungsstrom.",
-                   "Batterie: Ersatzableitstrom. Netz: direkter IB, kein Erdpfad am Prüfling. Lastdaten und sicheren Betrieb prüfen. §8.4, §9.2.",
-                   2, (("Batterie geeignet", "connect2"), ("Netz fachlich geprüft", "connect2"), ("Unklar / Stopp", "stop"))),
-    "class3": Step("Schutzklasse III", "SELV und Anschluss durch die Fachperson prüfen. Nur geeigneten Aufbau nach Bild 5 verwenden. Kein Netz am SELV-Prüfling.",
-                   "Der Tester verwendet den II-Prüflauf. Ein RISO-Fehler nach II-Grenze kann eine separate III-Bewertung erfordern. §7.10 / §9.2.",
-                   2, (("Batterieaufbau geprüft", "connect2"), ("Fachprüfung nötig", "stop"))),
-    "cable": Step("Leitung auswählen", "Die Leitung muss separat und ohne Verbindung zum Netz geprüft werden.",
+    "class3": Step("Schutzklasse III", "SELV-Aufbau nach Bild 5 fachlich prüfen. Kein Netz am SELV-Prüfling. Abweichende Aufbauten separat prüfen.",
+                   "Das II-Programm kann bei RISO eine gesonderte III-Bewertung erfordern. Prüfvorgaben beachten. §7.10 / §9.2.",
+                   3, (("Geeigneter SELV-Aufbau", "connect2"), ("Fachprüfung nötig", "stop"))),
+    "cable": Step("Leitungsart wählen", "Die Leitung einzeln und ohne Verbindung zum Netz prüfen.",
                   "Geräteanschlussleitung wie Bild 6a. Verlängerung, Verteiler oder Roller wie Bild 6b. §9.3.",
                   2, (("IEC-Geräteleitung", "iec"), ("Verlängerung / Verteiler", "extension"))),
-    "connect1": Step("Anschluss · Klasse I", "Prüfling spannungslos an Prüfsteckdose 1. Klemme von 9 an fachlich ausgewähltes PE-verbundenes Metallteil. Netz an 11 nur im gewählten Netzbetrieb.",
-                     "Bild 4. Berührbare Teile ohne PE separat fachlich prüfen. Geräteschalter für die Messung einschalten. Auf sicheren Betrieb achten. §9.1.",
-                     3, (("Aufbau geprüft", "voltage"), ("Unklar / Stopp", "stop")), "class1"),
-    "connect2": Step("Anschluss · Klasse II/III", "Prüfling spannungslos an Prüfsteckdose 1. Klemme von 9 an fachlich gewähltes berührbares leitfähiges Teil. Netz an 11 nur bei Klasse II im Netzbetrieb.",
-                     "Bild 5. Bei direktem IB isoliert aufstellen, ohne Erdpfad. SELV-Aufbau nur nach Vorgabe der Fachperson. Geräteschalter für die Messung einschalten.",
-                     3, (("Aufbau geprüft", "voltage"), ("Unklar / Stopp", "stop")), "class2"),
-    "iec": Step("IEC-Leitung anschliessen", "Netzleitung aus 11 entfernen. Zu prüfende Geräteleitung zwischen Prüfsteckdose 1 und IEC-Anschluss 10. Kein Gerät am Leitungsende.",
-                "Bild 6a. Der Tester prüft RPE, RISO und L/N auf Unterbruch, Kurzschluss und Vertauschung. §9.3.1.",
-                3, (("Netz getrennt / bereit", "start"), ("Unklar / Stopp", "stop")), "iec"),
-    "extension": Step("Verlängerung anschliessen", "Netzleitung aus 11 entfernen. IEC-Adapter an 10. Verlängerung zwischen Prüfsteckdose 1 und Netzstecker des IEC-Adapters anschliessen.",
-                      "Bild 6b. Bei Verteilern alle relevanten Ausgänge prüfen und zuordnen. Keine Netzspeisung. §9.3.2.",
-                      3, (("Netz getrennt / bereit", "start"), ("Unklar / Stopp", "stop")), "extension"),
-    "voltage": Step("RISO-Prüfspannung", "Fachlich festgelegte Prüfspannung am BENNING kontrollieren. Taste 5 schaltet zwischen 250 V und 500 V um.",
-                    "500 V ist voreingestellt. 250 V nur passend zur Prüfung, etwa bei Überspannungsableitern oder empfindlicher Elektronik. §8.4.",
-                    3, (("500 V geprüft", "start"), ("250 V geprüft", "start"), ("Unklar / Stopp", "stop")), "keys"),
-    "start": Step("Prüflauf starten", "Passende physische Taste am BENNING drücken und die Anzeigen beobachten.",
-                  "Die Station sieht keine Live-Anzeige. Nur vom BENNING tatsächlich angezeigte Zustände auswählen. Falscher Prüflauf: abbrechen und Aufbau prüfen. §9.",
-                  4, (("Gestartet", "observed"), ("Falscher Prüflauf", "wrong")), "keys"),
-    "observed": Step("Was zeigt der BENNING?", "Den aktuellen Zustand am Tester ablesen. Eine Anzeige auswählen.",
-                     "1-2 und 2-2 sind Messstufen. Einen abschliessenden Befund erst nach dem Ende des Testerlaufs wählen. §9.",
-                     4, (("PASS", "save"), ("FAIL / Leitungsfehler", "failed"), ("ILEAK blinkt", "leak"),
-                         ("Warnung / Pause", "warnings"), ("Keine Endanzeige", "running"))),
-    "warnings": Step("Warnung auswählen", "Nur die tatsächlich angezeigte Meldung auswählen.",
-                     "Bei unbekannter Anzeige Messung sicher beenden und das Handbuch mit einer Fachperson prüfen. §9.",
-                     4, (("Lo LOAD", "low"), ("HIGH LOAD", "high"), ("tAbLE / RPE", "table"),
-                         ("StOP / hot", "hot"), ("Falscher Lauf / anderes", "wrong"))),
-    "low": Step("Lo LOAD · geringe Last", "Schalterstellung, Anschluss und erwartete Last fachlich klären. Nur am BENNING weiterarbeiten, wenn die Fachperson die Ursache geklärt hat.",
-                "Ein ausgeschalteter Prüfling kann diese Anzeige verursachen. Lo LOAD ist weder PASS noch Nachweis einer sicheren Prüfung. §§9.1/9.2.",
-                4, (("Geprüft · Anzeige lesen", "observed"), ("Ungeklärt · Stopp", "stop"))),
-    "high": Step("HIGH LOAD · Stopp", "Prüfung sicher beenden. Mögliche Überlast oder Fehler beim Prüfling durch die Fachperson klären lassen.",
-                 "Überlast kann Tester oder Prüfling beschädigen. Die Station bietet hier keine Fortsetzung des Prüflaufs an. §§9.1/9.2.",
-                 4, (("Unvollständig erfassen", "exam"),)),
-    "table": Step("tAbLE · RPE beurteilen", "Fachperson beurteilt RPE anhand Leitungslänge, Querschnitt und Grenzwerttabelle. Bewertung ausschliesslich am Tester.",
-                  "§7.10 / §9.1 / §9.3.1. Der Assistent bewertet diesen Messwert nicht. Bei unklarer Bewertung abbrechen.",
-                  4, (("Bewertet · Anzeige lesen", "observed"), ("Ungeklärt · Stopp", "stop"))),
-    "hot": Step("StOP / hot", "Prüfung beenden, Tester sicher vom Netz trennen und abkühlen lassen.",
-                "Keine wiederholte Dauermessung bei hoher Last. Prüfer und Aufbau vor erneutem Einsatz fachlich kontrollieren. §§9.1/9.2.",
-                4, (("Unvollständig erfassen", "exam"),)),
-    "wrong": Step("Aufbau oder Prüflauf unklar", "Prüfung sicher beenden. Schutzklasse, Betriebsart und Anschlüsse durch die Fachperson neu prüfen.",
-                  "Bei falscher Wahl liefert der Tester einen Hinweis. Weiter erst nach fachlicher Klärung und neuem Prüflauf. §8.4.",
-                  4, (("Unvollständig erfassen", "exam"),)),
-    "leak": Step("ILEAK blinkt", "Nur bei sicherem Aufbau im gewählten Netzbetrieb IPE/IB am BENNING drücken. Taste 4 schaltet Netz auf den Prüfling.",
-                 "IPE bei Klasse I im Differenzverfahren. IB bei Klasse II direkt und isoliert. Den Prüfling sichern und beide Polaritätsstufen abwarten. §§9.1/9.2.",
-                 4, (("Sicher · IPE/IB gedrückt", "polarity"), ("Unklar / Stopp", "stop")), "keys"),
-    "polarity": Step("Beide Polaritäten abwarten", "Stufen 1-2 und 2-2 am BENNING beobachten. Beim Wechsel keinen Stecker umdrehen. Urteil erst nach Abschluss ablesen.",
-                     "Der Tester polt die Prüfsteckdose automatisch um und zeigt den höchsten Wert an. §§9.1/9.2.",
-                     4, (("Endanzeige ablesen", "observed"), ("StOP / hot", "hot"), ("Unklar / Stopp", "stop"))),
-    "running": Step("Ende des Prüflaufs abwarten", "Nur eine abgeschlossene Anzeige als PASS oder FAIL erfassen.",
-                    "Keine elektrische Messung wird aus einer Eingabe an der Printstation abgeleitet. Bei Abbruch unvollständig erfassen. §9.",
-                    4, (("Anzeige erneut lesen", "observed"), ("Unvollständig erfassen", "exam"))),
-    "failed": Step("FAIL · Befund sichern", "Negativen Testerbefund beibehalten. Bei Leitungen OPEN, Shor oder CrOSS beachten. Bei Klasse III RISO fachlich beurteilen lassen.",
-                   "OPEN: Unterbruch. Shor: Kurzschluss. CrOSS: L/N vertauscht. Klasse III kann eine fachliche Sonderbewertung erfordern. §§9.2/9.3.",
-                   5, (("Beendeten Befund speichern", "save"), ("Unvollständig erfassen", "exam"))),
-    "save": Step("Messung im Tester speichern", "Diskettentaste 13 drücken. STORE und Speicherplatz kontrollieren.",
-                 "Nur abgeschlossenen Befund speichern. Bei FULL Speicher nicht hier löschen. Slot und Testergebnis für den Import merken. §10.1.",
-                 5, (("STORE und Slot gesehen", "exam"), ("FULL / nicht gespeichert", "unsaved")), "store"),
-    "unsaved": Step("Kein neuer Speicherplatz", "Keinen alten Slot als neuen Test verwenden. Bei FULL die Speicherverwaltung der Fachperson überlassen.",
-                    "Vor dem Löschen des Testerspeichers exportieren und Rückverfolgbarkeit sichern. §§10.1–10.4.",
-                    5, (("Unvollständig erfassen", "exam"),)),
-    "stop": Step("Prüfung unterbrochen", "Prüfling und Tester sicher ausser Betrieb nehmen und Befund oder offene Frage festhalten.",
-                 "Eine nicht abgeschlossene Sicht- oder Funktionsprüfung bleibt im Protokoll offen. Fachperson entscheidet über weiteres Vorgehen.",
-                 5, (("Unvollständig erfassen", "exam"),)),
-    "special": Step("Fachverfahren", "Drehstrom, FI/RCD und PRCD nur mit geeigneter Ausstattung und verantwortlicher Fachperson prüfen.",
-                    "Handbuch §9.4, Bilder 7a/7b (CEE-Adapter); §9.5, Bilder 8a/8b (30 mA FI/RCD). Direkteingabe für extern dokumentierte Messungen.",
-                    3, (("Unvollständig erfassen", "exam"), ("Zur Auswahl", "kind"))),
-    "exam": Step("Prüfung dokumentieren", "Name und Bemerkung eingeben. Funktionsbefund getrennt vom Testergebnis erfassen.",
-                 "Verantwortliche Fachperson beurteilt die vollständige Prüfung und entscheidet separat über die Freigabe.",
+    "connect1": Step("Anschliessen · Klasse I", "Spannungslosen Prüfling an 1 anschliessen. Klemme von 9 an ein PE-Metallteil legen.",
+                     "Typenschild und Last prüfen. Geräteschalter für die Prüfung einschalten. Teile ohne PE gesondert beurteilen. Bild 4, §9.1.",
+                     3, (("Netz + 500 V geprüft", "start"), ("Abweichendes Verfahren", "exception"), STOP), "class1"),
+    "connect2": Step("Anschliessen · Klasse II", "Prüfling spannungslos an 1. Klemme von 9 an berührbares Metallteil. Für IB den Prüfling ohne Erdpfad aufstellen.",
+                     "Typenschild und Last prüfen. Geräteschalter für die Prüfung einschalten. Bild 5, §9.2.",
+                     3, (("Netz + 500 V geprüft", "start"), ("Abweichendes Verfahren", "exception"), STOP), "class2"),
+    "exception": Step("Abweichendes Verfahren", "Betriebsart fachlich festlegen. Prüfspannung mit Taste 5 einstellen und die Anzeige am BENNING prüfen.",
+                      "250 V kann z. B. bei Überspannungsschutz nötig sein. Ersatzableitstrom auf Batterie nur bei geeignetem Aufbau ohne netzabhängige Schalter. §8.4.",
+                      3, (), "key_voltage"),
+    "iec": Step("IEC-Leitung anschliessen", "Netzleitung aus 11 entfernen. IEC-Leitung zwischen 1 und 10 anschliessen. Kein Gerät am Leitungsende.",
+                "Bild 6a. RPE, RISO sowie L/N auf Unterbruch, Kurzschluss und Vertauschung. §9.3.1.",
+                3, (("Getrennt + 500 V geprüft", "start"), ("Abweichendes Verfahren", "exception"), STOP), "iec"),
+    "extension": Step("Verlängerung anschliessen", "Netzleitung aus 11 entfernen. IEC-Adapter an 10. Verlängerung zwischen 1 und Netzstecker des Adapters anschliessen.",
+                      "Bild 6b. Bei Verteilern alle relevanten Ausgänge prüfen. Keine Netzspeisung. §9.3.2.",
+                      3, (("Getrennt + 500 V geprüft", "start"), ("Abweichendes Verfahren", "exception"), STOP), "extension"),
+    "start": Step("Prüflauf starten", "", "Gelbe Taste am BENNING drücken. Danach die tatsächlich sichtbare Anzeige unten wählen. Prüfling für Betrieb sichern. §9.",
+                  4, OBSERVATIONS),
+    "running": Step("Messung läuft", "Prüfling gesichert lassen. Anzeige beobachten und den nächsten Zustand wählen.",
+                    "1-2 und 2-2 sind die Messstufen im Netzbetrieb. Der BENNING wechselt intern die Polarität. Stecker in Ruhe lassen.",
+                    4, OBSERVATIONS),
+    "warnings": Step("Andere Warnung", "Die beobachtete Meldung auswählen.",
+                     "Bei unbekannter Meldung stoppen und Handbuch mit der Fachperson prüfen. §9.",
+                     4, (("tAbLE / RPE", "table"), ("StOP / hot", "hot"), ("Falscher Lauf / anderes", "wrong"))),
+    "low": Step("Lo LOAD · geringe Last", "Ist der Prüfling eingeschaltet? Anschluss und Last prüfen. Nur fortsetzen, wenn die geringe Last für diesen Prüfling erwartet wird.",
+                "Lo LOAD allein ist kein Ergebnis. Schalter, Aufbau und erwartete Last fachlich klären. §§9.1/9.2.",
+                4, (("Geringe Last bestätigt", "low_continue"), STOP)),
+    "low_continue": Step("Lo LOAD · fortsetzen", "", "Für erwartete geringe Last dieselbe Klassentaste erneut drücken. Danach die echte Anzeige auswählen. §§9.1/9.2.",
+                         4, OBSERVATIONS),
+    "high": Step("HIGH LOAD · Stopp", "Prüfung beenden. Mögliche Überlast oder einen Fehler fachlich klären lassen.",
+                 "Überlast kann Tester oder Prüfling beschädigen. Der Assistent bietet keinen Weiterlauf an. §§9.1/9.2.",
+                 4, (("Abbruch dokumentieren", "exam"),)),
+    "table": Step("tAbLE · RPE beurteilen", "Fachperson beurteilt RPE anhand Leitungslänge, Querschnitt und Grenzwerttabelle. Bewertung am BENNING eingeben.",
+                  "§7.10 / §9.1 / §9.3.1. Die Station bewertet den Messwert nicht. Bei unklarer Bewertung stoppen.",
+                  4, (("Bewertet · Anzeige lesen", "running"), STOP)),
+    "hot": Step("StOP / hot", "Prüfung beenden. Tester sicher vom Netz trennen und abkühlen lassen.",
+                "Keine wiederholte Dauermessung bei hoher Last. Aufbau vor erneutem Einsatz fachlich prüfen. §§9.1/9.2.",
+                4, (("Abbruch dokumentieren", "exam"),)),
+    "wrong": Step("Prüflauf unklar", "Prüfung sicher beenden. Schutzklasse, Betriebsart und Anschlüsse fachlich prüfen.",
+                  "Bei einer falschen Wahl warnt der BENNING. Erst nach Klärung einen neuen Prüflauf starten. §8.4.",
+                  4, (("Abbruch dokumentieren", "exam"),)),
+    "leak": Step("I LEAK blinkt", "", "IPE (Klasse I) ist eine Differenzmessung. IB (Klasse II) ist eine direkte Messung mit isoliertem Prüfling. §§9.1/9.2.",
+                 4, (("Sicherheit bestätigt", "energise"), STOP), "lcd"),
+    "energise": Step("IPE/IB am BENNING drücken", "Taste 4 legt 230 V an Prüfsteckdose 1. Beide Polaritätsstufen abwarten. Prüfling gesichert lassen.",
+                     "Nur im geprüften Netzaufbau ausführen. 1-2 und 2-2 sind Messstufen. Stecker während der Prüfung in Ruhe lassen. §§9.1/9.2.",
+                     4, OBSERVATIONS, "key_leak"),
+    "save": Step("Befund speichern", "", "Bei FAIL den Originalbefund sichern. OPEN: Unterbruch. Shor: Kurzschluss. CrOSS: L/N vertauscht. Klasse III bei RISO fachlich beurteilen.",
+                 5, (("STORE + Slot gesehen", "exam"), ("FULL / nicht gespeichert", "unsaved")), "store"),
+    "unsaved": Step("Kein neuer Speicherplatz", "Bei FULL keinen alten Slot verwenden. Speicherverwaltung der Fachperson überlassen.",
+                    "Vor dem Löschen des Speichers die Daten exportieren. §§10.1-10.4.",
+                    5, (("Ohne Messwert dokumentieren", "exam"),)),
+    "stop": Step("Prüfung unterbrochen", "Prüfling und Tester sicher ausser Betrieb nehmen. Befund oder offene Frage dokumentieren.",
+                 "Eine nicht durchgeführte Kontrolle bleibt im Protokoll offen.",
+                 5, (("Abbruch dokumentieren", "exam"),)),
+    "special": Step("Fachverfahren", "Drehstrom, FI/RCD und PRCD brauchen passende Ausrüstung und eine verantwortliche Fachperson.",
+                    "Handbuch §9.4, Bilder 7a/7b (CEE). §9.5, Bilder 8a/8b (30 mA FI/RCD). Für externe Messungen «Direkt» verwenden.",
+                    3, (("Ohne Messwert dokumentieren", "exam"), ("Zur Auswahl", "kind"))),
+    "exam": Step("Prüfung dokumentieren", "Prüfperson auswählen und Funktion erfassen. Bemerkung bei Bedarf ergänzen.",
+                 "Sichtprüfung, Funktion und Freigabe getrennt beurteilen. Die Printstation entscheidet nicht über die Freigabe.",
                  6, ()),
 }
 
@@ -108,7 +98,8 @@ class Guide:
     step: str = "visual"
     visual: str = "Offen"
     procedure: str = ""
-    mode: str = ""
+    mode: str = "Netz"
+    voltage: int = 500
     observed: str = ""
     stored: bool = False
     functional: str = "Offen"
@@ -116,43 +107,83 @@ class Guide:
     history: list = field(default_factory=list)
 
     def data(self):
-        return self.step,self.visual,self.procedure,self.mode,self.observed,self.stored,self.functional
+        return (self.step,self.visual,self.procedure,self.mode,self.voltage,
+                self.observed,self.stored,self.functional)
 
     def back(self):
         if self.history and not (self.blocked and self.step!="exam"):
-            self.step,self.visual,self.procedure,self.mode,self.observed,self.stored,self.functional=self.history.pop()
+            (self.step,self.visual,self.procedure,self.mode,self.voltage,
+             self.observed,self.stored,self.functional)=self.history.pop()
             return True
         return False
 
+    @property
+    def key(self):
+        return "Doppelquadrat (3)" if self.procedure in ("II","III") else "Erdzeichen (2)"
+
+    @property
+    def art(self):
+        if self.step in ("start","low_continue"):
+            return "key_ii" if self.procedure in ("II","III") else "key_i"
+        return STEPS[self.step].art
+
+    def choices(self):
+        if self.step=="connect2" and self.procedure=="III":
+            return (("Batterie + 500 V geprüft","start"),("Abweichendes Verfahren","exception"),STOP)
+        if self.step=="exception":
+            if self.procedure in ("I","II"):
+                return (("Netz + 250 V geprüft","start"),("Batterie + 500 V geprüft","start"),
+                        ("Batterie + 250 V geprüft","start"),STOP)
+            return (("Getrennt + 250 V geprüft","start"),STOP)
+        return STEPS[self.step].choices
+
     def instruction(self):
+        if self.step in ("connect1","connect2","iec","extension"):
+            text=STEPS[self.step].instruction
+            if self.mode=="Netz":
+                text+=" Netz an 11 prüfen."
+            else:
+                text+=" Netz an 11 trennen." if self.procedure=="III" else ""
+            return text+" 500 V am Tester prüfen, sofern geeignet."
         if self.step=="start":
-            key="Doppelquadrat (3)" if self.procedure in ("II","III") else "Erdzeichen (2)"
-            return f"Taste {key} am BENNING drücken. Prüfling sichern und Testeranzeige beobachten."
+            return f"Prüfling sichern und einschalten. {self.key} am BENNING drücken. Danach Anzeige unten wählen."
+        if self.step=="low_continue":
+            return f"Erwartete geringe Last bestätigt. {self.key} am BENNING erneut drücken."
+        if self.step=="leak":
+            extra=" Isoliert aufstellen, ohne Erdpfad." if self.procedure=="II" else ""
+            return ("Der nächste Schritt schaltet 230 V auf die Prüfsteckdose. "
+                    "Anschlüsse, Last und sicheren Lauf prüfen." + extra)
+        if self.step=="save":
+            return f"{self.observed} am BENNING. Diskette (13) drücken, dann STORE und Slot prüfen."
         return STEPS[self.step].instruction
 
     def choose(self,index):
-        choices=STEPS[self.step].choices
+        choices=self.choices()
         if not 0<=index<len(choices):
             return False
-        _,target=choices[index]
-        self.history.append(self.data())
+        label,target=choices[index]
+        if self.step!=target:
+            self.history.append(self.data())
         if self.step=="visual":
-            self.visual=("Ohne Befund","Mangel oder ungeklärt")[index]
+            self.visual=("Ohne Befund","Mangel","Ungeklärt")[index]
         elif self.step=="kind":
             self.procedure=("I","II","III","Leitung","Fachverfahren")[index]
-        elif self.step.startswith("mode"):
-            self.mode=("Batterie","Netz","")[index]
-        elif self.step=="class3":
-            self.mode="Batterie" if index==0 else ""
+            self.mode="Netz" if index<2 else "Batterie"
+            self.voltage=500
         elif self.step=="cable":
             self.procedure=("IEC","Verlängerung")[index]
-            self.mode="Batterie"
-        elif self.step=="observed":
-            if index==0:
-                self.observed="PASS"
-            elif index==1:
-                self.observed="FAIL"
-            elif index==2 and self.mode!="Netz":
+        elif self.step=="exception" and target=="start":
+            self.mode="Netz" if label.startswith("Netz") else "Batterie"
+            self.voltage=250 if "250" in label else 500
+        elif self.step in ("connect1","connect2","iec","extension") and target=="start":
+            self.mode="Netz" if self.procedure in ("I","II") else "Batterie"
+            self.voltage=500
+        elif choices==OBSERVATIONS:
+            if label in ("PASS","FAIL"):
+                self.observed=label
+            elif target=="leak" and self.mode!="Netz":
+                target="wrong"
+            elif target in ("low","high") and self.procedure in ("IEC","Verlängerung"):
                 target="wrong"
         elif self.step=="save":
             self.stored=index==0
@@ -164,7 +195,7 @@ class Guide:
         return True
 
     def examination(self,examiner="",remarks=""):
-        completed=self.visual=="Ohne Befund" and self.functional in ("Ohne Befund","Mangel") and bool(examiner.strip()) and self.stored and bool(self.observed)
         return {"visual":self.visual,"functional":self.functional,"examiner":examiner.strip(),
                 "remarks":remarks.strip(),"procedure":self.procedure,"mode":self.mode,
-                "observed":self.observed,"status":"Erfasst" if completed else "Unvollständig"}
+                "voltage_confirmed":self.voltage if self.stored else None,
+                "observed":self.observed}

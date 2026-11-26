@@ -19,7 +19,7 @@ pic = "home"
 [[component]]
 name = "proto"
 type = "variable"
-val = 6
+val = 61
 vscope = 1
 
 [[component]]
@@ -56,6 +56,7 @@ borderw = 0
 xcen = 0
 ycen = 1
 vscope = 1
+isbr = 0
 
 [[component]]
 name = "bNew"
@@ -168,6 +169,7 @@ borderw = 0
 xcen = 0
 ycen = 1
 vscope = 1
+isbr = 0
 
 [[component]]
 name = "tClock"
@@ -185,6 +187,7 @@ borderw = 0
 xcen = 0
 ycen = 1
 vscope = 1
+isbr = 0
 
 [[component]]
 name = "tmFlow"

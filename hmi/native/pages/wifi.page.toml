@@ -32,7 +32,7 @@ borderw = 0
 xcen = 1
 ycen = 1
 vscope = 0
-isbr = 1
+isbr = 0
 
 [[component]]
 name = "wBusy"
@@ -188,7 +188,7 @@ borderw = 0
 xcen = 1
 ycen = 1
 vscope = 0
-isbr = 1
+isbr = 0
 
 [[component]]
 name = "bNext"
@@ -225,7 +225,7 @@ borderw = 0
 xcen = 0
 ycen = 1
 vscope = 0
-isbr = 1
+isbr = 0
 
 [[component]]
 name = "bBack"

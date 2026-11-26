@@ -1,4 +1,4 @@
-"""Backend for the v0.5 native Nextion candidate; legacy nextion_ui is unchanged.
+"""Backend for the v0.6.1 native Nextion candidate; legacy nextion_ui is unchanged.
 
 The panel renders and edits locally. The host handles reports, printing,
 LAN downloads and operator-requested settings. It never flashes the display.
@@ -16,8 +16,10 @@ from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
 from station import database, receipt, send, simulate
-from benning_output import RESULTS, measurement_summary, report_timestamp, result_kind, visible_measurements
+from benning_output import RESULTS, measurement_summary, report_checks, report_timestamp, result_kind, visible_measurements
 from benning_workflow import WorkflowPanel
+from operator_panel import Picker
+from panel_text import fit, paginate, quote
 from benning_panel import TesterPanel
 from benning_receiver import MODES, Receiver
 from benning_store import Measurements, SOURCES
@@ -26,7 +28,7 @@ from station_network import NetworkManager
 
 END = b"\xff\xff\xff"
 ENCODING = "iso-8859-15"
-PROTOCOL = 6
+PROTOCOL = 61
 LOG = logging.getLogger(__name__)
 
 
@@ -52,24 +54,9 @@ class FrameDecoder:
         return frames
 
 
-def display_text(value, limit):
-    """Bounded single-line text; preserve quotes and backslashes as data.
-
-    U+00FF is excluded because its wire byte is the packet delimiter. The
-    native keyboard does not offer it. Stored originals remain untouched.
-    """
-    value = "".join(c if c.isprintable() and c != "ÿ" else " " for c in str(value))
-    return value.encode(ENCODING, "replace")[:limit].decode(ENCODING)
-
-
 def panel_colour(colour):
     rgb=int(colour[1:],16)
     return ((rgb>>19)<<11)|(((rgb>>10)&63)<<5)|((rgb>>3)&31)
-
-
-def quoted(value, limit):
-    value = display_text(value, limit)
-    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
 def report_base(value):
@@ -148,6 +135,8 @@ class NativeUI:
         self.tester=TesterPanel(self,self.measurements,self.receiver)
         self.settings = PanelSettings(self,network,config_path,enable_power,**settings_hooks)
         self.workflow=WorkflowPanel(self)
+        self.picker=Picker(self)
+        self.detail_page=0
         self.measurement_offset=0
         self.measurement_preview_pending=False
 
@@ -159,12 +148,13 @@ class NativeUI:
         self.ser.write(data + END)
 
     def text(self, component, value, limit):
-        self.cmd(f"{component}.txt={quoted(value, limit)}")
+        self.cmd(f"{component}.txt={quote(fit(self.settings.page,component,value,limit))}")
 
     def initialise(self):
         self.cmd("bkcmd=3")
         self.cmd("sendxy=0")
         self.workflow.reset()
+        self.picker.reset()
         self.settings.page = None
         self.settings.selected = None
         self.settings.joined = False
@@ -203,6 +193,19 @@ class NativeUI:
             self.last_heartbeat = now
 
     def draw_measurements(self,report):
+        self.cmd(f"vis tDetails,{int(bool(self.detail_page))}")
+        for i in range(3):
+            self.cmd(f"vis tValue{i},{int(not self.detail_page)}")
+        if self.detail_page:
+            pages=paginate("report.tDetails",(f"{label}: {value}" for label,value in report_checks(report)))
+            self.text("tDetails",pages[self.detail_page-1],255)
+            self.text("bInfo","Messwerte",14)
+            self.text("bValues","Weitere Angaben",18)
+            self.cmd(f"vMore.val={int(len(pages)>1)}")
+            self.cmd(f"vis bValues,{int(len(pages)>1)}")
+            return
+        self.text("bInfo","Prüfdetails",14)
+        self.text("bValues","Weitere Werte",18)
         rows=visible_measurements(report)
         csv_source=report.get("import_source") in ("usb","file-csv")
         for i in range(3):
@@ -245,12 +248,13 @@ class NativeUI:
         if source=="BENNING":
             origin=f'Tester-Original: {record.get("verdict") or "unbekannt"}'
             note="Messwerte und Prüfergebnis vom BENNING ST 725 übernommen."
-            if (report.get("examination") or {}).get("status")=="Unvollständig":
-                date+="  /  Prüfung unvollständig"
+            protocol=dict(report_checks(report))["Protokoll"]
+            if protocol.startswith("Offen:"):
+                note="Protokoll offen:"+protocol.partition(":")[2]
             qr="BENNING-Import / Originalergebnis"
         elif source=="EXAMINATION":
             origin="Kein Testergebnis übernommen"
-            note="Sicht- und Funktionsprüfung dokumentiert."
+            note="Protokoll offen: BENNING-Messung fehlt."
             qr="UNVOLLSTÄNDIGE PRÜFUNG"
         else:
             origin="KEINE ELEKTRISCHE PRÜFUNG"
@@ -261,6 +265,7 @@ class NativeUI:
         self.text("report.tDate",date,42)
         self.text("qrpage.tKind",qr,56)
         self.measurement_offset=0
+        self.detail_page=0
         self.cmd("report.printing.val=0")
         self.report,self.report_id=report,ident
         self.cmd("report.ready.val=1")
@@ -381,12 +386,24 @@ class NativeUI:
             self.settings.enter(frame[1])
             self.tester.enter()
             self.workflow.enter()
+            self.picker.enter()
             self.measurement_preview_pending=self.settings.page=="report"
             return
+        if frame==b"RC61:DETAILS" and self.settings.page=="report" and self.report:
+            self.detail_page=0 if self.detail_page else 1
+            self.measurement_preview_pending=True
+            return
+        if frame.startswith(b"RC61:"):
+            self.picker.handle(frame)
+            return
         if frame==b"RC6:VALUES" and self.settings.page=="report" and self.report:
-            self.measurement_offset=(self.measurement_offset+3)
-            if self.measurement_offset>=len(visible_measurements(self.report)):
-                self.measurement_offset=0
+            if self.detail_page:
+                pages=paginate("report.tDetails",(f"{k}: {v}" for k,v in report_checks(self.report)))
+                self.detail_page=self.detail_page%len(pages)+1
+            else:
+                self.measurement_offset+=3
+                if self.measurement_offset>=len(visible_measurements(self.report)):
+                    self.measurement_offset=0
             self.measurement_preview_pending=True
             return
         if frame.startswith(b"RC6:"):

@@ -1,0 +1,413 @@
+[page]
+name = "picker"
+type = "page"
+x = 0
+y = 0
+w = 480
+h = 800
+bco = "#101923"
+
+[[component]]
+name = "pBg"
+type = "picture"
+x = 0
+y = 0
+w = 480
+h = 800
+pic = "picker"
+
+[[component]]
+name = "pBack"
+type = "variable"
+val = 0
+vscope = 1
+
+[[component]]
+name = "pEdit"
+type = "variable"
+sta = 1
+txt = ""
+txt_maxl = 48
+vscope = 1
+
+[[component]]
+name = "pPeople"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "pCount"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "pPrev"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "pNext"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "pChoose"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "pEditOk"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "pRoute"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "pTitle"
+type = "text"
+x = 24
+y = 252
+w = 432
+h = 30
+txt = "Bitte warten ..."
+txt_maxl = 52
+font = "UI24"
+pco = "#f5f6f7"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 0
+
+[[component]]
+name = "pSelected"
+type = "text"
+x = 24
+y = 281
+w = 432
+h = 40
+txt = ""
+txt_maxl = 64
+font = "UI20"
+pco = "#42d9dd"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 0
+
+[[component]]
+name = "pRow0"
+type = "button"
+x = 24
+y = 323
+w = 432
+h = 40
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = " "
+txt_maxl = 67
+isbr = 0
+
+[[component]]
+name = "pRow1"
+type = "button"
+x = 24
+y = 366
+w = 432
+h = 40
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = " "
+txt_maxl = 67
+isbr = 0
+
+[[component]]
+name = "pRow2"
+type = "button"
+x = 24
+y = 409
+w = 432
+h = 40
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = " "
+txt_maxl = 67
+isbr = 0
+
+[[component]]
+name = "pRow3"
+type = "button"
+x = 24
+y = 452
+w = 432
+h = 40
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = " "
+txt_maxl = 67
+isbr = 0
+
+[[component]]
+name = "pRow4"
+type = "button"
+x = 24
+y = 495
+w = 432
+h = 40
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = " "
+txt_maxl = 67
+isbr = 0
+
+[[component]]
+name = "pRow5"
+type = "button"
+x = 24
+y = 538
+w = 432
+h = 40
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = " "
+txt_maxl = 67
+isbr = 0
+
+[[component]]
+name = "bPrev"
+type = "button"
+x = 24
+y = 584
+w = 210
+h = 39
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Vorherige"
+txt_maxl = 9
+isbr = 0
+
+[[component]]
+name = "bNext"
+type = "button"
+x = 246
+y = 584
+w = 210
+h = 39
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Weitere"
+txt_maxl = 7
+isbr = 0
+
+[[component]]
+name = "pNote"
+type = "text"
+x = 24
+y = 624
+w = 432
+h = 42
+txt = ""
+txt_maxl = 94
+font = "UI20"
+pco = "#ffd08a"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 0
+
+[[component]]
+name = "bAdd"
+type = "button"
+x = 24
+y = 667
+w = 135
+h = 42
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Neu"
+txt_maxl = 10
+isbr = 0
+
+[[component]]
+name = "bEdit"
+type = "button"
+x = 166
+y = 667
+w = 135
+h = 42
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Bearbeiten"
+txt_maxl = 10
+isbr = 0
+
+[[component]]
+name = "bState"
+type = "button"
+x = 308
+y = 667
+w = 148
+h = 42
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Deaktivieren"
+txt_maxl = 16
+isbr = 0
+
+[[component]]
+name = "bToggle"
+type = "button"
+x = 24
+y = 718
+w = 135
+h = 42
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Auch inaktiv"
+txt_maxl = 14
+isbr = 0
+
+[[component]]
+name = "bUse"
+type = "button"
+x = 307
+y = 718
+w = 149
+h = 42
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#ff941f"
+bco2 = "#ffc071"
+pco = "#101923"
+pco2 = "#101923"
+txt = "Übernehmen"
+txt_maxl = 12
+isbr = 0
+
+[[component]]
+name = "bBack"
+type = "button"
+x = 166
+y = 718
+w = 135
+h = 42
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Zurück"
+txt_maxl = 6
+isbr = 0
+
+[[component]]
+name = "hLayout"
+type = "hotspot"
+x = 0
+y = 0
+w = 2
+h = 2
+
+[[component]]
+name = "tmFlow"
+type = "timer"
+tim = 200
+en = 1
+
+[[component]]
+name = "tmLink"
+type = "timer"
+tim = 1000
+en = 1

@@ -84,9 +84,17 @@ borderw = 0
 xcen = 0
 ycen = 1
 vscope = 0
+isbr = 0
 
 [[component]]
 name = "input"
+type = "variable"
+sta = 1
+txt = ""
+txt_maxl = 64
+
+[[component]]
+name = "tInput"
 type = "text"
 x = 28
 y = 310
@@ -101,7 +109,13 @@ borderw = 0
 xcen = 0
 ycen = 1
 vscope = 0
-isbr = 1
+isbr = 0
+
+[[component]]
+name = "kTail"
+type = "variable"
+val = 0
+vscope = 0
 
 [[component]]
 name = "tHint"
@@ -119,6 +133,7 @@ borderw = 0
 xcen = 0
 ycen = 1
 vscope = 0
+isbr = 0
 
 [[component]]
 name = "k0"

@@ -60,21 +60,29 @@ vscope = 1
 
 [[component]]
 name = "tTicket"
+type = "variable"
+sta = 1
+txt = ""
+txt_maxl = 32
+vscope = 1
+
+[[component]]
+name = "tTicketView"
 type = "text"
 x = 34
 y = 282
 w = 412
 h = 48
 txt = ""
-txt_maxl = 32
+txt_maxl = 34
 font = "UI20"
 pco = "#f5f6f7"
 bco = "#1d2c3a"
 borderw = 0
 xcen = 0
 ycen = 1
-vscope = 1
-isbr = 1
+vscope = 0
+isbr = 0
 
 [[component]]
 name = "hEdit0"
@@ -86,28 +94,55 @@ h = 52
 
 [[component]]
 name = "tDevice"
+type = "variable"
+sta = 1
+txt = ""
+txt_maxl = 64
+vscope = 1
+
+[[component]]
+name = "tDeviceView"
 type = "text"
 x = 34
 y = 369
-w = 412
+w = 284
 h = 48
 txt = ""
-txt_maxl = 64
+txt_maxl = 66
 font = "UI20"
 pco = "#f5f6f7"
 bco = "#1d2c3a"
 borderw = 0
 xcen = 0
 ycen = 1
-vscope = 1
-isbr = 1
+vscope = 0
+isbr = 0
+
+[[component]]
+name = "bTemplates"
+type = "button"
+x = 329
+y = 367
+w = 127
+h = 52
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Vorlagen"
+txt_maxl = 8
+isbr = 0
 
 [[component]]
 name = "hEdit1"
 type = "hotspot"
 x = 24
 y = 367
-w = 432
+w = 295
 h = 52
 
 [[component]]
@@ -126,7 +161,7 @@ borderw = 0
 xcen = 0
 ycen = 1
 vscope = 1
-isbr = 1
+isbr = 0
 
 [[component]]
 name = "hEdit2"
@@ -176,6 +211,12 @@ w = 2
 h = 2
 
 [[component]]
+name = "draftLen"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
 name = "tTester"
 type = "text"
 x = 24
@@ -191,7 +232,7 @@ borderw = 0
 xcen = 0
 ycen = 1
 vscope = 1
-isbr = 1
+isbr = 0
 
 [[component]]
 name = "tStatus"
@@ -209,7 +250,7 @@ borderw = 0
 xcen = 0
 ycen = 1
 vscope = 1
-isbr = 1
+isbr = 0
 
 [[component]]
 name = "vArg"

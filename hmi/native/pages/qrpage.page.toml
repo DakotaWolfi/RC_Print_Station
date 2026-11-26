@@ -57,7 +57,7 @@ borderw = 0
 xcen = 1
 ycen = 1
 vscope = 1
-isbr = 1
+isbr = 0
 
 [[component]]
 name = "tKind"
@@ -75,6 +75,7 @@ borderw = 0
 xcen = 0
 ycen = 1
 vscope = 1
+isbr = 0
 
 [[component]]
 name = "bBack"
@@ -83,12 +84,12 @@ x = 24
 y = 733
 w = 432
 h = 34
-sta = 0
-picc = "qrpage"
-picc2 = "qrpage_press"
+sta = 1
 style = 0
 borderw = 0
 font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
 pco = "#f5f6f7"
 pco2 = "#f5f6f7"
 txt = "Zurück zum Bericht"

@@ -32,7 +32,7 @@ borderw = 0
 xcen = 1
 ycen = 1
 vscope = 0
-isbr = 1
+isbr = 0
 
 [[component]]
 name = "bBrightDown"
@@ -69,7 +69,7 @@ borderw = 0
 xcen = 1
 ycen = 1
 vscope = 0
-isbr = 1
+isbr = 0
 
 [[component]]
 name = "bBrightUp"
@@ -106,7 +106,7 @@ borderw = 0
 xcen = 1
 ycen = 1
 vscope = 0
-isbr = 1
+isbr = 0
 
 [[component]]
 name = "bStand"
@@ -162,7 +162,7 @@ borderw = 0
 xcen = 0
 ycen = 1
 vscope = 0
-isbr = 1
+isbr = 0
 
 [[component]]
 name = "bBack"

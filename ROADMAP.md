@@ -161,3 +161,11 @@ Status: working legacy hybrid prototype plus separate native HMI v0.3 candidate.
 - [x] HMI/TFT bauen, Simulation und Beleg-/PDF-Muster prüfen.
 - [ ] v0.6 im offiziellen Editor und am Pi 4B mit BENNING und Epson abnehmen. [Prüfliste](hmi/VALIDATION-v06.md)
 - [ ] RS232-Adapter und Swiss-Layout am Gerät prüfen.
+
+## Bedienung am Prüfstand v0.6.1
+
+- [x] Standardweg für Netz und geeignete 500-V-Prüfung. Geräteanzeige und Anschluss bewusst bestätigen.
+- [x] Lo LOAD und blinkendes I LEAK direkt auswählbar, physische Tasten eindeutig markiert.
+- [x] Namensliste, Gerätevorlagen und dauerhafte Nutzungsreihenfolge.
+- [x] Testerurteil und fehlende Angaben in Anzeige, Beleg und PDF getrennt.
+- [ ] Kandidat im offiziellen Editor kompilieren und microSD-Verfahren am Prüfstand verifizieren.

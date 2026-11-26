@@ -8,6 +8,7 @@ import sqlite3
 
 from benning_csv import ImportErrorDetail, parse_csv
 from benning_rs232 import parse_printout
+from operator_store import SCHEMA as OPERATOR_SCHEMA, record_use
 
 PHASES=("Eingangsprüfung","Zwischenprüfung","Ausgangsprüfung")
 SOURCES={"usb":"BENNING USB", "rs232":"BENNING RS232",
@@ -60,7 +61,7 @@ class Measurements:
         conn.row_factory=sqlite3.Row
         try:
             conn.execute("PRAGMA foreign_keys=ON")
-            conn.executescript(SCHEMA)
+            conn.executescript(SCHEMA+OPERATOR_SCHEMA)
         except Exception:
             conn.close()
             raise
@@ -157,16 +158,17 @@ class Measurements:
             raise ValueError("Ungültige Prüfart.")
         return ticket,device,phase
 
-    def create_incomplete(self,ticket,device,phase,examination):
+    def create_incomplete(self,ticket,device,phase,examination,*,examiner_id=None):
         ticket,device,phase=self.repair_fields(ticket,device,phase)
         report={"ticket":ticket,"device":device,"source":"EXAMINATION","phase":phase,
                 "created":now(),"verdict":None,"measurements":[],
                 "examination":dict(examination,status="Unvollständig")}
         with closing(self.db()) as conn,conn:
             ident=conn.execute("INSERT INTO reports(data) VALUES(?)",(json.dumps(report),)).lastrowid
+            record_use(conn,device,examiner_id,report["created"])
         return ident,report
 
-    def create_report(self,ticket,device,phase,selection,*,require_current=False,examination=None):
+    def create_report(self,ticket,device,phase,selection,*,require_current=False,examination=None,examiner_id=None):
         ticket,device,phase=self.repair_fields(ticket,device,phase)
         # Resolve from the immutable batch, not from mutable slot metadata or UI fields.
         with closing(self.db()) as conn,conn:
@@ -191,4 +193,5 @@ class Measurements:
             if examination:
                 report["examination"]=examination
             ident=conn.execute("INSERT INTO reports(data) VALUES(?)",(json.dumps(report),)).lastrowid
+            record_use(conn,device,examiner_id,report["created"])
         return ident,report

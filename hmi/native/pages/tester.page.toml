@@ -62,7 +62,7 @@ borderw = 0
 xcen = 0
 ycen = 1
 vscope = 0
-isbr = 1
+isbr = 0
 
 [[component]]
 name = "mImport"
@@ -80,6 +80,7 @@ borderw = 0
 xcen = 0
 ycen = 1
 vscope = 0
+isbr = 0
 
 [[component]]
 name = "mRow0"
@@ -211,6 +212,7 @@ borderw = 0
 xcen = 0
 ycen = 1
 vscope = 0
+isbr = 0
 
 [[component]]
 name = "mNote"
@@ -228,7 +230,7 @@ borderw = 0
 xcen = 0
 ycen = 1
 vscope = 0
-isbr = 1
+isbr = 0
 
 [[component]]
 name = "bUse"

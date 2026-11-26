@@ -883,6 +883,15 @@ on hLayout.up:
 
 on hCount.up:
   strlen input.txt,count.val
+  if(count.val>21)
+  {
+  kTail.val=count.val-21
+  substr input.txt,tInput.txt,kTail.val,21
+  tInput.txt="..."+tInput.txt
+  }else
+  {
+  tInput.txt=input.txt
+  }
   covx count.val,tHint.txt,0,0
   tHint.txt+=" Zeichen  /  max. "
   covx limit.val,tLimit.txt,0,0
@@ -930,7 +939,10 @@ on bCancel.up:
   }else if(entry.field.val>2&&entry.field.val<5)
   {
   page printer
-  }else if(entry.field.val>5)
+  }else if(entry.field.val==6)
+  {
+  page picker
+  }else if(entry.field.val==7)
   {
   page guide
   }else
@@ -972,12 +984,19 @@ on bOK.up:
   {
   if(entry.field.val==6)
   {
-  guide.eName.txt=input.txt
+  if(home.online.val==1)
+  {
+  prints "RC61:NAME",0
+  printh 00
+  prints input.txt,0
+  printh ff ff ff
+  }
+  page picker
   }else
   {
   guide.eRemarks.txt=input.txt
-  }
   page guide
+  }
   }else
   {
   if(entry.field.val==0)
@@ -1037,7 +1056,7 @@ on keyboard.loadend:
   limit.val=3
   }else if(entry.field.val==6)
   {
-  input.txt=guide.eName.txt
+  input.txt=picker.pEdit.txt
   tField.txt="Prüfperson"
   limit.val=48
   }else

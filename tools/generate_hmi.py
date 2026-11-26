@@ -5,20 +5,25 @@ Editor project in hmi/reference is never an output of this script.
 """
 from pathlib import Path
 import json
+import re
+import sys
 import tomli_w
 from PIL import Image, ImageDraw, ImageFont
 from nxwright.project.font_drawing import draw_font_block
 from nxwright.project.truetype import TrueTypeFont
+from nxwright.project.zi_font import decode_font
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT))
+from panel_text import quote as text_quote, word_lines
 APP = ROOT / "hmi/native"
 DESIGN = ROOT / "hmi/design"
 BG, PANEL, EDGE = "#101923", "#1d2c3a", "#344858"
 WHITE, MUTED, ORANGE, CYAN = "#f5f6f7", "#afc2d0", "#ff941f", "#42d9dd"
 WARN = "#ffd08a"
 PAGES = ["home", "entry", "keyboard", "report", "qrpage", "history", "settings",
-         "wifi", "wjoin", "printer", "receipt", "system", "power", "tester", "guide", "importer"]
-FLAT = set(PAGES[6:]) | {"home","entry","report"}
+         "wifi", "wjoin", "printer", "receipt", "system", "power", "tester", "guide", "importer", "picker"]
+FLAT = set(PAGES[6:]) | {"home","entry","report","qrpage","history"}
 
 # Swiss letter order, direct umlauts, plus two symbol banks. A touchscreen
 # shift intentionally provides uppercase umlauts directly (Ä/Ö/Ü).
@@ -58,7 +63,7 @@ class Page:
         self.label(24, 183, title, 30, WHITE)
         self.label(24, 228, subtitle, 17, MUTED)
         self.label(24, 777, "FMI  /  REPAIR CAFÉ RIEHEN", 12, MUTED)
-        self.label(390, 777, "v0.6 RC", 12, MUTED)
+        self.label(390, 777, "v0.6.1 RC", 12, MUTED)
         self.shapes = []
         self.add("pBg", "picture", x=0, y=0, w=480, h=800, pic=name)
 
@@ -79,6 +84,7 @@ class Page:
 
     def text(self, name, x, y, w, h, value="", size=24, color=WHITE,
              bg=PANEL, limit=64, global_=False, align=0, **attrs):
+        attrs["isbr"]=0
         self.add(name, "text", x=x, y=y, w=w, h=h, txt=value, txt_maxl=limit,
                  font=f"UI{size}", pco=color, bco=bg, borderw=0,
                  xcen=align, ycen=1, vscope=int(global_), **attrs)
@@ -135,7 +141,7 @@ class Page:
 
 def make_home():
     p = Page("home", "Reparieren. Weitergeben.", "Ein zweites Leben beginnt mit einer Reparatur.")
-    p.var("proto", 6)
+    p.var("proto", 61)
     for name in ("online", "age", "pending"):
         p.var(name)
     p.box(24, 273, 432, 115)
@@ -144,7 +150,7 @@ def make_home():
     p.text("tLink", 40, 348, 400, 27, "Host nicht verbunden", size=20,
            color=MUTED, global_=True, limit=32)
     reset=['entry.tTicket.txt=""','entry.tDevice.txt=""','entry.tStatus.txt=""',
-           'entry.tSlot.txt=""','guide.eName.txt=""','guide.eRemarks.txt=""',
+           'entry.tSlot.txt=""','guide.eRemarks.txt=""',
            "entry.phase.val=0","entry.useLast.val=1","entry.busy.val=0","entry.route.val=0"]
     p.button("bNew",24,412,313,82,"Geführte Prüfung",
              [*reset,"entry.guided.val=1",*emit("RC6:NEW"),"page entry"],True,24)
@@ -175,8 +181,15 @@ def make_entry():
             ("tSlot","PRÜFSPEICHERNUMMER",440,140,3))):
         p.label(24,y,label,14,CYAN)
         p.box(24,y+22,w,52,outline=EDGE)
-        p.text(name,34,y+24,w-20,48,global_=True,limit=limit,isbr=1,size=20)
-        p.add(f"hEdit{field}","hotspot",x=24,y=y+22,w=w,h=52)
+        if field<2:
+            p.add(name,"variable",sta=1,txt="",txt_maxl=limit,vscope=1)
+            p.text(name+"View",34,y+24,284 if field else 412,48,limit=limit+2,size=20)
+            if field==1:
+                p.button("bTemplates",329,y+22,127,52,"Vorlagen",["if(busy.val==0&&home.online.val==1)","{",
+                         *emit("RC61:APPLIANCES"),"picker.pBack.val=0","page picker","}"],size=20)
+        else:
+            p.text(name,34,y+24,w-20,48,global_=True,limit=limit,size=20)
+        p.add(f"hEdit{field}","hotspot",x=24,y=y+22,w=295 if field==1 else w,h=52)
         condition="busy.val==0" if field<2 else "busy.val==0&&useLast.val==0&&sim.val==0"
         p.on(f"hEdit{field}.up",[f"if({condition})","{",f"field.val={field if field<2 else 5}",
                                   "page keyboard","}"])
@@ -191,9 +204,17 @@ def make_entry():
     p.on("hPhase.up",["if(phase.val==0)","{",'bPhase.txt="Eingangsprüfung"',
                        "}else if(phase.val==1)","{",'bPhase.txt="Zwischenprüfung"',
                        "}else","{",'bPhase.txt="Ausgangsprüfung"',"}"])
-    p.on("entry.loadend",["route.val=0","busy.val=0","cLast.val=useLast.val","click hPhase,0",
-                          "if(sim.val==1)","{",'bCreate.txt="Simulation erstellen"',
-                          "}else if(guided.val==1)","{",'bCreate.txt="Prüfung beginnen"',"vis bTester,0","}"])
+    p.var("draftLen",global_=False)
+    p.on("entry.loadend",[
+        "strlen tTicket.txt,draftLen.val","if(draftLen.val>21)","{",'tTicketView.txt="Tippen zum Bearbeiten"',
+        "}else","{","tTicketView.txt=tTicket.txt","}",
+        "strlen tDevice.txt,draftLen.val","if(draftLen.val>14)","{",'tDeviceView.txt="Tippen zum Bearbeiten"',
+        "}else","{","tDeviceView.txt=tDevice.txt","}",
+        "if(home.online.val==1)","{",'prints "RC61:DRAFT",0',"printh 00",
+        "prints tTicket.txt,0","printh 00","prints tDevice.txt,0","printh ff ff ff","}",
+        "route.val=0","busy.val=0","cLast.val=useLast.val","click hPhase,0",
+        "if(sim.val==1)","{",'bCreate.txt="Simulation erstellen"',
+        "}else if(guided.val==1)","{",'bCreate.txt="Prüfung beginnen"',"vis bTester,0","}"])
     p.text("tTester",24,575,432,38,"Warte auf BENNING-Host.",size=20,
            color=MUTED,bg=BG,global_=True,limit=92,isbr=1)
     p.text("tStatus",24,615,432,46,"",size=20,color=WARN,bg=BG,global_=True,limit=100,isbr=1)
@@ -240,7 +261,9 @@ def make_keyboard():
                     "}else","{","input.txt+=vKey.txt","}","}",'vKey.txt=""',"click hCount,0"])
     p.text("tField",16,271,448,28,"Eingabe",size=20,color=CYAN,bg=BG,limit=24)
     p.box(16, 303, 448, 83, outline=EDGE)
-    p.text("input", 28, 310, 424, 67, size=20, limit=64, isbr=1)
+    p.add("input","variable",sta=1,txt="",txt_maxl=64)
+    p.text("tInput",28,310,424,67,size=20,limit=64)
+    p.var("kTail",global_=False)
     p.text("tHint", 16, 389, 448, 27, "", size=20, color=MUTED, bg=BG, limit=56)
     coords = []
     for row in range(4):
@@ -280,7 +303,10 @@ def make_keyboard():
                'bMode.txt="é / §"', "}else", "{", 'bMode.txt="ABC"', "}"]
     p.on("hLayout.up", layout)
     p.add("hCount", "hotspot", x=2, y=0, w=2, h=2)
-    p.on("hCount.up", ["strlen input.txt,count.val", "covx count.val,tHint.txt,0,0",
+    p.on("hCount.up", ["strlen input.txt,count.val","if(count.val>21)","{",
+                         "kTail.val=count.val-21","substr input.txt,tInput.txt,kTail.val,21",
+                         'tInput.txt="..."+tInput.txt',"}else","{","tInput.txt=input.txt","}",
+                         "covx count.val,tHint.txt,0,0",
                          'tHint.txt+=" Zeichen  /  max. "', "covx limit.val,tLimit.txt,0,0",
                          "tHint.txt+=tLimit.txt"])
     p.add("tLimit", "variable", sta=1, txt="", txt_maxl=2)
@@ -298,7 +324,7 @@ def make_keyboard():
         p.on(name+".up", lines)
     p.button("bCancel",16,725,212,44,"Abbrechen",['secret.txt=""','input.txt=""',
         "if(entry.field.val==2)","{","page wjoin","}else if(entry.field.val>2&&entry.field.val<5)","{","page printer",
-        "}else if(entry.field.val>5)","{","page guide","}else","{","page entry","}"],size=20)
+        "}else if(entry.field.val==6)","{","page picker","}else if(entry.field.val==7)","{","page guide","}else","{","page entry","}"],size=20)
     p.button("bOK",240,725,224,44,"Übernehmen",[
         "if(entry.field.val==2)","{","if(home.online.val==1)","{",
         'prints "RC4:PASS",0',"printh 00","prints secret.txt,0","printh ff ff ff","}",
@@ -306,8 +332,9 @@ def make_keyboard():
         "if(home.online.val==1)","{","if(entry.field.val==3)","{",'prints "RC4:IP",0',"}else","{",
         'prints "RC4:PORT",0',"}","printh 00","prints input.txt,0","printh ff ff ff","}",
         'input.txt=""',"page printer","}else if(entry.field.val>5)","{",
-        "if(entry.field.val==6)","{","guide.eName.txt=input.txt","}else","{",
-        "guide.eRemarks.txt=input.txt","}","page guide","}else","{","if(entry.field.val==0)","{",
+        "if(entry.field.val==6)","{","if(home.online.val==1)","{",'prints "RC61:NAME",0',
+        "printh 00","prints input.txt,0","printh ff ff ff","}","page picker","}else","{",
+        "guide.eRemarks.txt=input.txt","page guide","}","}else","{","if(entry.field.val==0)","{",
         "entry.tTicket.txt=input.txt","}else if(entry.field.val==1)","{",
         "entry.tDevice.txt=input.txt","}else","{","entry.tSlot.txt=input.txt","}",
         'entry.tStatus.txt=""',"page entry","}"],True,20)
@@ -321,7 +348,7 @@ def make_keyboard():
         'tField.txt="Drucker-IPv4-Adresse"',"limit.val=15","}else if(entry.field.val==4)","{",
         "input.txt=settings.editText.txt",'tField.txt="Drucker-TCP-Port"',"limit.val=5",
         "}else if(entry.field.val==5)","{","input.txt=entry.tSlot.txt",'tField.txt="Prüfspeichernummer"',"limit.val=3",
-        "}else if(entry.field.val==6)","{","input.txt=guide.eName.txt",
+        "}else if(entry.field.val==6)","{","input.txt=picker.pEdit.txt",
         'tField.txt="Prüfperson"',"limit.val=48","}else","{","input.txt=guide.eRemarks.txt",
         'tField.txt="Bemerkung"',"limit.val=64","}",'settings.editText.txt=""',
         "click hLayout,0","click hCount,0"])
@@ -348,6 +375,7 @@ def make_report():
     p.text("tDate",24,460,432,26,"",size=20,color=MUTED,bg=BG,global_=True,limit=42)
     for i in range(3):
         p.text(f"tValue{i}",24,487+i*37,432,36,"",size=20,bg=BG,limit=94,isbr=1)
+    p.text("tDetails",24,486,432,110,"",size=20,bg=BG,limit=255)
     p.text("tStatus",24,598,432,46,"Keine Messwerte vorhanden.",size=20,color=WARN,
            bg=BG,global_=True,limit=90,isbr=1)
     p.button("bPrint",24,651,210,54,"Beleg drucken",[
@@ -357,10 +385,13 @@ def make_report():
         'tStatus.txt="Bitte Bericht erneut im Verlauf öffnen."',"}"] ,True,20)
     p.button("bQR",246,651,210,54,"PDF / QR-Code",[
         "if(ready.val==1)","{","qrpage.qReady.val=0","page qrpage","}"],size=20)
-    p.button("bHome",24,715,210,46,"Hauptmenü",["page home"],size=20)
-    p.button("bValues",246,715,210,46,"Weitere Werte",["if(vMore.val==1&&home.online.val==1)","{",
+    p.button("bHome",24,715,135,46,"Hauptmenü",["page home"],size=20)
+    p.button("bInfo",167,715,132,46,"Prüfdetails",[*emit("RC61:DETAILS")],size=20)
+    p.doc["component"][-1]["txt_maxl"]=14
+    p.button("bValues",307,715,149,46,"Weitere Werte",["if(vMore.val==1&&home.online.val==1)","{",
              *emit("RC6:VALUES"),"}"],size=20)
-    p.on("report.loadend",["if(vMore.val==0)","{","vis bValues,0","}"])
+    p.doc["component"][-1]["txt_maxl"]=18
+    p.on("report.loadend",["vis tDetails,0","if(vMore.val==0)","{","vis bValues,0","}"])
     p.flow(["if(printing.val==1&&home.online.val==0)","{","printing.val=0",
         'tStatus.txt="Verbindung verloren. Beleg vor erneutem Druck prüfen."',"}"])
     p.save()
@@ -545,7 +576,7 @@ def make_tester():
     p.save()
 
 
-ART=("lcd","keys","class1","class2","iec","extension","store","recall","print","ports")
+ART=("lcd","class1","class2","iec","extension","store","recall","print","ports","key_i","key_ii","key_leak","key_voltage")
 PICTURES=[s for p in PAGES for s in ((p,) if p in FLAT else (p,p+"_press"))]+[f"g_{s}" for s in ART]
 
 
@@ -561,43 +592,51 @@ def make_guide_art():
             d.rounded_rectangle(bounds,8,fill=colour,outline=EDGE,width=2)
         def line(points,width=3,colour=CYAN):
             d.line(points,fill=colour,width=width,joint="curve")
-        def key(x,label):
-            d.ellipse((x-25,15,x+25,65),fill=PANEL,outline=ORANGE,width=2)
+        def key(x,label,active):
+            yellow="#FFD630"
+            stroke=BG if active else "#8795A0"
+            d.ellipse((x-25,15,x+25,65),fill=yellow if active else PANEL,outline=yellow if active else EDGE,width=2)
             if label=="Erdzeichen":
-                line((x,25,x,42),2,WHITE)
+                line((x,25,x,42),2,stroke)
                 for idx,width in enumerate((23,15,7)):
-                    line((x-width//2,42+idx*5,x+width//2,42+idx*5),2,WHITE)
+                    line((x-width//2,42+idx*5,x+width//2,42+idx*5),2,stroke)
             elif label=="Doppelquadrat":
-                d.rectangle((x-14,26,x+14,54),outline=WHITE,width=2)
-                d.rectangle((x-8,32,x+8,48),outline=WHITE,width=2)
+                d.rectangle((x-14,26,x+14,54),outline=stroke,width=2)
+                d.rectangle((x-8,32,x+8,48),outline=stroke,width=2)
             elif label=="Diskette":
-                d.polygon([(x-15,24),(x+10,24),(x+15,29),(x+15,56),(x-15,56)],fill=WHITE)
-                d.rectangle((x-10,27,x+5,37),fill=BG)
-                d.rectangle((x-10,44,x+10,55),fill=BG)
+                d.polygon([(x-15,24),(x+10,24),(x+15,29),(x+15,56),(x-15,56)],fill=stroke)
+                d.rectangle((x-10,27,x+5,37),fill="#FFD630" if active else PANEL)
+                d.rectangle((x-10,44,x+10,55),fill="#FFD630" if active else PANEL)
             elif label=="Ordner":
-                line((x-15,53,x-16,30,x-5,30,x,35,x+16,35,x+12,53,x-15,53),2,WHITE)
-                line((x-15,53,x-10,38,x+17,38,x+12,53),2,WHITE)
+                line((x-15,53,x-16,30,x-5,30,x,35,x+16,35,x+12,53,x-15,53),2,stroke)
+                line((x-15,53,x-10,38,x+17,38,x+12,53),2,stroke)
             elif label=="Drucker":
-                d.rounded_rectangle((x-17,33,x+17,49),3,outline=WHITE,width=2)
-                d.rectangle((x-10,25,x+10,33),outline=WHITE,width=2)
-                d.rectangle((x-10,44,x+10,55),outline=WHITE,width=2)
-                line((x-5,48,x+5,48),1,WHITE)
+                d.rounded_rectangle((x-17,33,x+17,49),3,outline=stroke,width=2)
+                d.rectangle((x-10,25,x+10,33),outline=stroke,width=2)
+                d.rectangle((x-10,44,x+10,55),outline=stroke,width=2)
+                line((x-5,48,x+5,48),1,stroke)
             elif label=="250 / 500 V":
                 txt(x,32,"250 V",11,anchor="mm")
-                line((x-15,40,x+15,40),1,WHITE)
+                line((x-15,40,x+15,40),1,stroke)
                 txt(x,48,"500 V",11,anchor="mm")
+            elif label=="IPE/IB":
+                txt(x,31,"IPE",15,colour=stroke,anchor="mm")
+                line((x-14,40,x+14,40),1,stroke)
+                txt(x,48,"IB",15,colour=stroke,anchor="mm")
             else:
-                txt(x,40,label,11,anchor="mm")
-            txt(x,81,label,14,anchor="mm")
-        if name=="keys":
-            for x,label in zip((54,162,270,378),("Erdzeichen","Doppelquadrat","IPE/IB","250 / 500 V")):
-                key(x,label)
+                txt(x,40,label,11,colour=stroke,anchor="mm")
+            txt(x,81,label,14,colour=yellow if active else MUTED,anchor="mm")
+        if name in ("key_i","key_ii","key_leak"):
+            selected={"key_i":0,"key_ii":1,"key_leak":2}[name]
+            for idx,(x,label) in enumerate(zip((72,216,360),("Erdzeichen (2)","Doppelquadrat (3)","IPE/IB (4)"))):
+                key(x,label.rsplit(" ",1)[0],idx==selected)
+        elif name=="key_voltage":
+            for idx,(x,label) in enumerate(zip((72,216,360),("250 / 500 V","30 mA RCD","3 Phase"))):
+                key(x,label,idx==0)
         elif name in ("store","recall","print"):
-            symbol,verb,num={"store":("Diskette","STORE",13),"recall":("Ordner","RECALL",14),
-                             "print":("Drucker","PRINT",15)}[name]
-            key(67,symbol)
-            txt(125,32,f"{verb}  ·  Taste {num}",22,ORANGE)
-            txt(125,63,"BENNING ST 725 CH",16,MUTED)
+            selected={"store":0,"recall":1,"print":2}[name]
+            for idx,(x,label) in enumerate(zip((72,216,360),("Diskette","Ordner","Drucker"))):
+                key(x,label,idx==selected)
         elif name=="ports":
             box((5,4,427,89))
             txt(216,17,"OBERSEITE  /  von links nach rechts",14,MUTED,anchor="mm")
@@ -652,34 +691,41 @@ def make_guide():
     p.text("gTitle",24,282,432,32,"Bitte warten ...",size=24,bg=BG,limit=52)
     add_guide_art(p,"gArt",316)
     p.text("gDisplay",50,369,380,38,"",size=24,color=ORANGE,bg=PANEL,limit=40,align=1)
-    p.text("gBody",24,415,432,96,"",size=20,bg=BG,isbr=1,limit=230)
-    p.text("gError",24,688,432,40,"",size=20,bg=BG,color=WARN,isbr=1,limit=82)
-    for i in range(5):
-        p.button(f"bStep{i}",24,514+i*35,432,33,"-",[
-                  f"if(home.online.val==1&&gBusy.val==0&&gCount.val>{i})","{",
-                  "gBusy.val=1",*emit(f"RC6:STEP:{i}"),"}"],i==0,20)
-        p.doc["component"][-1]["txt_maxl"]=38
-    p.text("eName",24,515,432,36,"",size=20,global_=True,limit=48)
-    p.text("eRemarks",24,554,432,36,"",size=20,global_=True,limit=64)
-    for field,(name,y,label) in enumerate((("bName",515,"Prüfperson"),("bRemark",554,"Bemerkung")),6):
-        p.button(name,24,y,128,36,label,["if(gExam.val==1)","{",
-                 f"entry.field.val={field}","page keyboard","}"],size=20)
-        component=next(c for c in p.doc["component"] if c["name"]==("eName" if field==6 else "eRemarks"))
-        component.update(x=157,w=299)
-        hotspot="hName" if field==6 else "hRemark"
-        p.add(hotspot,"hotspot",x=157,y=y,w=299,h=36)
-        p.on(hotspot+".up",["if(gExam.val==1)","{",f"entry.field.val={field}","page keyboard","}"])
-    p.button("gFunction",24,594,432,40,"Funktion: Offen",["if(gExam.val==1&&home.online.val==1)","{",
+    p.text("gBody",24,412,432,100,"",size=20,bg=BG,limit=230)
+    p.text("gError",24,687,432,42,"",size=20,bg=BG,color=WARN,limit=82)
+    for prefix,count in (("bStep",5),("bObs",7)):
+        for i in range(count):
+            grid=prefix=="bObs"
+            x,y,w,h=(24+222*(i%2),514+43*(i//2),210,41) if grid else (24,513+34*i,432,33)
+            condition=f"gCount.val>{i}&&gCount.val{'>' if grid else '<='}5"
+            p.button(f"{prefix}{i}",x,y,w,h,"-",[
+                      f"if(home.online.val==1&&gBusy.val==0&&{condition})","{",
+                      "gBusy.val=1",*emit(f"RC6:STEP:{i}"),"}"],i==0 and not grid,20)
+            p.doc["component"][-1]["txt_maxl"]=40
+    p.text("eName",178,515,278,40,"",size=20,limit=52)
+    p.add("eRemarks","variable",sta=1,txt="",txt_maxl=64,vscope=1)
+    p.text("eRemarkMark",178,558,278,39,"Optional",size=20,color=MUTED,limit=30)
+    people=["if(gExam.val==1&&home.online.val==1)","{",*emit("RC61:PEOPLE"),
+            "picker.pBack.val=1","page picker","}"]
+    p.button("bName",24,515,147,40,"Prüfperson",people,size=20)
+    p.add("hName","hotspot",x=178,y=515,w=278,h=40)
+    p.on("hName.up",people)
+    p.button("bRemark",24,558,147,39,"Bemerkung",["if(gExam.val==1)","{",
+             "entry.field.val=7","page keyboard","}"],size=20)
+    p.button("gFunction",24,602,432,37,"Funktion: Offen",["if(gExam.val==1&&home.online.val==1)","{",
              *emit("RC6:FUNCTION"),"}"],size=20)
     p.doc["component"][-1]["txt_maxl"]=34
-    p.button("gProceed",24,638,432,43,"Zum Import",["if(gExam.val==1&&home.online.val==1&&gBusy.val==0)","{",
-             "gBusy.val=1","report.ready.val=0",'prints "RC6:EXAM",0',"printh 00","prints eName.txt,0",
-             "printh 00","prints eRemarks.txt,0","printh ff ff ff","}"],True,20)
+    p.button("gProceed",24,643,432,43,"Zum Import",["if(gExam.val==1&&home.online.val==1&&gBusy.val==0)","{",
+             "gBusy.val=1","report.ready.val=0",'prints "RC6:EXAM",0',"printh 00",
+             "prints eRemarks.txt,0","printh ff ff ff","}"],True,20)
     p.doc["component"][-1]["txt_maxl"]=30
     p.add("hLayout","hotspot",x=4,y=0,w=2,h=2)
-    widgets=("eName","eRemarks","bName","bRemark","hName","hRemark","gFunction","gProceed")
-    p.on("hLayout.up",[*(f"vis bStep{i},0" for i in range(5)),*(f"vis {n},0" for n in widgets),
-                       "if(gExam.val==1)","{",*(f"vis {n},1" for n in widgets),"}else","{",
+    widgets=("eName","eRemarkMark","bName","bRemark","hName","gFunction","gProceed")
+    choices=[*(f"bStep{i}" for i in range(5)),*(f"bObs{i}" for i in range(7))]
+    p.on("hLayout.up",[*(f"vis {n},0" for n in (*choices,*widgets)),
+                       "if(gExam.val==1)","{",*(f"vis {n},1" for n in widgets),
+                       'if(eRemarks.txt!="")',"{",'eRemarkMark.txt="Bemerkung erfasst"',"}",
+                       "}else if(gCount.val>5)","{",*(f"vis bObs{i},1" for i in range(7)),"}else","{",
                        *(line for i in range(5) for line in (f"if(gCount.val>{i})","{",f"vis bStep{i},1","}")),"}"])
     p.button("bBack",24,730,135,40,"Zurück",["if(home.online.val==1)","{",*emit("RC6:BACK"),
              "}else","{","page entry","}"],size=20)
@@ -715,12 +761,78 @@ def make_importer():
     p.save()
 
 
+def make_picker():
+    p=Page("picker","Auswahl","FMI Printstation")
+    p.var("pBack")
+    p.add("pEdit","variable",sta=1,txt="",txt_maxl=48,vscope=1)
+    for name in ("pPeople","pCount","pPrev","pNext","pChoose","pEditOk","pRoute"):
+        p.var(name,global_=False)
+    p.text("pTitle",24,252,432,30,"Bitte warten ...",size=24,bg=BG,limit=52)
+    p.text("pSelected",24,281,432,40,"",size=20,bg=BG,color=CYAN,limit=64)
+    for i in range(6):
+        p.button(f"pRow{i}",24,323+i*43,432,40," ",[
+            f"if(home.online.val==1&&pCount.val>{i})","{",*emit(f"RC61:ROW:{i}"),"}"],size=20)
+        p.doc["component"][-1]["txt_maxl"]=67
+    for name,x,label,action,condition in (("bPrev",24,"Vorherige","PREV","pPrev.val==1"),
+           ("bNext",246,"Weitere","NEXT","pNext.val==1")):
+        p.button(name,x,584,210,39,label,[f"if({condition}&&home.online.val==1)","{",*emit("RC61:"+action),"}"],size=20)
+    p.text("pNote",24,624,432,42,"",size=20,bg=BG,color=WARN,limit=94)
+    for name,x,w,y,label,action,condition,cap in (
+            ("bAdd",24,135,667,"Neu","ADD","pPeople.val==1",10),
+            ("bEdit",166,135,667,"Bearbeiten","EDIT","pEditOk.val==1",10),
+            ("bState",308,148,667,"Deaktivieren","STATE","pEditOk.val==1",16),
+            ("bToggle",24,135,718,"Auch inaktiv","TOGGLE","pPeople.val==1",14),
+            ("bUse",307,149,718,"Übernehmen","USE","pChoose.val==1",12)):
+        p.button(name,x,y,w,42,label,[f"if({condition}&&home.online.val==1)","{",
+                 *emit("RC61:"+action),"}"],name=="bUse",20)
+        p.doc["component"][-1]["txt_maxl"]=cap
+    p.button("bBack",166,718,135,42,"Zurück",["if(pBack.val==1)","{","page guide",
+             "}else","{","page entry","}"],size=20)
+    p.add("hLayout","hotspot",x=0,y=0,w=2,h=2)
+    p.on("hLayout.up",["vis bAdd,pPeople.val","vis bEdit,pEditOk.val","vis bState,pEditOk.val",
+                       "vis bToggle,pPeople.val","vis bUse,pChoose.val",
+                       *(line for i in range(6) for line in (f"if(pCount.val>{i})","{",f"vis pRow{i},1",
+                                                             "}else","{",f"vis pRow{i},0","}"))])
+    p.on("picker.loadend",["click hLayout,0"])
+    p.flow(["if(pRoute.val==1)","{","entry.field.val=6","page keyboard",
+            "}else if(pRoute.val==2)","{","page entry",
+            "}else if(pRoute.val==3)","{","page guide","}"])
+    p.save()
+
+
+def write_text_layout():
+    import tomllib
+    widgets={}
+    fonts={}
+    for size in (20,24,28,36):
+        font=decode_font((APP/f"fonts/UI{size}.zi").read_bytes())
+        fonts[str(size)]=[g.advance for g in font.characters_of(bytes(range(256)))]
+    for page in PAGES:
+        path=APP/f"pages/{page}.page.toml"
+        project=tomllib.loads(path.read_text())
+        for c in project["component"]:
+            if c["type"] in ("text","button") and "font" in c:
+                size=int(c["font"][2:])
+                sx,sy=c.get("spax",0),c.get("spay",0)
+                widgets[f"{page}.{c['name']}"]=[size,c["w"],c["h"],c["txt_maxl"],sx,sy]
+                def measure(line):
+                    return sum(fonts[str(size)][b] for b in line.encode("iso-8859-15"))+max(0,len(line)-1)*sx
+                # Static editor defaults use the same fit as UART updates.
+                if len(c.get("txt",""))>1:
+                    c["txt"]=word_lines(c["txt"],measure,c["w"]-4,c["h"],size,c["txt_maxl"],sy)
+        path.write_text(tomli_w.dumps(project),encoding="utf-8")
+    from panel_text import fit, layout
+    (DESIGN/"text-layout.json").write_text(json.dumps(dict(widgets=widgets,fonts=fonts),
+                                                        ensure_ascii=False,separators=(",",":"))+"\n")
+
+
+
 def main():
     for folder in ("pages","pictures"):
         for path in (APP/folder).glob("*"):
             if path.is_file():
                 path.unlink()
-    app = {"format":1,"name":"Repair Café Riehen · FMI Printstation v0.6",
+    app = {"format":1,"name":"Repair Café Riehen · FMI Printstation v0.6.1",
            "language":"nextion_do_not_change_manually","screen":"NX8048T070",
            "rotation":270,"encoding":"iso-8859-15","pages":PAGES,
            "pictures":PICTURES,
@@ -736,10 +848,11 @@ def main():
         encoding="utf-8")
     make_home(); make_entry(); make_keyboard(); make_report(); make_qr(); make_history(); make_settings()
     make_wifi(); make_join(); make_printer(); make_receipt(); make_system(); make_power(); make_tester()
-    make_guide_art(); make_guide(); make_importer()
+    make_guide_art(); make_guide(); make_importer(); make_picker()
+    write_text_layout()
     (ROOT/"hmi/design/keyboard-layout.json").write_text(json.dumps(
         dict(lower=LOWER,upper=UPPER,symbols=SYMBOL1,accents=SYMBOL2),ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
-    print("Generated native v0.6 pages; reference HMI left untouched.")
+    print("Generated native v0.6.1 pages; reference HMI left untouched.")
 
 
 if __name__ == "__main__":

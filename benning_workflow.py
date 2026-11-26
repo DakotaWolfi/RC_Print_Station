@@ -4,14 +4,12 @@ import sqlite3
 from benning_csv import outcome
 from benning_guide import Guide, STEPS
 
-ART=("lcd","keys","class1","class2","iec","extension","store","recall","print","ports")
-DISPLAY={"visual":"SICHTPRÜFUNG","kind":"PRÜFLING EINORDNEN","mode1":"BATTERIE / NETZ",
-         "mode2":"BATTERIE / NETZ","class3":"SCHUTZKLEINSPANNUNG","cable":"LEITUNGSTEST",
-         "observed":"ANZEIGE ABLESEN","warnings":"MELDUNG ABLESEN","low":"Lo LOAD",
-         "high":"HIGH LOAD","table":"tAbLE","hot":"StOP / hot","wrong":"PRÜFLAUF PRÜFEN",
-         "polarity":"1-2  /  2-2","running":"MESSUNG LÄUFT","failed":"FAIL",
-         "unsaved":"FULL / KEIN SLOT","stop":"ABGEBROCHEN","special":"FACHVERFAHREN",
-         "exam":"SICHT UND FUNKTION"}
+ART=("lcd","class1","class2","iec","extension","store","recall","print","ports","key_i","key_ii","key_leak","key_voltage")
+DISPLAY={"visual":"SICHTPRÜFUNG","kind":"SCHUTZKLASSE","class3":"SELV",
+         "cable":"LEITUNGSTEST","running":"MESSUNG LÄUFT","warnings":"MELDUNG ABLESEN",
+         "low":"Lo LOAD","high":"HIGH LOAD","table":"tAbLE","hot":"StOP / hot",
+         "wrong":"PRÜFLAUF PRÜFEN","leak":"I LEAK BLINKT","unsaved":"FULL",
+         "stop":"ABGEBROCHEN","special":"FACHVERFAHREN","exam":"SICHT UND FUNKTION"}
 
 
 def fresh_slot(baseline,source,current):
@@ -38,6 +36,7 @@ class WorkflowPanel:
 
     def reset(self):
         self.guide=None
+        self.examiner_id=None
         self.baseline=None
         self.exam=None
         self.armed=False
@@ -73,18 +72,26 @@ class WorkflowPanel:
         ui.text("gTitle",step.title,52)
         ui.text("gProgress",f"Schritt {step.phase} von 7  ·  BENNING ST 725 CH",50)
         ui.text("gBody",step.help if self.help else g.instruction(),230)
-        art="ports" if self.help and step.art in ("class1","class2","iec","extension") else step.art
+        art="ports" if self.help and g.art in ("class1","class2","iec","extension") else g.art
         ui.cmd(f"gArt.val={ART.index(art)}")
         ui.cmd("click hArt,0")
         ui.text("gDisplay",DISPLAY.get(g.step,""),40)
         ui.cmd(f"vis gDisplay,{int(g.step in DISPLAY)}")
         ui.cmd(f"gExam.val={int(g.step=='exam')}")
+        if g.step=="exam":
+            try:
+                examiner=ui.picker.store.active_name(self.examiner_id)
+            except (ValueError,sqlite3.Error):
+                self.examiner_id=None
+                examiner=""
+            ui.text("eName",examiner or "Keine Prüfperson gewählt",52)
         ui.text("gFunction","Funktion: "+g.functional,34)
         ui.text("gProceed","Zum Import" if g.stored else "Unvollständig speichern",30)
-        for idx in range(5):
-            label=step.choices[idx][0] if idx<len(step.choices) else ""
-            ui.text(f"bStep{idx}",label,38)
-        ui.cmd(f"gCount.val={len(step.choices)}")
+        choices=g.choices()
+        grid=len(choices)>5
+        for idx,(label,_) in enumerate(choices):
+            ui.text(f"b{'Obs' if grid else 'Step'}{idx}",label,40)
+        ui.cmd(f"gCount.val={len(choices)}")
         ui.cmd("click hLayout,0")
         ui.cmd("gBusy.val=0")
 
@@ -99,6 +106,8 @@ class WorkflowPanel:
         if guided:
             self.guide=Guide()
             self.exam=None
+            people=self.ui.picker.store.examiners()
+            self.examiner_id=people[0]["id"] if people and people[0]["last_used"] else None
         elif self.baseline is None:
             self.baseline=self.store.snapshot(("usb","rs232","file-csv","file-txt"))
 
@@ -167,15 +176,16 @@ class WorkflowPanel:
     def submit_exam(self,payload):
         if not self.guide or self.guide.step!="exam" or not self.tester.pending:
             raise ValueError("Prüfung zuerst dokumentieren.")
-        examiner,remarks=payload.decode("iso-8859-15").split("\x00")
-        if len(examiner)>48 or len(remarks)>64 or any(not c.isprintable() for c in examiner+remarks):
-            raise ValueError("Name oder Bemerkung ungültig.")
+        remarks=payload.decode("iso-8859-15")
+        if len(remarks)>64 or any(not c.isprintable() for c in remarks):
+            raise ValueError("Bemerkung ungültig.")
+        examiner=self.ui.picker.store.active_name(self.examiner_id)
         self.exam=self.guide.examination(examiner,remarks)
         if self.guide.stored and not self.guide.blocked:
             self.begin_import()
             self.ui.cmd("gAdvance.val=1")
         else:
-            ident,report=self.store.create_incomplete(*self.tester.pending,self.exam)
+            ident,report=self.store.create_incomplete(*self.tester.pending,self.exam,examiner_id=self.examiner_id)
             self.tester.pending=None
             self.ui.load_report(ident,report)
             self.ui.cmd("gAdvance.val=2")
@@ -185,12 +195,12 @@ class WorkflowPanel:
             record=selected["original"]
             if self.exam["observed"]!=outcome(record["verdict"]):
                 raise ValueError("Testergebnis weicht von der bestätigten Anzeige ab. Auswahl prüfen.")
-            actual=record.get("protection_class")
-            expected={"I":{"Klasse I"},"II":{"Klasse II"},"III":{"Klasse II","Klasse III"}}
+            actual=(record.get("protection_class") or "").upper()
+            expected={"I":{"KLASSE I"},"II":{"KLASSE II"},"III":{"KLASSE II","KLASSE III"}}
             classes=expected.get(self.exam["procedure"],set())
             if classes and actual and actual not in classes:
                 raise ValueError("Schutzklasse passt nicht zur geführten Prüfung. Slot prüfen.")
-        return self.store.create_report(*self.tester.pending,selected,require_current=True,examination=self.exam)
+        return self.store.create_report(*self.tester.pending,selected,require_current=True,examination=self.exam,examiner_id=self.examiner_id if self.exam else None)
 
     def handle(self,frame):
         command,_,payload=frame.partition(b"\x00")

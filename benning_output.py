@@ -38,7 +38,6 @@ def selected_fields(report):
 def examination_fields(report):
     exam=report.get("examination") or {}
     return tuple((label,exam[key]) for label,key in (
-        ("Prüfzustand","status"),("Sichtprüfung","visual"),("Funktion","functional"),
         ("Prüfperson","examiner"),("Bemerkung","remarks"),("Prüfaufbau","procedure"),
         ("Betriebsart","mode"),("Am Tester beobachtet","observed"))
         if exam.get(key))
@@ -62,36 +61,98 @@ def measurement_state(measurement):
 
 
 def result_kind(report):
+    """Headline and raster reflect the actual tester, not the protocol."""
     if report.get("source")=="SIMULATOR":
         return "simulation"
+    return outcome((report.get("record") or {}).get("verdict") or "") or "unknown"
+
+
+def electrical_check(report):
+    """Assess imported data only. Limits and wholly unused CSV columns are optional."""
     record=report.get("record") or {}
+    if not record:
+        return "Keine Messwerte übernommen", ()
+    rows={row["name"]:row for row in visible_measurements(report)}
     verdict=outcome(record.get("verdict") or "")
-    if verdict=="FAIL":
-        return verdict
     exam=report.get("examination") or {}
-    rows=visible_measurements(report)
-    primary={"RPE","RISO","IPE","IBer","IEA","Kabel","FI/RCD"}
-    csv_source=report.get("import_source") in ("usb","file-csv")
-    present={row["name"] for row in rows}
-    protection=record.get("protection_class")
-    guided=exam.get("procedure")
-    missing_required=False
-    if csv_source and verdict=="PASS":
-        leakage=present & {"IEA","IPE","IBer"}
-        if protection=="Klasse I" or guided=="I":
-            missing_required=not {"RPE","RISO"}.issubset(present) or not leakage
-        elif protection in ("Klasse II","Klasse III") or guided in ("II","III"):
-            missing_required="RISO" not in present or not leakage
-        elif guided in ("IEC","Verlängerung") or "Kabel" in present:
-            missing_required=not {"RPE","RISO","Kabel"}.issubset(present)
-    conflicting=verdict=="PASS" and any(outcome(row.get("result") or "")=="FAIL" for row in rows)
-    if (conflicting or missing_required or report.get("source")=="EXAMINATION" or exam.get("status")=="Unvollständig"
-            or any("unvollständig" in measurement_state(row)[0] or
-                   (csv_source and row["name"] in primary and not row.get("result"))
-                   for row in rows)
-            or (verdict and not any(row["name"] in primary for row in rows))):
-        return "partial"
-    return verdict or "unknown"
+    protection=(record.get("protection_class") or "").upper()
+    procedure=exam.get("procedure")
+    csv=report.get("import_source") in ("usb","file-csv")
+    required=set()
+    leakage=set()
+    if procedure in ("IEC","Verlängerung") or "Kabel" in rows:
+        required={"RPE","RISO","Kabel"}
+    elif procedure=="I" or protection=="KLASSE I":
+        required={"RPE","RISO"}
+        leakage={"IPE","IEA"}
+        # Published CSV maps BER/IBer independently. Older BENNING exports may
+        # put the replacement current in IEA and the protective current in IPE.
+    elif procedure in ("II","III") or protection in ("KLASSE II","KLASSE III"):
+        required={"RISO"}
+        leakage={"IPE","IBer","IEA"} if not csv else {"IBer","IEA"}
+    elif "FI/RCD" in rows:
+        required={"FI/RCD"}
+    selected_leakage=rows.keys() & leakage
+    missing=sorted(required-rows.keys())
+    if leakage and not selected_leakage:
+        missing.append("Ableitstrom")
+    relevant=required | selected_leakage
+    if not relevant:
+        relevant=rows.keys() & {"RPE","RISO","IPE","IBer","IEA","Kabel","FI/RCD"}
+    issues=[f"{name} fehlt" for name in missing]
+    for name in sorted(relevant & rows.keys()):
+        row=rows[name]
+        result=row.get("result")
+        if name!="Kabel" and (not row.get("value") or not row.get("unit")):
+            issues.append(f"{name}: Messwert oder Einheit fehlt")
+        elif csv and not result:
+            issues.append(f"{name}: Einzelurteil fehlt")
+    if verdict=="PASS" and any(outcome(row.get("result") or "")=="FAIL" for row in rows.values()):
+        issues.append("Einzelurteil widerspricht BENNING-Gesamturteil")
+    if issues:
+        return "Messdaten unvollständig", tuple(issues)
+    if not relevant:
+        return "Umfang nicht beurteilbar", ()
+    if not verdict:
+        return "Messwerte vorhanden", ()
+    if not required and not leakage:
+        return "Messwerte vorhanden · Umfang nicht beurteilbar", ()
+    return "Messdaten vollständig", ()
+
+
+def report_checks(report):
+    """Separate electrical data, manual observations, completeness and release."""
+    if report.get("source")=="SIMULATOR":
+        return (("Elektrische Messung","Simulation"),)
+    exam=report.get("examination") or {}
+    electrical, issues=electrical_check(report)
+    record=report.get("record") or {}
+    visual=exam.get("visual") or next((row.get("result") for row in visible_measurements(report)
+                                      if row["name"]=="Sichtprüfung" and row.get("result")),None)
+    function=exam.get("functional")
+    missing=[]
+    if not record:
+        missing.append("BENNING-Messung fehlt")
+    elif not outcome(record.get("verdict") or ""):
+        missing.append("BENNING-Urteil fehlt")
+    elif "nicht beurteilbar" in electrical.lower():
+        missing.append("Messumfang nicht beurteilbar")
+    missing.extend(issues)
+    if not visual or visual in ("Offen","Ungeklärt","Mangel oder ungeklärt","Nicht geprüft","Nicht erfasst"):
+        missing.append("Sichtbefund fehlt oder ist ungeklärt")
+    if function not in ("Ohne Befund","Mangel"):
+        missing.append("Funktionsbefund fehlt")
+    if not exam.get("examiner"):
+        missing.append("Prüfperson fehlt")
+    voltage=exam.get("voltage_confirmed")
+    measured=record.get("voltage","")
+    if voltage and measured and measured.replace(" ","").upper()!=f"{voltage}V":
+        missing.append(f"Prüfspannung abweichend (bestätigt: {voltage} V)")
+    return (("Elektrische Messung", electrical + (": "+", ".join(issues) if issues else "")),
+            ("Sichtprüfung", visual or "Nicht erfasst"),
+            ("Funktion", function or "Nicht erfasst"),
+            ("Protokoll", "Offen: "+", ".join(missing) if missing else "Dokumentiert"),
+            ("Freigabe", exam.get("release") or "Nicht erfasst · Entscheid der Prüfperson"))
 
 
 def measurement_summary(row, *, csv_source=False):

@@ -28,6 +28,16 @@ python3 station.py display-test --port /dev/ttyUSB0 --baud 9600
 
 `station.py simulate` writes a visibly marked simulation. Imported BENNING records preserve the original tester verdict and do not constitute independent certification by the station. The Gen 3 printer at `169.254.223.252:9100` and previous native HMI have been tested on the station.
 
+## v0.6.1 Bedienung am Prüfstand
+
+Netzbetrieb und 500 V für geeignete Standardprüfungen, gelb hervorgehobene Prüftasten, Namensliste und Gerätevorlagen. Das BENNING-Urteil und der Prüfstatus bleiben separat.
+
+![v0.6.1 Simulatorvorschau](hmi/previews/overview-v061.png)
+
+- [Bedienung, microSD-Installation und Rollback](docs/operator-usability-v061.md)
+- [Editable v0.6.1 HMI (ZIP)](hmi/build/FMI_RC_native_v0_6_1.zip) und [Prüfsummen](hmi/build/manifest-v061.json)
+- [Bench-Abnahme](hmi/VALIDATION-v061.md)
+
 ## Guided testing v0.6 candidate
 
 ![Native v0.6 simulator preview](hmi/previews/overview-v06.png)

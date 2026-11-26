@@ -5,6 +5,15 @@ on hEdit0.up:
   page keyboard
   }
 
+on bTemplates.up:
+  if(busy.val==0&&home.online.val==1)
+  {
+  prints "RC61:APPLIANCES",0
+  printh ff ff ff
+  picker.pBack.val=0
+  page picker
+  }
+
 on hEdit1.up:
   if(busy.val==0)
   {
@@ -53,6 +62,31 @@ on hPhase.up:
 
 on entry.loadend:
   sendme
+  strlen tTicket.txt,draftLen.val
+  if(draftLen.val>21)
+  {
+  tTicketView.txt="Tippen zum Bearbeiten"
+  }else
+  {
+  tTicketView.txt=tTicket.txt
+  }
+  strlen tDevice.txt,draftLen.val
+  if(draftLen.val>14)
+  {
+  tDeviceView.txt="Tippen zum Bearbeiten"
+  }else
+  {
+  tDeviceView.txt=tDevice.txt
+  }
+  if(home.online.val==1)
+  {
+  prints "RC61:DRAFT",0
+  printh 00
+  prints tTicket.txt,0
+  printh 00
+  prints tDevice.txt,0
+  printh ff ff ff
+  }
   route.val=0
   busy.val=0
   cLast.val=useLast.val

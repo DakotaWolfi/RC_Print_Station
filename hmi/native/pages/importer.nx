@@ -1,43 +1,55 @@
 on hArt.up:
   if(iArt.val==0)
   {
-  pArt.pic=19
+  pArt.pic=18
   }
   if(iArt.val==1)
   {
-  pArt.pic=20
+  pArt.pic=19
   }
   if(iArt.val==2)
   {
-  pArt.pic=21
+  pArt.pic=20
   }
   if(iArt.val==3)
   {
-  pArt.pic=22
+  pArt.pic=21
   }
   if(iArt.val==4)
   {
-  pArt.pic=23
+  pArt.pic=22
   }
   if(iArt.val==5)
   {
-  pArt.pic=24
+  pArt.pic=23
   }
   if(iArt.val==6)
   {
-  pArt.pic=25
+  pArt.pic=24
   }
   if(iArt.val==7)
   {
-  pArt.pic=26
+  pArt.pic=25
   }
   if(iArt.val==8)
   {
-  pArt.pic=27
+  pArt.pic=26
   }
   if(iArt.val==9)
   {
+  pArt.pic=27
+  }
+  if(iArt.val==10)
+  {
   pArt.pic=28
+  }
+  if(iArt.val==11)
+  {
+  pArt.pic=29
+  }
+  if(iArt.val==12)
+  {
+  pArt.pic=30
   }
 
 on bManual.up:

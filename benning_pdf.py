@@ -12,7 +12,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from benning_output import (RESULTS, examination_fields, measurement_summary,
-                            result_kind, selected_fields, visible_measurements)
+                            report_checks, result_kind, selected_fields, visible_measurements)
 from benning_store import SOURCES
 
 DESIGN=Path(__file__).resolve().parent/"hmi"/"design"
@@ -72,7 +72,8 @@ def render(report):
     source=SOURCES.get(report.get("import_source"),"Keine elektrische Prüfung" if simulated else "Sicht- und Funktionsprüfung")
     original=record.get("verdict")
     summary_text="Original am BENNING: "+original if original else source
-    summary=Table([[cell("TESTERGEBNIS",10,MUTED)],
+    heading="PRÜFPROTOKOLL" if report.get("source")=="EXAMINATION" else "BENNING-URTEIL"
+    summary=Table([[cell(heading,10,MUTED)],
                    [cell(label,32,HexColor(colour),"Helvetica-Bold")],
                    [cell(summary_text,11,INK)]],colWidths=[area])
     summary.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,-1),HexColor(paper)),
@@ -112,6 +113,8 @@ def render(report):
                                    ("TOPPADDING",(0,0),(-1,-1),4),
                                    ("BOTTOMPADDING",(0,0),(-1,-1),4)]))
         story.extend((Spacer(1,10),cell("Messwerte",13,INK,"Helvetica-Bold"),Spacer(1,4),table))
+    story.extend((Spacer(1,10),cell("Prüfstatus und Freigabe",13,INK,"Helvetica-Bold"),
+                  details(report_checks(report))))
     exam=examination_fields(report)
     if exam:
         story.extend((Spacer(1,10),cell("Angaben der Prüfperson",13,INK,"Helvetica-Bold"),

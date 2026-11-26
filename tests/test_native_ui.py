@@ -133,7 +133,7 @@ class NativeBackendTests(unittest.TestCase):
 
 
 class HandshakeSerial(MemorySerial):
-    def __init__(self,model=b"NX8048T070_011R",protocol=6):
+    def __init__(self,model=b"NX8048T070_011R",protocol=61):
         super().__init__()
         self.buffer = bytearray()
         self.model,self.protocol=model,protocol

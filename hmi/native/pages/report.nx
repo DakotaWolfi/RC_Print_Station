@@ -23,6 +23,10 @@ on bQR.up:
 on bHome.up:
   page home
 
+on bInfo.up:
+  prints "RC61:DETAILS",0
+  printh ff ff ff
+
 on bValues.up:
   if(vMore.val==1&&home.online.val==1)
   {
@@ -32,6 +36,7 @@ on bValues.up:
 
 on report.loadend:
   sendme
+  vis tDetails,0
   if(vMore.val==0)
   {
   vis bValues,0

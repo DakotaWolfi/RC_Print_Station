@@ -56,6 +56,7 @@ borderw = 0
 xcen = 0
 ycen = 1
 vscope = 0
+isbr = 0
 
 [[component]]
 name = "gTitle"
@@ -73,6 +74,7 @@ borderw = 0
 xcen = 0
 ycen = 1
 vscope = 0
+isbr = 0
 
 [[component]]
 name = "gArt"
@@ -113,14 +115,15 @@ borderw = 0
 xcen = 1
 ycen = 1
 vscope = 0
+isbr = 0
 
 [[component]]
 name = "gBody"
 type = "text"
 x = 24
-y = 415
+y = 412
 w = 432
-h = 96
+h = 100
 txt = ""
 txt_maxl = 230
 font = "UI20"
@@ -130,15 +133,15 @@ borderw = 0
 xcen = 0
 ycen = 1
 vscope = 0
-isbr = 1
+isbr = 0
 
 [[component]]
 name = "gError"
 type = "text"
 x = 24
-y = 688
+y = 687
 w = 432
-h = 40
+h = 42
 txt = ""
 txt_maxl = 82
 font = "UI20"
@@ -148,13 +151,13 @@ borderw = 0
 xcen = 0
 ycen = 1
 vscope = 0
-isbr = 1
+isbr = 0
 
 [[component]]
 name = "bStep0"
 type = "button"
 x = 24
-y = 514
+y = 513
 w = 432
 h = 33
 sta = 1
@@ -166,14 +169,14 @@ bco2 = "#ffc071"
 pco = "#101923"
 pco2 = "#101923"
 txt = "-"
-txt_maxl = 38
+txt_maxl = 40
 isbr = 0
 
 [[component]]
 name = "bStep1"
 type = "button"
 x = 24
-y = 549
+y = 547
 w = 432
 h = 33
 sta = 1
@@ -185,14 +188,14 @@ bco2 = "#365164"
 pco = "#f5f6f7"
 pco2 = "#f5f6f7"
 txt = "-"
-txt_maxl = 38
+txt_maxl = 40
 isbr = 0
 
 [[component]]
 name = "bStep2"
 type = "button"
 x = 24
-y = 584
+y = 581
 w = 432
 h = 33
 sta = 1
@@ -204,14 +207,14 @@ bco2 = "#365164"
 pco = "#f5f6f7"
 pco2 = "#f5f6f7"
 txt = "-"
-txt_maxl = 38
+txt_maxl = 40
 isbr = 0
 
 [[component]]
 name = "bStep3"
 type = "button"
 x = 24
-y = 619
+y = 615
 w = 432
 h = 33
 sta = 1
@@ -223,14 +226,14 @@ bco2 = "#365164"
 pco = "#f5f6f7"
 pco2 = "#f5f6f7"
 txt = "-"
-txt_maxl = 38
+txt_maxl = 40
 isbr = 0
 
 [[component]]
 name = "bStep4"
 type = "button"
 x = 24
-y = 654
+y = 649
 w = 432
 h = 33
 sta = 1
@@ -242,50 +245,193 @@ bco2 = "#365164"
 pco = "#f5f6f7"
 pco2 = "#f5f6f7"
 txt = "-"
-txt_maxl = 38
+txt_maxl = 40
+isbr = 0
+
+[[component]]
+name = "bObs0"
+type = "button"
+x = 24
+y = 514
+w = 210
+h = 41
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "-"
+txt_maxl = 40
+isbr = 0
+
+[[component]]
+name = "bObs1"
+type = "button"
+x = 246
+y = 514
+w = 210
+h = 41
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "-"
+txt_maxl = 40
+isbr = 0
+
+[[component]]
+name = "bObs2"
+type = "button"
+x = 24
+y = 557
+w = 210
+h = 41
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "-"
+txt_maxl = 40
+isbr = 0
+
+[[component]]
+name = "bObs3"
+type = "button"
+x = 246
+y = 557
+w = 210
+h = 41
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "-"
+txt_maxl = 40
+isbr = 0
+
+[[component]]
+name = "bObs4"
+type = "button"
+x = 24
+y = 600
+w = 210
+h = 41
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "-"
+txt_maxl = 40
+isbr = 0
+
+[[component]]
+name = "bObs5"
+type = "button"
+x = 246
+y = 600
+w = 210
+h = 41
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "-"
+txt_maxl = 40
+isbr = 0
+
+[[component]]
+name = "bObs6"
+type = "button"
+x = 24
+y = 643
+w = 210
+h = 41
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "-"
+txt_maxl = 40
 isbr = 0
 
 [[component]]
 name = "eName"
 type = "text"
-x = 157
+x = 178
 y = 515
-w = 299
-h = 36
+w = 278
+h = 40
 txt = ""
-txt_maxl = 48
+txt_maxl = 52
 font = "UI20"
 pco = "#f5f6f7"
 bco = "#1d2c3a"
 borderw = 0
 xcen = 0
 ycen = 1
-vscope = 1
+vscope = 0
+isbr = 0
 
 [[component]]
 name = "eRemarks"
-type = "text"
-x = 157
-y = 554
-w = 299
-h = 36
+type = "variable"
+sta = 1
 txt = ""
 txt_maxl = 64
+vscope = 1
+
+[[component]]
+name = "eRemarkMark"
+type = "text"
+x = 178
+y = 558
+w = 278
+h = 39
+txt = "Optional"
+txt_maxl = 30
 font = "UI20"
-pco = "#f5f6f7"
+pco = "#afc2d0"
 bco = "#1d2c3a"
 borderw = 0
 xcen = 0
 ycen = 1
-vscope = 1
+vscope = 0
+isbr = 0
 
 [[component]]
 name = "bName"
 type = "button"
 x = 24
 y = 515
-w = 128
-h = 36
+w = 147
+h = 40
 sta = 1
 style = 0
 borderw = 0
@@ -301,18 +447,18 @@ isbr = 0
 [[component]]
 name = "hName"
 type = "hotspot"
-x = 157
+x = 178
 y = 515
-w = 299
-h = 36
+w = 278
+h = 40
 
 [[component]]
 name = "bRemark"
 type = "button"
 x = 24
-y = 554
-w = 128
-h = 36
+y = 558
+w = 147
+h = 39
 sta = 1
 style = 0
 borderw = 0
@@ -326,20 +472,12 @@ txt_maxl = 9
 isbr = 0
 
 [[component]]
-name = "hRemark"
-type = "hotspot"
-x = 157
-y = 554
-w = 299
-h = 36
-
-[[component]]
 name = "gFunction"
 type = "button"
 x = 24
-y = 594
+y = 602
 w = 432
-h = 40
+h = 37
 sta = 1
 style = 0
 borderw = 0
@@ -356,7 +494,7 @@ isbr = 0
 name = "gProceed"
 type = "button"
 x = 24
-y = 638
+y = 643
 w = 432
 h = 43
 sta = 1
