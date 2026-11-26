@@ -415,6 +415,7 @@
   "Prüfperson mit gültigem Namen eingeben.": "Enter a valid examiner name.",
   "Prüfperson nicht gefunden.": "Examiner not found.",
   "Prüfprotokoll": "Test report",
+  "Prüfprotokollstation": "Test Report Station",
   "Prüfspannung": "Test voltage",
   "Prüfspannung abweichend (bestätigt: {voltage} V)": "Test voltage differs (confirmed: {voltage} V)",
   "Prüfspeichernummer": "Test memory slot",

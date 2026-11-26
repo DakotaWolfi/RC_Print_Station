@@ -15,7 +15,7 @@ from native_ui import NativeUI
 from operator_store import Operators
 from panel_text import fit, printable
 from report_web import render_pdf
-from station import receipt, simulate
+from station import graphic_header, receipt, simulate
 import station_config
 from test_benning import EXAMPLES
 from test_hmi_native import APP, PanelSerial, Simulation
@@ -90,6 +90,8 @@ class BilingualOutputs(unittest.TestCase):
                         document=render_pdf(report)
                         self.assertIn(b"/Count 1",document)
                 reading=receipt(passed,settings)
+                self.assertTrue(graphic_header(language) in reading)
+                self.assertNotEqual(graphic_header("de"),graphic_header("en"))
                 self.assertTrue(b"0,17 \x1bt\x00\xea\x1bt\x02" in reading)
                 self.assertTrue(b"500 V" in reading)
                 self.assertTrue((b"15/08/2026" if language=="en" else b"15.08.2026") in reading)

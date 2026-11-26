@@ -7,6 +7,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 from benning_output import RESULTS
 from i18n import LANGUAGES, tr
+from station import graphic_header
 
 DESIGN=ROOT/"hmi/design"
 FONT=DESIGN/"typeface/NotoSans-Regular.ttf"
@@ -37,9 +38,20 @@ def raster(kind, language="de"):
     draw=ImageDraw.Draw(banner)
     draw.line((8,30,WIDTH-9,30),fill=1,width=2)
     for i,line in enumerate(lines):
-        stamp(line,37+i*(cap_height+8),cap_height,4,WIDTH-16)
+        stamp(line,37+i*(cap_height+8),cap_height,2 if language=="en" else 4,WIDTH-16)
     draw.line((8,banner.height-4,WIDTH-9,banner.height-4),fill=1,width=2)
     return banner
+
+
+def localise_brand_header():
+    """Reuse the proven bitmap and replace the caption inside its ribbon."""
+    wire=graphic_header()
+    bitmap=Image.frombytes("1",(504,168),wire[8:-1])
+    ImageDraw.Draw(bitmap).rectangle((138,94,366,115),fill=1)
+    caption=glyphs(tr("en","Prüfprotokollstation"),218,18,1)
+    x=(504-caption.width)//2
+    bitmap.paste(0,(x,96,x+caption.width,114),caption)
+    (DESIGN/"header-en.bin").write_bytes(wire[:8]+bitmap.tobytes()+b"\n")
 
 
 if __name__=="__main__":
@@ -47,6 +59,7 @@ if __name__=="__main__":
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--previews",type=Path)
     args=p.parse_args()
+    localise_brand_header()
     for language in LANGUAGES:
         for kind in RESULTS:
             im=raster(kind,language)
