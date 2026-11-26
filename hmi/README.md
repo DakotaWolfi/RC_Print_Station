@@ -1,8 +1,8 @@
 # Native Nextion HMI
 
-The current source in `native/` is v0.4. For v0.4 operation and rollout see [the Pi 4 procedure](../docs/native-v04.md) and [validation](VALIDATION-v04.md). The v0.3 documentation below is retained for the earlier candidate; the original HMI archives stay unchanged.
+The current source in `native/` is v0.5. See [the Pi 4 and BENNING guide](../docs/benning-v05.md) and [v0.5 validation](VALIDATION-v05.md). Earlier HMI archives and their documentation are retained.
 
-## Build v0.4
+## Build v0.5
 
 ```sh
 python3 -m venv .venv
@@ -10,11 +10,11 @@ python3 -m venv .venv
 python -m pip install -r requirements.txt -r requirements-build.txt
 nxwright check hmi/native
 python -m unittest discover -s tests -v
-nxwright build hmi/native /tmp/FMI_RC_native_v0_4.HMI --no-lock
-nxwright compile hmi/native /tmp/FMI_RC_native_v0_4.tft --download
+nxwright build hmi/native /tmp/FMI_RC_native_v0_5.HMI --no-lock
+nxwright compile hmi/native /tmp/FMI_RC_native_v0_5.tft --download
 ```
 
-If a 1.68.2 Basic-series TFT is available, use `--firmware PATH` instead of the download. Open and compile the generated HMI in official Editor 1.68.2 as an independent check before flashing. `tools/generate_hmi.py` replaces the generated source in `native/`; keep manual edits in version control before regenerating. `tools/render_hmi.py` produces simulated UI previews. See the [v0.4 manifest](build/manifest-v04.json) for exact artifact hashes.
+If a 1.68.2 Basic-series TFT is available, use `--firmware PATH` instead of the download. Open and compile the generated HMI in official Editor 1.68.2 as an independent check before flashing. `tools/generate_hmi.py` replaces the generated source in `native/`; keep manual edits in version control before regenerating. `tools/render_hmi.py` produces simulated UI previews. See the [v0.5 manifest](build/manifest-v05.json) for exact artifact hashes.
 
 # Native portrait HMI candidate v0.3
 

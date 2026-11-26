@@ -927,7 +927,7 @@ on bCancel.up:
   if(entry.field.val==2)
   {
   page wjoin
-  }else if(entry.field.val>2)
+  }else if(entry.field.val>2&&entry.field.val<5)
   {
   page printer
   }else
@@ -948,7 +948,7 @@ on bOK.up:
   secret.txt=""
   input.txt=""
   page wjoin
-  }else if(entry.field.val>2)
+  }else if(entry.field.val>2&&entry.field.val<5)
   {
   if(home.online.val==1)
   {
@@ -970,9 +970,12 @@ on bOK.up:
   if(entry.field.val==0)
   {
   entry.tTicket.txt=input.txt
-  }else
+  }else if(entry.field.val==1)
   {
   entry.tDevice.txt=input.txt
+  }else
+  {
+  entry.tSlot.txt=input.txt
   }
   entry.tStatus.txt=""
   page entry
@@ -992,12 +995,12 @@ on keyboard.loadend:
   if(entry.field.val==0)
   {
   input.txt=entry.tTicket.txt
-  tField.txt="Reparaturnummer"
+  tField.txt="Prüfnummer"
   limit.val=32
   }else if(entry.field.val==1)
   {
   input.txt=entry.tDevice.txt
-  tField.txt="Gerätebezeichnung"
+  tField.txt="Gerätebeschreibung"
   limit.val=64
   }else if(entry.field.val==2)
   {
@@ -1009,11 +1012,16 @@ on keyboard.loadend:
   input.txt=settings.editText.txt
   tField.txt="Drucker-IPv4-Adresse"
   limit.val=15
-  }else
+  }else if(entry.field.val==4)
   {
   input.txt=settings.editText.txt
   tField.txt="Drucker-TCP-Port"
   limit.val=5
+  }else
+  {
+  input.txt=entry.tSlot.txt
+  tField.txt="Prüfspeichernummer"
+  limit.val=3
   }
   settings.editText.txt=""
   click hLayout,0

@@ -19,7 +19,7 @@ pic = "home"
 [[component]]
 name = "proto"
 type = "variable"
-val = 4
+val = 5
 vscope = 1
 
 [[component]]

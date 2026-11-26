@@ -17,8 +17,8 @@ BG, PANEL, EDGE = "#101923", "#1d2c3a", "#344858"
 WHITE, MUTED, ORANGE, CYAN = "#f5f6f7", "#afc2d0", "#ff941f", "#42d9dd"
 WARN = "#ffd08a"
 PAGES = ["home", "entry", "keyboard", "report", "qrpage", "history", "settings",
-         "wifi", "wjoin", "printer", "receipt", "system", "power"]
-FLAT = set(PAGES[6:])
+         "wifi", "wjoin", "printer", "receipt", "system", "power", "tester"]
+FLAT = set(PAGES[6:]) | {"entry","report"}
 
 # Swiss letter order, direct umlauts, plus two symbol banks. A touchscreen
 # shift intentionally provides uppercase umlauts directly (Ä/Ö/Ü).
@@ -58,7 +58,7 @@ class Page:
         self.label(24, 183, title, 30, WHITE)
         self.label(24, 228, subtitle, 17, MUTED)
         self.label(24, 777, "FMI  /  REPAIR CAFÉ RIEHEN", 12, MUTED)
-        self.label(390, 777, "v0.4 RC", 12, MUTED)
+        self.label(390, 777, "v0.5 RC", 12, MUTED)
         self.shapes = []
         self.add("pBg", "picture", x=0, y=0, w=480, h=800, pic=name)
 
@@ -135,17 +135,18 @@ class Page:
 
 def make_home():
     p = Page("home", "Reparieren. Weitergeben.", "Ein zweites Leben beginnt mit einer Reparatur.")
-    p.var("proto", 4)
+    p.var("proto", 5)
     for name in ("online", "age", "pending"):
         p.var(name)
     p.box(24, 273, 432, 115)
-    p.label(40, 289, "ENTWICKLUNGSMODUS", 14, ORANGE)
-    p.label(40, 315, "Simulation · keine elektrische Prüfung", 18, WARN)
+    p.label(40, 289, "PRÜFPROTOKOLLE", 14, ORANGE)
+    p.label(40, 315, "BENNING ST 725 / Repair Café", 18, WARN)
     p.text("tLink", 40, 348, 400, 27, "Host nicht verbunden", size=20,
            color=MUTED, global_=True, limit=32)
     p.button("bNew", 24, 412, 432, 82, "Neues Protokoll", [
         'entry.tTicket.txt=""', 'entry.tDevice.txt=""', 'entry.tStatus.txt=""',
-        "entry.busy.val=0", "page entry"], True, 28)
+        'entry.tSlot.txt=""',"entry.phase.val=0","entry.useLast.val=1",
+        "entry.busy.val=0",*emit("RC5:NEW"),"page entry"],True,28)
     p.button("bHistory", 24, 510, 210, 72, "Verlauf", ["page history"])
     p.button("bSettings", 246, 510, 210, 72, "Station", ["page settings"])
     p.button("bLast", 24, 598, 432, 68, "Letztes Protokoll öffnen", [
@@ -162,31 +163,54 @@ def make_home():
 
 
 def make_entry():
-    p = Page("entry", "Gerät erfassen", "01  Angaben   /   02  Bericht   /   03  Ausgabe")
-    p.var("field")
-    p.var("busy")
-    p.label(24, 284, "REPARATURNUMMER", 15, CYAN)
-    p.box(24, 315, 432, 72, outline=EDGE)
-    p.text("tTicket", 38, 325, 404, 50, global_=True, limit=32, isbr=1)
-    p.label(24, 419, "GERÄTEBEZEICHNUNG", 15, CYAN)
-    p.box(24, 450, 432, 86, outline=EDGE)
-    p.text("tDevice", 38, 460, 404, 66, global_=True, limit=64, isbr=1, size=20)
-    for field, (y, h) in enumerate(((315,72),(450,86))):
-        p.add(f"hEdit{field}", "hotspot", x=24, y=y, w=432, h=h)
-        p.on(f"hEdit{field}.up", ["if(busy.val==0)", "{", f"field.val={field}", "page keyboard", "}"])
-    p.text("tStatus", 24, 548, 432, 51, "Felder antippen, um Text einzugeben.", size=20,
-           color=WARN, bg=BG, global_=True, limit=80, isbr=1)
-    p.button("bCreate", 24, 615, 432, 72, "Simulation erstellen", [
+    p = Page("entry", "Prüfung erfassen", "01  Angaben   /   02  Messung   /   03  Ausgabe")
+    for name,initial in (("field",0),("busy",0),("phase",0),("useLast",1),("sim",0)):
+        p.var(name,initial)
+    for field,(name,label,y,w,limit) in enumerate((
+            ("tTicket","PRÜFNUMMER",258,432,32),
+            ("tDevice","GERÄTEBESCHREIBUNG",345,432,64),
+            ("tSlot","PRÜFSPEICHERNUMMER",440,140,3))):
+        p.label(24,y,label,14,CYAN)
+        p.box(24,y+22,w,52,outline=EDGE)
+        p.text(name,34,y+24,w-20,48,global_=True,limit=limit,isbr=1,size=20)
+        p.add(f"hEdit{field}","hotspot",x=24,y=y+22,w=w,h=52)
+        condition="busy.val==0" if field<2 else "busy.val==0&&useLast.val==0&&sim.val==0"
+        p.on(f"hEdit{field}.up",[f"if({condition})","{",f"field.val={field if field<2 else 5}",
+                                  "page keyboard","}"])
+    p.add("cLast","checkbox",x=185,y=467,w=34,h=34,bco=PANEL,pco=ORANGE,borderc=EDGE,val=1)
+    p.label(228,475,"Letzten Speicherplatz verwenden",14)
+    p.on("cLast.up",["useLast.val=cLast.val","if(useLast.val==1)","{",*emit("RC5:AUTOON"),
+                     "}else","{",*emit("RC5:AUTOOFF"),"}"])
+    p.button("bPhase",24,523,432,50,"Eingangsprüfung",[
+        "phase.val++","if(phase.val>2)","{","phase.val=0","}","click hPhase,0"],size=20)
+    p.doc["component"][-1]["txt_maxl"]=20
+    p.add("hPhase","hotspot",x=0,y=0,w=2,h=2)
+    p.on("hPhase.up",["if(phase.val==0)","{",'bPhase.txt="Eingangsprüfung"',
+                       "}else if(phase.val==1)","{",'bPhase.txt="Zwischenprüfung"',
+                       "}else","{",'bPhase.txt="Ausgangsprüfung"',"}"])
+    p.on("entry.loadend",["cLast.val=useLast.val","click hPhase,0","if(sim.val==1)","{",
+                           'bCreate.txt="Simulation erstellen"',"}"])
+    p.text("tTester",24,580,432,37,"Warte auf BENNING-Host.",size=20,
+           color=MUTED,bg=BG,global_=True,limit=92,isbr=1)
+    p.text("tStatus",24,620,432,42,"",size=20,color=WARN,bg=BG,global_=True,limit=80,isbr=1)
+    p.add("vArg","variable",sta=1,txt="",txt_maxl=2)
+    p.button("bCreate",24,667,270,49,"Messung prüfen",[
         "if(busy.val==0)", "{", 'if(tTicket.txt==""||tDevice.txt=="")', "{",
         'tStatus.txt="Bitte beide Felder ausfüllen."', "}else if(home.online.val==0)", "{",
         'tStatus.txt="Host nicht verbunden. Eingaben bleiben erhalten."', "}else", "{",
-        "busy.val=1", "report.ready.val=0", 'tStatus.txt="Simulationsbericht wird erstellt ..."',
-        'prints "RC3:CREATE",0', "printh 00", "prints tTicket.txt,0", "printh 00",
-        "prints tDevice.txt,0", "printh ff ff ff", "}", "}"], True)
-    p.button("bBack", 24, 707, 432, 52, "Zurück", ["if(busy.val==0)", "{", "page home", "}"])
-    p.flow(["if(busy.val==1&&report.ready.val==1)", "{", "busy.val=0", "page report", "}",
-            "if(busy.val==1&&home.online.val==0)", "{", "busy.val=0",
-            'tStatus.txt="Host-Verbindung verloren. Bitte erneut versuchen."', "}"])
+        "report.ready.val=0","if(sim.val==1)","{","busy.val=1",'prints "RC3:CREATE",0',
+        "}else","{",'prints "RC5:REVIEW",0',"}",
+        "printh 00","prints tTicket.txt,0","printh 00","prints tDevice.txt,0",
+        "if(sim.val==0)","{","printh 00","prints tSlot.txt,0","printh 00",
+        "covx phase.val,vArg.txt,0,0","prints vArg.txt,0","printh 00",
+        "covx useLast.val,vArg.txt,0,0","prints vArg.txt,0","}",
+        "printh ff ff ff","if(sim.val==0)","{","page tester","}","}","}"],True,20)
+    p.doc["component"][-1]["txt_maxl"]=24
+    p.button("bTester",304,667,152,49,"Speicher",[*emit("RC5:BROWSE"),"page tester"],size=20)
+    p.button("bBack",24,725,432,41,"Zurück",["if(busy.val==0)","{","page home","}"],size=20)
+    p.flow(["if(busy.val==1&&report.ready.val==1)","{","busy.val=0","page report","}",
+            "if(busy.val==1&&home.online.val==0)","{","busy.val=0",
+            'tStatus.txt="Host-Verbindung verloren. Bitte erneut versuchen."',"}"])
     p.save()
 
 
@@ -259,26 +283,28 @@ def make_keyboard():
               bco=PANEL,bco2=ORANGE,pco=WHITE,pco2=BG,txt=label,txt_maxl=max(len(label),5))
         p.on(name+".up", lines)
     p.button("bCancel",16,725,212,44,"Abbrechen",['secret.txt=""','input.txt=""',
-        "if(entry.field.val==2)","{","page wjoin","}else if(entry.field.val>2)","{","page printer",
+        "if(entry.field.val==2)","{","page wjoin","}else if(entry.field.val>2&&entry.field.val<5)","{","page printer",
         "}else","{","page entry","}"],size=20)
     p.button("bOK",240,725,224,44,"Übernehmen",[
         "if(entry.field.val==2)","{","if(home.online.val==1)","{",
         'prints "RC4:PASS",0',"printh 00","prints secret.txt,0","printh ff ff ff","}",
-        'secret.txt=""','input.txt=""',"page wjoin","}else if(entry.field.val>2)","{",
+        'secret.txt=""','input.txt=""',"page wjoin","}else if(entry.field.val>2&&entry.field.val<5)","{",
         "if(home.online.val==1)","{","if(entry.field.val==3)","{",'prints "RC4:IP",0',"}else","{",
         'prints "RC4:PORT",0',"}","printh 00","prints input.txt,0","printh ff ff ff","}",
         'input.txt=""',"page printer","}else","{","if(entry.field.val==0)","{",
-        "entry.tTicket.txt=input.txt","}else","{","entry.tDevice.txt=input.txt","}",
+        "entry.tTicket.txt=input.txt","}else if(entry.field.val==1)","{",
+        "entry.tDevice.txt=input.txt","}else","{","entry.tSlot.txt=input.txt","}",
         'entry.tStatus.txt=""',"page entry","}"],True,20)
     p.on("keyboard.unload",['secret.txt=""','vKey.txt=""','input.txt=""'])
     p.on("keyboard.loadend", ["mode.val=0","shift.val=0","caps.val=0",'secret.txt=""',
         "if(entry.field.val==0)","{",
-        "input.txt=entry.tTicket.txt",'tField.txt="Reparaturnummer"',"limit.val=32","}else if(entry.field.val==1)","{",
-        "input.txt=entry.tDevice.txt",'tField.txt="Gerätebezeichnung"',"limit.val=64",
+        "input.txt=entry.tTicket.txt",'tField.txt="Prüfnummer"',"limit.val=32","}else if(entry.field.val==1)","{",
+        "input.txt=entry.tDevice.txt",'tField.txt="Gerätebeschreibung"',"limit.val=64",
         "}else if(entry.field.val==2)","{",'input.txt=""','tField.txt="WLAN-Passwort"',"limit.val=64",
         "}else if(entry.field.val==3)","{","input.txt=settings.editText.txt",
-        'tField.txt="Drucker-IPv4-Adresse"',"limit.val=15","}else","{","input.txt=settings.editText.txt",
-        'tField.txt="Drucker-TCP-Port"',"limit.val=5","}",'settings.editText.txt=""',
+        'tField.txt="Drucker-IPv4-Adresse"',"limit.val=15","}else if(entry.field.val==4)","{",
+        "input.txt=settings.editText.txt",'tField.txt="Drucker-TCP-Port"',"limit.val=5",
+        "}else","{","input.txt=entry.tSlot.txt",'tField.txt="Prüfspeichernummer"',"limit.val=3","}",'settings.editText.txt=""',
         "click hLayout,0","click hCount,0"])
     p.save()
 
@@ -289,17 +315,18 @@ def rgb565(color):
 
 
 def make_report():
-    p = Page("report", "Simulationsbericht", "02  Bericht   /   Vorschau vor der Ausgabe")
+    p = Page("report", "Prüfprotokoll", "02  Bericht   /   Vorschau vor der Ausgabe")
     p.var("ready")
     p.var("printing")
     p.box(24,273,432,78,"#3a2c20")
-    p.label(40,289,"SIMULATION · NICHT GEPRÜFT",21,WARN)
-    p.label(40,323,"Kein Nachweis einer elektrischen Sicherheitsprüfung.",14,WARN)
-    p.label(24,373,"TICKET",14,CYAN)
-    p.text("tTicket",24,395,432,44,"",global_=True,limit=32,bg=BG,size=20,isbr=1)
-    p.label(24,449,"GERÄT",14,CYAN)
-    p.text("tDevice",24,471,432,70,"",global_=True,limit=64,bg=BG,isbr=1,size=20)
-    p.text("tDate",24,547,432,28,"",size=20,color=MUTED,bg=BG,global_=True,limit=24)
+    p.text("tOrigin",40,283,402,30,"",size=20,color=WARN,bg="#3a2c20",global_=True,limit=45)
+    p.text("tResult",40,317,402,28,"",size=24,color=WHITE,bg="#3a2c20",global_=True,limit=40)
+    p.label(24,366,"PRÜFNUMMER",14,CYAN)
+    p.text("tTicket",24,384,432,38,"",global_=True,limit=32,bg=BG,size=20,isbr=1)
+    p.label(24,428,"GERÄT",14,CYAN)
+    p.text("tDevice",24,445,432,65,"",global_=True,limit=64,bg=BG,isbr=1,size=20)
+    p.text("tMeta",24,512,432,38,"",size=20,color=CYAN,bg=BG,global_=True,limit=64,isbr=1)
+    p.text("tDate",24,550,432,28,"",size=20,color=MUTED,bg=BG,global_=True,limit=24)
     p.text("tStatus",24,581,432,46,"Keine Messwerte vorhanden.",size=20,color=WARN,
            bg=BG,global_=True,limit=80,isbr=1)
     p.button("bPrint",24,641,210,64,"Beleg drucken",[
@@ -324,7 +351,7 @@ def make_qr():
           vscope=1,bco="#ffffff",pco="#000000")
     p.text("tNote",24,634,432,64,"PDF-Link wird vorbereitet ...",size=20,color=WHITE,
            bg=BG,global_=True,limit=100,isbr=1,align=1)
-    p.label(24,705,"SIMULATION · keine elektrische Prüfung",17,WARN)
+    p.text("tKind",24,697,432,29,"",size=20,color=WARN,bg=BG,global_=True,limit=56)
     p.button("bBack",24,733,432,34,"Zurück zum Bericht",["page report"],size=20)
     p.on("qrpage.loadend",["shown.val=0","vis qrReport,0",*emit("RC3:QR")])
     p.flow(["if(qReady.val==1&&shown.val==0)","{","vis qrReport,1","shown.val=1","}",
@@ -335,7 +362,7 @@ def make_qr():
 
 
 def make_history():
-    p = Page("history", "Protokollverlauf", "Die fünf zuletzt gespeicherten Simulationen.")
+    p = Page("history", "Protokollverlauf", "Die fünf zuletzt gespeicherten Protokolle.")
     p.var("pending")
     for i in range(5):
         p.button(f"bRow{i}",24,275+i*72,432,60,"Laden ...",[
@@ -470,12 +497,36 @@ def make_power():
     p.save()
 
 
+def make_tester():
+    p=Page("tester","BENNING-Speicher","Messung, Datum und Prüfobjekt abgleichen")
+    for name in ("mCount","mPrev","mNext","mReady","mSaving"):
+        p.var(name,global_=False)
+    p.text("mLink",24,253,432,41,"Warte auf Host",size=20,color=MUTED,bg=BG,limit=92,isbr=1)
+    p.text("mImport",24,296,432,31,"Noch kein Import",size=20,color=CYAN,bg=BG,limit=52)
+    for i in range(4):
+        p.button(f"mRow{i}",24,334+i*47,432,42,"-",[f"if(mCount.val>{i}&&home.online.val==1)","{",
+                 *emit(f"RC5:SEL:{i}"),"}"],size=20)
+        p.doc["component"][-1]["txt_maxl"]=42
+    p.button("bPrev",24,526,209,42,"Vorherige",["if(mPrev.val==1)","{",
+             *emit("RC5:PREV"),"}"],size=20)
+    p.button("bNext",247,526,209,42,"Weitere",["if(mNext.val==1)","{",
+             *emit("RC5:NEXT"),"}"],size=20)
+    p.text("mSelected",24,575,432,35,"Keine Messung ausgewählt",size=20,
+           color=CYAN,bg=BG,limit=55)
+    p.text("mNote",24,612,432,55,"",size=20,color=WARN,bg=BG,limit=86,isbr=1)
+    p.button("bUse",24,673,432,49,"Messung bestätigen",["if(mReady.val==1&&home.online.val==1)","{",
+             "mReady.val=0","mSaving.val=1",*emit("RC5:USE"),"}"],True,20)
+    p.button("bBack",24,730,432,40,"Zurück zur Eingabe",["page entry"],size=20)
+    p.flow(["if(mSaving.val==1&&report.ready.val==1)","{","mSaving.val=0","page report","}"])
+    p.save()
+
+
 def main():
     for folder in ("pages","pictures"):
         for path in (APP/folder).glob("*"):
             if path.is_file():
                 path.unlink()
-    app = {"format":1,"name":"Repair Café Riehen · FMI Printstation v0.4",
+    app = {"format":1,"name":"Repair Café Riehen · FMI Printstation v0.5",
            "language":"nextion_do_not_change_manually","screen":"NX8048T070",
            "rotation":270,"encoding":"iso-8859-15","pages":PAGES,
            "pictures":[s for p in PAGES for s in ((p,) if p in FLAT else (p,p+"_press"))],
@@ -490,10 +541,10 @@ def main():
         'printh 00 00 00 ff ff ff 88 ff ff ff\nprints "RC3:BOOT",0\nprinth ff ff ff\npage home\n',
         encoding="utf-8")
     make_home(); make_entry(); make_keyboard(); make_report(); make_qr(); make_history(); make_settings()
-    make_wifi(); make_join(); make_printer(); make_receipt(); make_system(); make_power()
+    make_wifi(); make_join(); make_printer(); make_receipt(); make_system(); make_power(); make_tester()
     (ROOT/"hmi/design/keyboard-layout.json").write_text(json.dumps(
         dict(lower=LOWER,upper=UPPER,symbols=SYMBOL1,accents=SYMBOL2),ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
-    print("Generated native v0.4 pages; reference HMI left untouched.")
+    print("Generated native v0.5 pages; reference HMI left untouched.")
 
 
 if __name__ == "__main__":

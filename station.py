@@ -11,6 +11,8 @@ import textwrap
 import base64
 import zlib
 from station_config import load as receipt_settings, DENSITIES
+from benning_output import measurement_state, selected_fields, show_value
+from benning_store import SOURCES
 
 def simulate(ticket, device):
     return {"ticket": ticket, "device": device, "source": "SIMULATOR",
@@ -30,7 +32,7 @@ def receipt(report, settings=None):
     """80 mm ESC/POS demo receipt, 42 columns, PC850."""
     def clean(value):
         # PC850 has no euro glyph; keep the new native keyboard's € legible.
-        value = str(value).replace("€", "EUR")
+        value = str(value).replace("€", "EUR").replace("≤","<=").replace("≥",">=")
         return "".join(c if c.isprintable() else " " for c in value)
     def line(value=""):
         return (clean(value)+"\n").encode("cp850","replace")
@@ -59,7 +61,21 @@ def receipt(report, settings=None):
         dots-=step
     feed_and_cut=b"".join(chunks)+b"\x1dV\x00"
     header=graphic_header() if settings["graphic"] else bold+b"\x1d!\x11"+line("REPAIR CAFÉ")+b"\x1d!\x00"+line("RIEHEN")+normal
-    return (b"\x1b@"+density+b"\x1bt\x02"+center+header+normal+
+    prefix=b"\x1b@"+density+b"\x1bt\x02"+center+header+normal
+    if report.get("source")=="BENNING":
+        data=[prefix,bold,line("BENNING ST 725"),normal,line(SOURCES[report["import_source"]]),heavy,left]
+        data.extend(field(key,value) for key,value in selected_fields(report))
+        data.extend((rule,bold,field("Originales Testergebnis",report["record"]["verdict"]),normal,rule))
+        for item in report["measurements"]:
+            state,_=measurement_state(item)
+            label=item["name"]+(" / "+item["test"] if item.get("test") else "")
+            value=show_value(item.get("value"),item.get("unit")).replace("Ω","Ohm")
+            limit=show_value(item.get("limit"),item.get("limit_unit")).replace("Ω","Ohm")
+            data.extend((field(label,value),field(" Grenzwert",limit),field(" Tester",state)))
+        data.extend((heavy,field("Hinweis","Importiertes Testergebnis. Keine Sicherheitsfreigabe durch FMI."),
+                     center,bold,line("FMI Printstation"),normal,left,feed_and_cut))
+        return b"".join(data)
+    return (prefix+
             line("Reparieren statt wegwerfen.")+heavy+
             bold+line("ELEKTRISCHES PRÜFPROTOKOLL")+normal+line()+bold+
             line("DEMO / SIMULATION ONLY")+line("KEINE ELEKTRISCHE PRÜFUNG")+normal+

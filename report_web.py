@@ -14,7 +14,10 @@ def publish(db, report, base):
     return base+"/r/"+token
 
 def render_pdf(report):
-    """A4 colour report; this prototype never certifies electrical safety."""
+    """Render the original BENNING result or the existing simulated report."""
+    if report.get("source")=="BENNING":
+        from benning_pdf import render
+        return render(report)
     from datetime import datetime
     from zoneinfo import ZoneInfo
     from pathlib import Path
@@ -141,7 +144,8 @@ def start_server(db, port):
             self.send_response(200)
             self.send_header("Content-Type","application/pdf")
             self.send_header("Cache-Control","no-store")
-            self.send_header("Content-Disposition",'inline; filename="demo-report.pdf"')
+            filename="benning-report.pdf" if r.get("source")=="BENNING" else "demo-report.pdf"
+            self.send_header("Content-Disposition",f'inline; filename="{filename}"')
             self.send_header("Content-Length",str(len(data)))
             self.end_headers()
             self.wfile.write(data)

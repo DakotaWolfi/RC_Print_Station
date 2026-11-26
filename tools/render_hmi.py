@@ -11,9 +11,8 @@ def main():
     OUT.mkdir(exist_ok=True)
     s = HeadlessSimulation(ROOT/"hmi/native")
     s.send('home.online.val=1')
-    s.send('home.tLink.txt="Host verbunden / Simulation"')
-    s.send('home.tClock.txt="25.11.2026  17:30"')
-    s.send('home.tHint.txt="Simulation bereit. Keine elektrische Prüfung."')
+    s.send('home.tLink.txt="Host verbunden"')
+    s.send('home.tHint.txt="BENNING ST 725 · USB CSV"')
     shots=[]
 
     def shot(name,label):
@@ -25,8 +24,19 @@ def main():
     s.send('page entry')
     s.send('tTicket.txt="RC-2026-042"')
     s.send('tDevice.txt="Kaffeemühle / Küche"')
-    s.send('tStatus.txt="Felder antippen, um Text einzugeben."')
+    s.send('tSlot.txt="033"')
+    s.send('tTester.txt="USB CSV: verbunden / wartet auf RECALL"')
     shot("entry","Gerät erfassen")
+    s.send('page tester')
+    s.send('mLink.txt="USB CSV: verbunden / wartet auf RECALL"')
+    s.send('mImport.txt="3 importiert / 3 Slots · 26.11. 17:30"')
+    for i,label in enumerate(("001   15/08/2026   PASS","005   15/08/2026   PASS","033   14/11/2026   PASS")):
+        s.send(f'mRow{i}.txt="{label}"')
+    s.send('mSelected.txt="033 · 14/11/2026 · bestanden"')
+    s.send('mNote.txt="Reihenfolge unklar. Datum und Slot ausdrücklich bestätigen."')
+    s.send('mCount.val=3')
+    s.send('mReady.val=1')
+    shot("tester","Messung bestätigen")
     s.send('field.val=1')
     s.send('page keyboard')
     shot("keyboard","QWERTZ / klein")
@@ -39,11 +49,15 @@ def main():
     s.send('page report')
     s.send('tTicket.txt="RC-2026-042"')
     s.send('tDevice.txt="Kaffeemühle / Küche"')
-    s.send('tDate.txt="25.11.2026  17:30"')
-    s.send('tStatus.txt="Keine Messwerte. Kein Sicherheitsnachweis."')
-    shot("report","Simulationsbericht")
+    s.send('tDate.txt="14/11/2026"')
+    s.send('tOrigin.txt="BENNING ST 725 · USB CSV"')
+    s.send('tMeta.txt="Slot 033 · Klasse II · Eingangsprüfung"')
+    s.send('tResult.txt="Testergebnis: bestanden"')
+    s.send('tStatus.txt="Importiertes Testergebnis. Kein Sicherheitsnachweis der Station."')
+    shot("report","BENNING-Bericht")
     s.send('page qrpage')
-    s.send('qrReport.txt="http://192.168.1.42:8080/r/SIMULATION-PREVIEW-ONLY"')
+    s.send('qrReport.txt="http://192.168.1.42:8080/r/TEST-DOWNLOAD-ONLY"')
+    s.send('tKind.txt="BENNING-Messbericht"')
     s.send('qReady.val=1')
     s.send('tNote.txt="Mit dem Handy scannen. Handy und Station müssen im selben Netz sein."')
     s.wait(200)
@@ -52,7 +66,7 @@ def main():
     for i,label in enumerate(("#42  RC-2026-042","#41  RC-2026-041","Keine weiteren Protokolle",
                                "Keine weiteren Protokolle","Keine weiteren Protokolle")):
         s.send(f'bRow{i}.txt="{label}"')
-    s.send('tStatus.txt="Nur Simulationen / keine elektrischen Prüfungen"')
+    s.send('tStatus.txt="Gespeicherte Messberichte und Simulationen"')
     shot("history","Protokollverlauf")
     s.send('page settings')
     shot("settings","Stationseinstellungen")
@@ -85,7 +99,8 @@ def main():
     s.send('xStatus.txt="Bestätigung innerhalb von 20 Sekunden."')
     shot("power","Systemaktion bestätigen")
     # A contact sheet is only a review image; the HMI uses individual pages.
-    chosen=[shots[i] for i in (10,12,13,14,15)]
+    chosen=sorted((s for s in shots if s[0] in ("entry","tester","report","qr","keyboard")),
+                  key=lambda shot: ("entry","tester","report","qr","keyboard").index(shot[0]))
     canvas=Image.new("RGB",(5*288+6*18,560),"#090f16")
     draw=ImageDraw.Draw(canvas)
     face=ROOT/"hmi/design/typeface/NotoSans-Regular.ttf"

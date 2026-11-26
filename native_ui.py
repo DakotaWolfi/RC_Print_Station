@@ -1,9 +1,10 @@
-"""Backend for the v0.4 native Nextion candidate; legacy nextion_ui is unchanged.
+"""Backend for the v0.5 native Nextion candidate; legacy nextion_ui is unchanged.
 
 The panel renders and edits locally. The host handles reports, printing,
 LAN downloads and operator-requested settings. It never flashes the display.
 """
 import argparse
+import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import json
@@ -15,12 +16,16 @@ from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
 from station import database, receipt, send, simulate
+from benning_csv import outcome
+from benning_panel import TesterPanel
+from benning_receiver import MODES, Receiver
+from benning_store import Measurements, SOURCES
 from station_panel_settings import PanelSettings
 from station_network import NetworkManager
 
 END = b"\xff\xff\xff"
 ENCODING = "iso-8859-15"
-PROTOCOL = 4
+PROTOCOL = 5
 LOG = logging.getLogger(__name__)
 
 
@@ -109,7 +114,9 @@ def verify_panel(ser, timeout=3):
 class NativeUI:
     def __init__(self, ser, host, db, printer_port=9100, base_url="", *,
                  sender=send, publisher=None, config_path=None, network=None,
-                 enable_power=False, **settings_hooks):
+                 enable_power=False, tester_mode="auto", tester_device=None, tester_rs232=None,
+                 tester_encoding="auto", tester_idle=1.8, tester_receiver=None,
+                 hmi_port=None, **settings_hooks):
         self.ser, self.host, self.db = ser, host, db
         self.printer_port = printer_port
         self.base_url = report_base(base_url) if base_url else ""
@@ -129,6 +136,10 @@ class NativeUI:
         self.last_clock = ""
         self.stop_requested = False
         self.auto_port = None
+        self.measurements=Measurements(db)
+        self.receiver=tester_receiver or Receiver(self.measurements,tester_mode,tester_device,
+                                                 tester_rs232,tester_encoding,tester_idle,hmi_port)
+        self.tester=TesterPanel(self,self.measurements,self.receiver)
         self.settings = PanelSettings(self,network,config_path,enable_power,**settings_hooks)
 
     def cmd(self, command):
@@ -151,6 +162,11 @@ class NativeUI:
         self.settings.apply_display(force=True)
         self.cmd("sendme")
         self.cmd("entry.busy.val=0")
+        self.cmd(f"entry.sim.val={int(self.tester.mode=='simulation')}")
+        try:
+            self.tester.start_draft()
+        except sqlite3.Error:
+            self.text("entry.tTester","BENNING-Datenbank gerade nicht verfügbar.",92)
         self.cmd("report.printing.val=0")
         self.cmd("home.pending.val=0")
         self.cmd("history.pending.val=0")
@@ -160,7 +176,7 @@ class NativeUI:
         self.text("qrpage.tNote", "Bitte Bericht erneut im Verlauf öffnen.", 100)
         self.text("entry.tStatus", "Host verbunden. Eingaben bleiben erhalten.", 80)
         self.text("report.tStatus", "Host verbunden. Bericht bitte im Verlauf öffnen.", 80)
-        self.text("home.tHint", "Simulation bereit. Keine elektrische Prüfung.", 64)
+        self.text("home.tHint", "Simulation aktiv." if self.tester.mode=="simulation" else "BENNING: Messung speichern und Export auslösen.", 64)
         self.heartbeat(force=True)
         self.ser.flush()
 
@@ -169,7 +185,7 @@ class NativeUI:
         if force or now - self.last_heartbeat >= 2:
             self.cmd("home.age.val=0")
             self.cmd("home.online.val=1")
-            self.text("home.tLink", "Host verbunden / Simulation", 32)
+            self.text("home.tLink", "Host verbunden", 32)
             stamp = datetime.now(ZoneInfo("Europe/Zurich")).strftime("%d.%m.%Y  %H:%M")
             if force or stamp != self.last_clock:
                 self.text("home.tClock", stamp, 24)
@@ -177,9 +193,13 @@ class NativeUI:
             self.last_heartbeat = now
 
     def load_report(self, ident, report):
-        # Real tester support is deliberately a separate future integration.
-        if not isinstance(report,dict) or report.get("source") != "SIMULATOR" or report.get("verdict") != "NOT TESTED":
-            raise ValueError("Dieser Prototyp öffnet nur Simulationen.")
+        if not isinstance(report,dict) or report.get("source") not in ("SIMULATOR","BENNING"):
+            raise ValueError("Ungültiger gespeicherter Bericht.")
+        simulated = report["source"]=="SIMULATOR"
+        record = report.get("record")
+        if (simulated and report.get("verdict")!="NOT TESTED") or (
+                not simulated and (not isinstance(record,dict) or outcome(record.get("verdict","")) is None)):
+            raise ValueError("Ungültiges gespeichertes Prüfergebnis.")
         if not isinstance(report.get("ticket"), str) or not isinstance(report.get("device"), str):
             raise ValueError("Ungültiger gespeicherter Bericht.")
         self.cmd("report.ready.val=0")
@@ -190,8 +210,21 @@ class NativeUI:
             date = stamp.strftime("%d.%m.%Y  %H:%M")
         except (KeyError, ValueError, TypeError):
             date = "Datum unbekannt"
+        if simulated:
+            self.text("report.tOrigin","SIMULATION / KEINE ELEKTRISCHE PRÜFUNG",45)
+            self.text("report.tResult","NICHT GEPRÜFT",40)
+            self.text("report.tMeta","",64)
+            self.text("qrpage.tKind","SIMULATION / keine elektrische Prüfung",56)
+            self.text("report.tStatus","Keine Messwerte. Kein Sicherheitsnachweis.",80)
+        else:
+            date=record["tester_date"]
+            origin=SOURCES[report["import_source"]]
+            self.text("report.tOrigin",origin,45)
+            self.text("report.tResult",f'Tester: {record["verdict"]}',40)
+            self.text("report.tMeta",f'Slot {record["slot"]} / {report["phase"]} / {record["protection_class"] or "-"}',64)
+            self.text("qrpage.tKind","BENNING-Import / Originalergebnis",56)
+            self.text("report.tStatus","Testergebnis übernommen. Keine Freigabe durch FMI.",80)
         self.text("report.tDate", date, 24)
-        self.text("report.tStatus", "Keine Messwerte. Kein Sicherheitsnachweis.", 80)
         self.cmd("report.printing.val=0")
         self.report, self.report_id = report, ident
         # The native page's timer changes page only after the complete data.
@@ -221,7 +254,7 @@ class NativeUI:
                     raise ValueError("Ungültiger gespeicherter Bericht.")
                 label = f"#{ident}  {r.get('ticket', '?')}"
             self.text(f"history.bRow{i}", label, 40)
-        self.text("history.tStatus", "Nur Simulationen / keine elektrischen Prüfungen", 80)
+        self.text("history.tStatus", "Gespeicherte BENNING-Berichte und Simulationen", 80)
 
     def last_report(self):
         with database(self.db) as db:
@@ -311,6 +344,10 @@ class NativeUI:
     def handle(self, frame):
         if len(frame)==2 and frame[0]==0x66:
             self.settings.enter(frame[1])
+            self.tester.enter()
+            return
+        if frame.startswith(b"RC5:"):
+            self.tester.handle(frame)
             return
         if frame.startswith(b"RC4:"):
             self.settings.handle(frame)
@@ -323,6 +360,8 @@ class NativeUI:
             if frame == b"RC3:BOOT":
                 self.initialise()
             elif frame.startswith(b"RC3:CREATE\x00"):
+                if self.tester.mode!="simulation":
+                    raise ValueError("Simulation muss explizit aktiviert sein.")
                 self.create(frame)
             elif frame == b"RC3:HISTORY":
                 self.refresh_history()
@@ -348,15 +387,18 @@ class NativeUI:
         self.finish_print()
         self.heartbeat()
         self.settings.poll()
+        self.tester.poll()
         self.ser.flush()
 
     def close(self):
         # Never cancel/retry a receipt whose bytes may already have arrived.
         self.executor.shutdown(wait=True)
         self.settings.close()
+        self.receiver.close()
 
     def run(self):
         self.initialise()
+        self.receiver.start()
         try:
             while not self.stop_requested:
                 self.feed(self.ser.read(self.ser.in_waiting or 1))
@@ -377,6 +419,11 @@ def main():
     parser.add_argument("--auto-report-url", action="store_true", help="Use wlan0 IPv4 for QR URLs")
     parser.add_argument("--wifi-interface", default="wlan0")
     parser.add_argument("--enable-local-power", action="store_true", help="Allow confirmed panel reboot/shutdown via logind")
+    parser.add_argument("--tester-mode",choices=MODES,default=os.environ.get("FMI_TESTER_MODE","auto"))
+    parser.add_argument("--tester-device",default=os.environ.get("FMI_TESTER_DEVICE"))
+    parser.add_argument("--tester-rs232-device",default=os.environ.get("FMI_TESTER_RS232_DEVICE"))
+    parser.add_argument("--tester-encoding",default=os.environ.get("FMI_TESTER_ENCODING","auto"))
+    parser.add_argument("--tester-idle",type=float,default=os.environ.get("FMI_TESTER_IDLE","1.8"))
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
@@ -393,7 +440,10 @@ def main():
             from report_web import start_server
             server = start_server(args.db, args.web_port)
         ui = NativeUI(ser,args.host,args.db,args.printer_port,args.report_url,
-                      network=NetworkManager(args.wifi_interface),enable_power=args.enable_local_power)
+                      network=NetworkManager(args.wifi_interface),enable_power=args.enable_local_power,
+                      tester_mode=args.tester_mode,tester_device=args.tester_device,
+                      tester_rs232=args.tester_rs232_device,tester_encoding=args.tester_encoding,
+                      tester_idle=args.tester_idle,hmi_port=args.port)
         if args.auto_report_url:
             ui.auto_port = args.web_port
         signal.signal(signal.SIGTERM,lambda *_: setattr(ui,"stop_requested",True))

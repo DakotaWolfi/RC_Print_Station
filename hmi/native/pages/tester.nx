@@ -1,0 +1,71 @@
+on mRow0.up:
+  if(mCount.val>0&&home.online.val==1)
+  {
+  prints "RC5:SEL:0",0
+  printh ff ff ff
+  }
+
+on mRow1.up:
+  if(mCount.val>1&&home.online.val==1)
+  {
+  prints "RC5:SEL:1",0
+  printh ff ff ff
+  }
+
+on mRow2.up:
+  if(mCount.val>2&&home.online.val==1)
+  {
+  prints "RC5:SEL:2",0
+  printh ff ff ff
+  }
+
+on mRow3.up:
+  if(mCount.val>3&&home.online.val==1)
+  {
+  prints "RC5:SEL:3",0
+  printh ff ff ff
+  }
+
+on bPrev.up:
+  if(mPrev.val==1)
+  {
+  prints "RC5:PREV",0
+  printh ff ff ff
+  }
+
+on bNext.up:
+  if(mNext.val==1)
+  {
+  prints "RC5:NEXT",0
+  printh ff ff ff
+  }
+
+on bUse.up:
+  if(mReady.val==1&&home.online.val==1)
+  {
+  mReady.val=0
+  mSaving.val=1
+  prints "RC5:USE",0
+  printh ff ff ff
+  }
+
+on bBack.up:
+  page entry
+
+on tmFlow.timer:
+  if(mSaving.val==1&&report.ready.val==1)
+  {
+  mSaving.val=0
+  page report
+  }
+
+on tmLink.timer:
+  home.age.val++
+  if(home.age.val>6)
+  {
+  home.online.val=0
+  home.tLink.txt="Host nicht verbunden"
+  }
+
+on tester.loadend:
+  sendme

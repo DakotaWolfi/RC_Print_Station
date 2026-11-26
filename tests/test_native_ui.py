@@ -29,7 +29,7 @@ class NativeBackendTests(unittest.TestCase):
         self.serial = MemorySerial()
         self.printed = []
         self.ui = NativeUI(self.serial,"printer",Path(self.tmp.name)/"reports.db",
-                           sender=lambda *args:self.printed.append(args))
+                           sender=lambda *args:self.printed.append(args),tester_mode="simulation")
 
     def tearDown(self):
         self.ui.close()
@@ -133,7 +133,7 @@ class NativeBackendTests(unittest.TestCase):
 
 
 class HandshakeSerial(MemorySerial):
-    def __init__(self,model=b"NX8048T070_011R",protocol=4):
+    def __init__(self,model=b"NX8048T070_011R",protocol=5):
         super().__init__()
         self.buffer = bytearray()
         self.model,self.protocol=model,protocol

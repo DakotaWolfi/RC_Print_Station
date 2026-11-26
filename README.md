@@ -26,7 +26,18 @@ sudo apt install python3-serial
 python3 station.py display-test --port /dev/ttyUSB0 --baud 9600
 ```
 
-All reports are simulated; no actual safety certification is produced. The real tester protocol is not implemented. The Gen 3 printer at `169.254.223.252:9100` and legacy hybrid HMI have been physically tested. The new native HMI is a separate candidate, with bench validation outstanding.
+`station.py simulate` writes a visibly marked simulation. Imported BENNING records preserve the original tester verdict and do not constitute independent certification by the station. The Gen 3 printer at `169.254.223.252:9100` and previous native HMI have been tested on the station.
+
+## BENNING v0.5 candidate
+
+![Native v0.5 simulator preview](hmi/previews/overview-v05.png)
+
+Native BENNING ST 725 USB CSV import, operator-confirmed memory slots, graphical receipts and branded A4 PDFs. The Raspberry Pi 4B remains the target. Mini-DIN RS232 printing and TXT parsing are experimental.
+
+- [Operator guide, USB bench diagnostic, Pi 4 installation and rollback](docs/benning-v05.md)
+- [Editable v0.5 HMI (extract ZIP)](hmi/build/FMI_RC_native_v0_5.zip) and [artifact hashes](hmi/build/manifest-v05.json)
+- [Validation completed and pending](hmi/VALIDATION-v05.md)
+- [Native UART protocol](docs/native-hmi-protocol.md)
 
 ## Native v0.4 candidate
 

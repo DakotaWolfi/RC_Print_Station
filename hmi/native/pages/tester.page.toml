@@ -1,0 +1,281 @@
+[page]
+name = "tester"
+type = "page"
+x = 0
+y = 0
+w = 480
+h = 800
+bco = "#101923"
+
+[[component]]
+name = "pBg"
+type = "picture"
+x = 0
+y = 0
+w = 480
+h = 800
+pic = "tester"
+
+[[component]]
+name = "mCount"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "mPrev"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "mNext"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "mReady"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "mSaving"
+type = "variable"
+val = 0
+vscope = 0
+
+[[component]]
+name = "mLink"
+type = "text"
+x = 24
+y = 253
+w = 432
+h = 41
+txt = "Warte auf Host"
+txt_maxl = 92
+font = "UI20"
+pco = "#afc2d0"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 1
+
+[[component]]
+name = "mImport"
+type = "text"
+x = 24
+y = 296
+w = 432
+h = 31
+txt = "Noch kein Import"
+txt_maxl = 52
+font = "UI20"
+pco = "#42d9dd"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+
+[[component]]
+name = "mRow0"
+type = "button"
+x = 24
+y = 334
+w = 432
+h = 42
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "-"
+txt_maxl = 42
+isbr = 0
+
+[[component]]
+name = "mRow1"
+type = "button"
+x = 24
+y = 381
+w = 432
+h = 42
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "-"
+txt_maxl = 42
+isbr = 0
+
+[[component]]
+name = "mRow2"
+type = "button"
+x = 24
+y = 428
+w = 432
+h = 42
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "-"
+txt_maxl = 42
+isbr = 0
+
+[[component]]
+name = "mRow3"
+type = "button"
+x = 24
+y = 475
+w = 432
+h = 42
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "-"
+txt_maxl = 42
+isbr = 0
+
+[[component]]
+name = "bPrev"
+type = "button"
+x = 24
+y = 526
+w = 209
+h = 42
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Vorherige"
+txt_maxl = 9
+isbr = 0
+
+[[component]]
+name = "bNext"
+type = "button"
+x = 247
+y = 526
+w = 209
+h = 42
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Weitere"
+txt_maxl = 7
+isbr = 0
+
+[[component]]
+name = "mSelected"
+type = "text"
+x = 24
+y = 575
+w = 432
+h = 35
+txt = "Keine Messung ausgewählt"
+txt_maxl = 55
+font = "UI20"
+pco = "#42d9dd"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+
+[[component]]
+name = "mNote"
+type = "text"
+x = 24
+y = 612
+w = 432
+h = 55
+txt = ""
+txt_maxl = 86
+font = "UI20"
+pco = "#ffd08a"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 0
+isbr = 1
+
+[[component]]
+name = "bUse"
+type = "button"
+x = 24
+y = 673
+w = 432
+h = 49
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#ff941f"
+bco2 = "#ffc071"
+pco = "#101923"
+pco2 = "#101923"
+txt = "Messung bestätigen"
+txt_maxl = 18
+isbr = 0
+
+[[component]]
+name = "bBack"
+type = "button"
+x = 24
+y = 730
+w = 432
+h = 40
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Zurück zur Eingabe"
+txt_maxl = 18
+isbr = 0
+
+[[component]]
+name = "tmFlow"
+type = "timer"
+tim = 200
+en = 1
+
+[[component]]
+name = "tmLink"
+type = "timer"
+tim = 1000
+en = 1

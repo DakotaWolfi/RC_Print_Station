@@ -12,6 +12,54 @@ on hEdit1.up:
   page keyboard
   }
 
+on hEdit2.up:
+  if(busy.val==0&&useLast.val==0&&sim.val==0)
+  {
+  field.val=5
+  page keyboard
+  }
+
+on cLast.up:
+  useLast.val=cLast.val
+  if(useLast.val==1)
+  {
+  prints "RC5:AUTOON",0
+  printh ff ff ff
+  }else
+  {
+  prints "RC5:AUTOOFF",0
+  printh ff ff ff
+  }
+
+on bPhase.up:
+  phase.val++
+  if(phase.val>2)
+  {
+  phase.val=0
+  }
+  click hPhase,0
+
+on hPhase.up:
+  if(phase.val==0)
+  {
+  bPhase.txt="Eingangsprüfung"
+  }else if(phase.val==1)
+  {
+  bPhase.txt="Zwischenprüfung"
+  }else
+  {
+  bPhase.txt="Ausgangsprüfung"
+  }
+
+on entry.loadend:
+  sendme
+  cLast.val=useLast.val
+  click hPhase,0
+  if(sim.val==1)
+  {
+  bCreate.txt="Simulation erstellen"
+  }
+
 on bCreate.up:
   if(busy.val==0)
   {
@@ -23,17 +71,42 @@ on bCreate.up:
   tStatus.txt="Host nicht verbunden. Eingaben bleiben erhalten."
   }else
   {
-  busy.val=1
   report.ready.val=0
-  tStatus.txt="Simulationsbericht wird erstellt ..."
+  if(sim.val==1)
+  {
+  busy.val=1
   prints "RC3:CREATE",0
+  }else
+  {
+  prints "RC5:REVIEW",0
+  }
   printh 00
   prints tTicket.txt,0
   printh 00
   prints tDevice.txt,0
+  if(sim.val==0)
+  {
+  printh 00
+  prints tSlot.txt,0
+  printh 00
+  covx phase.val,vArg.txt,0,0
+  prints vArg.txt,0
+  printh 00
+  covx useLast.val,vArg.txt,0,0
+  prints vArg.txt,0
+  }
   printh ff ff ff
+  if(sim.val==0)
+  {
+  page tester
   }
   }
+  }
+
+on bTester.up:
+  prints "RC5:BROWSE",0
+  printh ff ff ff
+  page tester
 
 on bBack.up:
   if(busy.val==0)
@@ -60,6 +133,3 @@ on tmLink.timer:
   home.online.val=0
   home.tLink.txt="Host nicht verbunden"
   }
-
-on entry.loadend:
-  sendme

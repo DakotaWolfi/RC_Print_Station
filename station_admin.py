@@ -3,6 +3,10 @@ import argparse
 import html
 import secrets
 import subprocess
+import os
+from pathlib import Path
+
+from benning_admin import ImportPage
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs
 
@@ -19,7 +23,11 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--port", type=int, default=8081)
     p.add_argument("--interface", default="wlan0")
+    p.add_argument("--db",default="reports.sqlite3")
+    p.add_argument("--import-token-file",default=os.environ.get("FMI_IMPORT_TOKEN_FILE"))
     args = p.parse_args()
+    import_page = ImportPage(args.db,Path(args.import_token_file).read_text()) if args.import_token_file else None
+    import_link = '<p><a href="/benning">BENNING-Datei importieren</a></p>' if import_page else ""
     token = secrets.token_urlsafe(32)
     network = NetworkManager(args.interface)
     esc = html.escape
@@ -43,7 +51,7 @@ def main():
 <title>FMI Station – Verwaltung</title><style>
 *{{box-sizing:border-box}}body{{background:#101923;color:#f5f6f7;font:16px system-ui;margin:0 auto;max-width:760px;padding:24px}}
 section{{background:#1d2c3a;border-radius:12px;padding:20px;margin:20px 0}}input,button{{font:inherit;padding:10px;margin:5px 0;max-width:100%}}button{{background:#ff941f;border:0;border-radius:6px;color:#101923;font-weight:bold}}label{{display:block}}pre{{white-space:pre-wrap;overflow-wrap:anywhere}}small{{color:#afc2d0}}</style>
-<h1>Repair Café Riehen</h1><small>FMI / Station verwalten</small><p>{esc(message)}</p>
+<h1>Repair Café Riehen</h1><small>FMI / Station verwalten</small><p>{esc(message)}</p>{import_link}
 <section><h2>WLAN</h2><p>IP: {esc(wifi_address(args.interface) or 'Nicht verbunden')}</p>
 <pre>{esc(networks)}</pre><form method="post"><input type="hidden" name="token" value="{token}">
 <button name="action" value="scan">Netzwerke suchen</button></form>
@@ -67,10 +75,16 @@ section{{background:#1d2c3a;border-radius:12px;padding:20px;margin:20px 0}}input
             self.end_headers()
             self.wfile.write(data)
         def do_GET(self):
+            if self.path == "/benning" and import_page:
+                import_page.serve(self)
+                return
             if self.path != "/":
                 self.send_error(404); return
             self.page()
         def do_POST(self):
+            if self.path == "/benning" and import_page:
+                import_page.serve(self,submit=True)
+                return
             if self.path != "/":
                 self.send_error(404); return
             try:

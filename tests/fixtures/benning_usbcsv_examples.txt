@@ -1,0 +1,4 @@
+Speicher Nr;Bezeichnung;Prüfdatum;Prüfergebnis;RPE Wert;RPE Einheit;RPE Ergebnis;IPE Wert;IPE Einheit;IPE Ergebnis;IBer Wert;IBer Einheit;IBer Ergebnis;IEA Wert;IEA Einheit;IEA Ergebnis;RISO Wert;RISO Einheit;RISO Ergebnis;RISO Spannung;Kabel Wert;Kabel Einheit;Kabel Ergebnis;Sichtprüfung Ergebnis;FI/RCD Test;FI/RCD Wert;FI/RCD Einheit;FI/RCD Ergebnis
+001;Klasse II;15/08/2026;bestanden;;;;;;;<0,10;mA;bestanden;;;;>19,99;MOhm;bestanden;500V;;;;;;;;
+005;Klasse I;15/08/2026;bestanden;0,17;Ohm;bestanden;<0,15;mA;bestanden;;;;;;;>19,99;MOhm;bestanden;500V;;;;;;;;
+033;Klasse II;14/11/2026;bestanden;;;;;;;<0,10;mA;bestanden;;;;>19,99;MOhm;bestanden;500V;;;;;;;;

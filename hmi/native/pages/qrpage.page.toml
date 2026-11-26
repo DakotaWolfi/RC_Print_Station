@@ -60,6 +60,23 @@ vscope = 1
 isbr = 1
 
 [[component]]
+name = "tKind"
+type = "text"
+x = 24
+y = 697
+w = 432
+h = 29
+txt = ""
+txt_maxl = 56
+font = "UI20"
+pco = "#ffd08a"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 1
+
+[[component]]
 name = "bBack"
 type = "button"
 x = 24

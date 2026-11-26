@@ -39,6 +39,7 @@ Type=simple
 User=$user
 SupplementaryGroups=dialout
 Environment=HOME=$home
+EnvironmentFile=-/etc/rc-printstation/benning.env
 WorkingDirectory=$root
 ExecStart=/usr/bin/python3 $root/native_ui.py --port /dev/serial0 --baud 115200 --host 169.254.223.252 --db $db --auto-report-url$power_arg
 Restart=on-failure
@@ -57,8 +58,9 @@ After=NetworkManager.service
 Type=simple
 User=$user
 Environment=HOME=$home
+EnvironmentFile=-/etc/rc-printstation/benning.env
 WorkingDirectory=$root
-ExecStart=/usr/bin/python3 $root/station_admin.py
+ExecStart=/usr/bin/python3 $root/station_admin.py --db $db
 Restart=on-failure
 RestartSec=5
 UMask=0077

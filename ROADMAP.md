@@ -139,3 +139,15 @@ Status: working legacy hybrid prototype plus separate native HMI v0.3 candidate.
 - [ ] Independently open/compile v0.4 in official Editor and complete the [Pi 4 bench checklist](hmi/VALIDATION-v04.md).
 - [ ] Verify Landauer Wi-Fi, QR reachability, Ethernet printing and boot-time reconnect before switching the working unit.
 - [ ] Consider Orange Pi migration after the 12 December deployment.
+
+## BENNING v0.5 · Raspberry Pi 4B
+
+- [x] Develop from the working v0.4 branch with its Wi-Fi profiles, temporary hotspot, printer and display settings.
+- [x] Implement receive-only USB CSV import, source-specific slots, raw bytes, duplicate detection and immutable historical snapshots.
+- [x] Add native test phases, slot selection and explicit confirmation, and include imported results in receipts and A4 PDFs.
+- [x] Add a standalone diagnostic, authenticated loopback import and experimental RS232 parser based on posted data.
+- [x] Run automation and simulator regressions and build a separate HMI/TFT candidate.
+- [ ] Verify USB capture length, actual encoding and live reconnection using the [Pi 4 diagnostic](docs/benning-v05.md#standalone-pi-4-bench-diagnostic).
+- [ ] Compile independently in official Nextion Editor and complete the [physical acceptance and rollback checklist](hmi/VALIDATION-v05.md).
+- [ ] Validate the Mini-DIN 6 adapter, memory slot handling and representative printouts on the physical tester before enabling RS232.
+- [ ] Consider a broader authenticated operator web interface after the USB workflow is accepted.

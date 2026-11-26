@@ -40,7 +40,7 @@ class NativeFlowTests(unittest.TestCase):
         self.panel = Simulation(APP,sending=self.out.extend)
         self.printed = []
         self.ui = NativeUI(PanelSerial(self.panel),"epson",Path(self.tmp.name)/"reports.db",
-            base_url="http://192.168.1.42:8080",sender=lambda *a:self.printed.append(a))
+            base_url="http://192.168.1.42:8080",tester_mode="simulation",sender=lambda *a:self.printed.append(a))
         self.pump()
 
     def tearDown(self):

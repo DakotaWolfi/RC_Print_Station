@@ -29,32 +29,32 @@ val = 0
 vscope = 1
 
 [[component]]
-name = "tTicket"
-type = "text"
-x = 38
-y = 325
-w = 404
-h = 50
-txt = ""
-txt_maxl = 32
-font = "UI24"
-pco = "#f5f6f7"
-bco = "#1d2c3a"
-borderw = 0
-xcen = 0
-ycen = 1
+name = "phase"
+type = "variable"
+val = 0
 vscope = 1
-isbr = 1
 
 [[component]]
-name = "tDevice"
+name = "useLast"
+type = "variable"
+val = 1
+vscope = 1
+
+[[component]]
+name = "sim"
+type = "variable"
+val = 0
+vscope = 1
+
+[[component]]
+name = "tTicket"
 type = "text"
-x = 38
-y = 460
-w = 404
-h = 66
+x = 34
+y = 282
+w = 412
+h = 48
 txt = ""
-txt_maxl = 64
+txt_maxl = 32
 font = "UI20"
 pco = "#f5f6f7"
 bco = "#1d2c3a"
@@ -68,26 +68,127 @@ isbr = 1
 name = "hEdit0"
 type = "hotspot"
 x = 24
-y = 315
+y = 280
 w = 432
-h = 72
+h = 52
+
+[[component]]
+name = "tDevice"
+type = "text"
+x = 34
+y = 369
+w = 412
+h = 48
+txt = ""
+txt_maxl = 64
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#1d2c3a"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 1
+isbr = 1
 
 [[component]]
 name = "hEdit1"
 type = "hotspot"
 x = 24
-y = 450
+y = 367
 w = 432
-h = 86
+h = 52
+
+[[component]]
+name = "tSlot"
+type = "text"
+x = 34
+y = 464
+w = 120
+h = 48
+txt = ""
+txt_maxl = 3
+font = "UI20"
+pco = "#f5f6f7"
+bco = "#1d2c3a"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 1
+isbr = 1
+
+[[component]]
+name = "hEdit2"
+type = "hotspot"
+x = 24
+y = 462
+w = 140
+h = 52
+
+[[component]]
+name = "cLast"
+type = "checkbox"
+x = 185
+y = 467
+w = 34
+h = 34
+bco = "#1d2c3a"
+pco = "#ff941f"
+borderc = "#344858"
+val = 1
+
+[[component]]
+name = "bPhase"
+type = "button"
+x = 24
+y = 523
+w = 432
+h = 50
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Eingangsprüfung"
+txt_maxl = 20
+isbr = 0
+
+[[component]]
+name = "hPhase"
+type = "hotspot"
+x = 0
+y = 0
+w = 2
+h = 2
+
+[[component]]
+name = "tTester"
+type = "text"
+x = 24
+y = 580
+w = 432
+h = 37
+txt = "Warte auf BENNING-Host."
+txt_maxl = 92
+font = "UI20"
+pco = "#afc2d0"
+bco = "#101923"
+borderw = 0
+xcen = 0
+ycen = 1
+vscope = 1
+isbr = 1
 
 [[component]]
 name = "tStatus"
 type = "text"
 x = 24
-y = 548
+y = 620
 w = 432
-h = 51
-txt = "Felder antippen, um Text einzugeben."
+h = 42
+txt = ""
 txt_maxl = 80
 font = "UI20"
 pco = "#ffd08a"
@@ -99,37 +200,63 @@ vscope = 1
 isbr = 1
 
 [[component]]
+name = "vArg"
+type = "variable"
+sta = 1
+txt = ""
+txt_maxl = 2
+
+[[component]]
 name = "bCreate"
 type = "button"
 x = 24
-y = 615
-w = 432
-h = 72
-sta = 0
-picc = "entry"
-picc2 = "entry_press"
+y = 667
+w = 270
+h = 49
+sta = 1
 style = 0
 borderw = 0
-font = "UI24"
+font = "UI20"
+bco = "#ff941f"
+bco2 = "#ffc071"
 pco = "#101923"
 pco2 = "#101923"
-txt = "Simulation erstellen"
-txt_maxl = 20
+txt = "Messung prüfen"
+txt_maxl = 24
+isbr = 0
+
+[[component]]
+name = "bTester"
+type = "button"
+x = 304
+y = 667
+w = 152
+h = 49
+sta = 1
+style = 0
+borderw = 0
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
+pco = "#f5f6f7"
+pco2 = "#f5f6f7"
+txt = "Speicher"
+txt_maxl = 8
 isbr = 0
 
 [[component]]
 name = "bBack"
 type = "button"
 x = 24
-y = 707
+y = 725
 w = 432
-h = 52
-sta = 0
-picc = "entry"
-picc2 = "entry_press"
+h = 41
+sta = 1
 style = 0
 borderw = 0
-font = "UI24"
+font = "UI20"
+bco = "#1d2c3a"
+bco2 = "#365164"
 pco = "#f5f6f7"
 pco2 = "#f5f6f7"
 txt = "Zurück"
