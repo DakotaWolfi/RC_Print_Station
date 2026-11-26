@@ -13,7 +13,6 @@ import zlib
 from station_config import load as receipt_settings, DENSITIES
 from benning_output import (examination_fields, measurement_summary, report_checks, result_kind,
                             selected_fields, visible_measurements)
-from benning_store import SOURCES
 
 def simulate(ticket, device):
     return {"ticket": ticket, "device": device, "source": "SIMULATOR",
@@ -65,24 +64,35 @@ def receipt(report, settings=None):
     raster=(pathlib.Path(__file__).resolve().parent/"hmi/design"/f"result-{result_kind(report)}.bin").read_bytes()
     prefix=b"\x1b@"+density+b"\x1bt\x02"+center+header+normal+raster
     if report.get("source") in ("BENNING","EXAMINATION"):
-        source=SOURCES.get(report.get("import_source"),"Sicht- und Funktionsprüfung")
-        data=[prefix,bold,line("BENNING ST 725"),normal,line(source),left]
+        data=[prefix,left]
         data.extend(field(key,value) for key,value in selected_fields(report))
-        record=report.get("record") or {}
-        if record.get("verdict"):
-            data.append(field("Tester-Original",record["verdict"]))
         rows=visible_measurements(report)
         if rows:
-            data.append(rule)
+            data.extend((rule,bold,line("MESSWERTE"),normal))
         for item in rows:
             name,value,limit,state,_=measurement_summary(item,csv_source=report.get("import_source") in ("usb","file-csv"))
             value=value.replace("Ω","Ohm")
             limit=limit.replace("Ω","Ohm")
-            data.append(field(name,value) if value else line(name))
-            if state or limit:
-                data.append(field("", " / ".join(filter(None,(state,"Grenze "+limit if limit else "")))))
+            # Keep the measured value and individual verdict together whenever
+            # they fit. Wrap long entries rather than truncating test data.
+            data.append(field(name,"  ".join(filter(None,(value,state)))))
+            if limit:
+                data.append(field("Grenzwert",limit))
         data.append(rule)
-        data.extend(field(key,value) for key,value in (*report_checks(report),*examination_fields(report)))
+        for key,value in report_checks(report):
+            # The headline already carries the original tester verdict.
+            # Retain actionable findings, not redundant successful states.
+            if key=="Elektrische Messung" and value=="Messdaten vollständig":
+                continue
+            if key=="Protokoll":
+                if value.startswith("Offen: "):
+                    data.append(field("Offene Punkte",value[len("Offen: "):]))
+                continue
+            if key=="Freigabe" and value=="Nicht erfasst · Entscheid der Prüfperson":
+                continue
+            data.append(field(key,value))
+        data.extend(field(key,value) for key,value in examination_fields(report)
+                    if key in ("Prüfperson","Bemerkung"))
         data.extend((heavy,
                      center,bold,line("FMI Printstation"),normal,left,feed_and_cut))
         return b"".join(data)
