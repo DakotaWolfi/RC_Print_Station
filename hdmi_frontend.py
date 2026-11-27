@@ -8,11 +8,11 @@ import sys
 from time import monotonic
 from uuid import uuid4
 
-from PyQt5.QtCore import QEvent, QRect, QSize, Qt, QTimer, QUrl
-from PyQt5.QtGui import QColor, QDesktopServices, QIcon, QPainter, QPixmap, QTransform
+from PyQt5.QtCore import QEvent, QRect, QSize, Qt, QTimer
+from PyQt5.QtGui import QColor, QIcon, QPainter, QPixmap, QTransform
 from PyQt5.QtWidgets import (
-    QApplication, QComboBox, QDialog, QFrame, QGridLayout, QHBoxLayout, QLabel,
-    QGraphicsScene, QGraphicsView, QLineEdit, QMessageBox, QPushButton, QScrollArea, QScroller, QSizePolicy,
+    QApplication, QFrame, QGridLayout, QHBoxLayout, QLabel,
+    QGraphicsScene, QGraphicsView, QPushButton, QScrollArea, QScroller, QSizePolicy, QStackedLayout,
     QStyle, QStyleOptionButton, QStylePainter, QVBoxLayout, QWidget,
 )
 
@@ -20,6 +20,7 @@ from benning_output import RESULTS, result_kind, measurement_summary, visible_me
 from benning_store import PHASES
 from i18n import tr
 from hdmi_keyboard import Keyboard
+from display_rotation import ANGLES, Rotation
 from novelty import ITEMS
 from station_ipc import DEFAULT_SOCKET, request
 
@@ -27,6 +28,7 @@ ROOT=Path(__file__).resolve().parent
 NATIVE=ROOT/"hmi/native/pictures"
 
 ACTIVE=("guide","waiting","review")
+PASSIVE={"state","history","people","templates","report.get","report.link","system.info","draft.editor","personality.pet","personality.treat"}
 STYLE="""
 QWidget { background: #101923; color: #edf4f8; font-family: 'DejaVu Sans'; font-size: 16px; }
 QFrame[card="true"] { background: #182838; border: 1px solid #2d4354; border-radius: 12px; }
@@ -86,7 +88,7 @@ class TouchButton(QPushButton):
 def button(text,fn,primary=False):
     item=TouchButton(text)
     item.setProperty("primary",primary)
-    item.clicked.connect(fn)
+    item.clicked.connect(lambda _checked=False:fn())
     return item
 
 def label(text, *, role=None):
@@ -101,15 +103,15 @@ def label(text, *, role=None):
 
 
 class QRCodeWidget(QWidget):
-    def __init__(self,text):
+    def __init__(self,text,size=240):
         super().__init__()
         from reportlab.graphics.barcode.qrencoder import QRCode,QRErrorCorrectLevel
         code=QRCode(None,QRErrorCorrectLevel.M)
         code.addData(text)
         code.make()
         self.matrix=code.modules
-        self.setFixedSize(192,192)
-        self.setAccessibleName("PDF QR code")
+        self.setFixedSize(size,size)
+        self.setAccessibleName("QR code")
 
     def paintEvent(self,event):
         p=QPainter(self)
@@ -131,6 +133,7 @@ class Surface(QWidget):
         self.pool=ThreadPoolExecutor(max_workers=1,thread_name_prefix="hdmi-ipc")
         self.future=None
         self.outgoing=deque(maxlen=12)
+        self.sync_pending=False
         self.next_poll=0
         self.state={}
         self.view="work"
@@ -141,6 +144,7 @@ class Surface(QWidget):
         self.preview=preview
         self.last_signature=None
         self.debounce=0
+        self.interacting=False
         self.edit_depth=0
         self.editor_draft=None
         self.lease_at=0
@@ -152,7 +156,9 @@ class Surface(QWidget):
         self.people=[]
         self.details={}
         self.url=""
-        self.clicks=[]
+        self.mascot_tap_at=None
+        self.rotation=None
+        self.confirmed_ref=None
         self.next_info=0
         self.review_page=0
         self.last_input=monotonic()
@@ -162,11 +168,15 @@ class Surface(QWidget):
         self.blank=QWidget(self)
         self.blank.setStyleSheet("background:black")
         self.blank.hide()
-        QApplication.instance().installEventFilter(self)
         self.setMinimumSize(320,360)
         self.setWindowTitle("FMI Printstation")
         self.setStyleSheet(STYLE)
-        layout=QVBoxLayout(self)
+        self.stack=QStackedLayout(self)
+        self.main_panel=QWidget()
+        self.stack.addWidget(self.main_panel)
+        self.overlay=None
+        self.overlay_close=None
+        layout=QVBoxLayout(self.main_panel)
         layout.setContentsMargins(14,10,14,10)
         layout.setSpacing(8)
         top=QHBoxLayout()
@@ -175,7 +185,6 @@ class Surface(QWidget):
         self.logo.setAccessibleName("FMI")
         self.logo.setFixedSize(61,48)
         self.logo.setStyleSheet("font-weight: 800; color: #ffb457; padding: 3px;")
-        self.logo.clicked.connect(self.pet_gate)
         top.addWidget(self.logo)
         self.home=button("⌂",self.go_home)
         self.home.setFixedSize(51,48)
@@ -214,6 +223,7 @@ class Surface(QWidget):
         self.timer.timeout.connect(self.pump)
         if not preview:
             self.timer.start(70)
+        QApplication.instance().installEventFilter(self)
         self.show_state({})
 
     def t(self,key,**data):
@@ -221,6 +231,8 @@ class Surface(QWidget):
 
     def closeEvent(self,event):
         self.timer.stop()
+        if self.overlay:
+            self.close_overlay(False)
         QApplication.instance().removeEventFilter(self)
         self.pool.shutdown(wait=False,cancel_futures=True)
         super().closeEvent(event)
@@ -236,10 +248,24 @@ class Surface(QWidget):
         if len(self.outgoing)>=12:
             self.notify("Eine Aktion läuft bereits.")
             return
+        if op not in PASSIVE:
+            if self.sync_pending:
+                return
+            self.sync_pending=True
+            self.main_panel.setEnabled(False)
         self.outgoing.append((packet,callback))
         self.next_poll=0
 
     def eventFilter(self, watched, event):
+        if event.type() in (QEvent.TouchBegin,QEvent.MouseButtonPress):
+            self.interacting=True
+            self.debounce=monotonic()+.4
+        elif event.type() in (QEvent.TouchEnd,QEvent.TouchCancel,QEvent.MouseButtonRelease):
+            self.interacting=False
+            self.debounce=monotonic()+.12
+        if self.overlay and event.type()==QEvent.KeyPress and event.key()==Qt.Key_Escape:
+            self.close_overlay(False)
+            return True
         if event.type() in (QEvent.KeyPress,QEvent.MouseButtonPress,QEvent.TouchBegin,QEvent.Wheel):
             # In a deployed kiosk there is one surface per process.
             self.last_input=monotonic()
@@ -277,6 +303,8 @@ class Surface(QWidget):
         if self.future and self.future[0].done():
             future,packet,callback=self.future
             self.future=None
+            if packet["op"] not in PASSIVE:
+                self.next_poll=0
             try:
                 result=future.result()
                 self.connected=True
@@ -290,9 +318,12 @@ class Surface(QWidget):
                     self.outgoing.clear()
                     self.notify(result["error"])
                 else:
+                    self.next_poll=0
                     self.notify(result["error"])
             except (OSError,ValueError,KeyError):
                 self.connected=False
+                self.outgoing.clear()
+                self.next_poll=0
                 self.status.setText(self.t("Verbindung zur Station wird gesucht."))
                 if packet["op"]!="state":
                     self.notify("Status der Aktion prüfen. Bitte nicht sofort wiederholen.")
@@ -318,15 +349,22 @@ class Surface(QWidget):
         self.toast.setVisible(bool(self.notice))
 
     def show_state(self,state):
+        if not any(packet["op"] not in PASSIVE for packet,_ in self.outgoing):
+            self.sync_pending=False
+            self.main_panel.setEnabled(True)
         new_epoch=state.get("epoch")
         if self.epoch and new_epoch!=self.epoch:
             self.report_id=self.loaded_report=self.report=None
             self.url=""
             self.view="work"
             self.outgoing.clear()
+            if self.overlay and not isinstance(self.overlay,Keyboard):
+                self.close_overlay(False)
+            self.notify("Die Station wurde neu gestartet.")
         self.epoch=new_epoch
         if self.state.get("download_base")!=state.get("download_base"):
             self.url=""
+            self.qr_requested=None
         self.state=state
         work=state.get("draft") or {}
         tests=state.get("receiver") or {}
@@ -345,21 +383,26 @@ class Surface(QWidget):
         self.lang.setText("EN / DE" if state.get("language")=="en" else "DE / EN")
         signature={k:v for k,v in state.items() if k not in ("sequence","receiver")}
         signature["receiver"]=(tests.get("state"),tests.get("detail"))
-        if (self.view=="pet" and self.last_signature and signature!=self.last_signature
+        if (self.view in ("home","work","pet") and self.last_signature and signature!=self.last_signature
                 and signature.keys()==self.last_signature.keys()
                 and all(signature[key]==self.last_signature[key] for key in signature if key!="personality")):
             self.last_signature=signature
             personality=state["personality"]
-            self.pet_amount.setText(self.t("Streicheleinheiten: {count}",count=personality.get("pets") or 0))
-            self.pet_response.setText(self.t(personality["pet_reply"]))
+            if self.view=="pet" and hasattr(self,"pet_amount"):
+                self.pet_amount.setText(self.t("Streicheleinheiten: {count}",count=personality.get("pets") or 0))
+                self.pet_response.setText(self.t(personality["pet_reply"]))
             return
-        if signature!=self.last_signature and not self.edit_depth:
+        if (signature!=self.last_signature and not self.edit_depth and
+                (not self.interacting or monotonic()>self.debounce) and
+                self.scroll.verticalScrollBar().isSliderDown() is False):
             self.last_signature=signature
-            if self.view in ("pet","novelty","workshop","arcade") and (state.get("settings",{}).get("professional") or work.get("stage") in ACTIVE):
+            if self.view in ("pet","novelty","achievements") and (state.get("settings",{}).get("professional") or work.get("stage") in ACTIVE):
                 self.view="work"
             self.render()
 
     def route(self,view,remember=True):
+        if self.overlay:
+            return
         if remember and view!=self.view:
             self.route_stack=(self.route_stack+[self.view])[-12:]
         self.view=view
@@ -374,6 +417,8 @@ class Surface(QWidget):
         self.route("home" if self.state.get("draft") else "work",False)
 
     def go_back(self):
+        if self.overlay:
+            return
         if self.route_stack:
             self.route(self.route_stack.pop(),False)
         elif self.view!="work":
@@ -391,61 +436,128 @@ class Surface(QWidget):
         self.route("settings")
 
 
-    def pet_gate(self):
-        now=monotonic()
-        if self.state.get("settings",{}).get("professional") or (self.state.get("draft") or {}).get("stage") in ACTIVE:
-            return
-        self.clicks=[stamp for stamp in self.clicks if now-stamp<3]+[now]
-        if len(self.clicks)>=5:
-            self.route("pet")
-            self.clicks=[]
+    def leisure(self):
+        return bool(self.state and not self.state.get("settings",{}).get("professional") and
+                    (self.state.get("draft") or {}).get("stage") not in ACTIVE)
 
-    def dialog(self,title,body,action=None):
-        pane=QDialog(self)
-        pane.setWindowTitle(self.t(title))
-        pane.setStyleSheet(STYLE)
+    def pet_gate(self):
+        if not self.leisure():
+            return
+        now=monotonic()
+        if self.mascot_tap_at is not None and now-self.mascot_tap_at<=.7:
+            self.mascot_tap_at=None
+            self.route("pet")
+        else:
+            self.call("personality.pet")
+            self.mascot_tap_at=now
+
+    def open_overlay(self,pane,closed):
+        if self.overlay:
+            pane.deleteLater()
+            return False
+        self.overlay=pane
+        self.overlay_close=closed
+        self.edit_depth+=1
+        self.stack.addWidget(pane)
+        self.stack.setCurrentWidget(pane)
+        pane.setFocus()
+        return True
+
+    def close_overlay(self,accepted):
+        pane,self.overlay=self.overlay,None
+        if pane is None:
+            return
+        callback,self.overlay_close=self.overlay_close,None
+        self.stack.setCurrentWidget(self.main_panel)
+        self.stack.removeWidget(pane)
+        pane.hide()
+        self.edit_depth-=1
+        if callback:
+            callback(accepted)
+        pane.deleteLater()
+        self.render()
+
+    def dialog(self,title,body,action=None,closed=None):
+        pane=QWidget(self)
+        pane.setObjectName("operatorOverlay")
         layout=QVBoxLayout(pane)
+        layout.setContentsMargins(16,14,16,14)
         layout.addWidget(label(self.t(title),role="title"))
         text=QScrollArea()
         text.setWidgetResizable(True)
         text.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        QScroller.grabGesture(text.viewport(),QScroller.TouchGesture)
         content=label(self.t(body))
         content.setAlignment(Qt.AlignTop|Qt.AlignLeft)
         text.setWidget(content)
         layout.addWidget(text,1)
         choices=QHBoxLayout()
-        choices.addWidget(button(self.t("Abbrechen" if action else "Schliessen"),pane.reject))
+        choices.addWidget(button(self.t("Abbrechen" if action else "Schliessen"),lambda:self.close_overlay(False)))
         if action:
-            choices.addWidget(button(self.t("Bestätigen"),pane.accept,True))
+            choices.addWidget(button(self.t("Bestätigen"),lambda:self.close_overlay(True),True))
         layout.addLayout(choices)
-        pane.resize(min(560,self.width()-24),min(345,self.height()-24))
-        self.edit_depth+=1
-        try:
-            if pane.exec()==QDialog.Accepted and action:
-                action()
-        finally:
-            self.edit_depth-=1
-            pane.deleteLater()
+        context=self.ref()
+        def finished(accepted):
+            if closed:
+                closed(accepted)
+            if accepted and action:
+                self.confirmed_ref=context
+                try:
+                    action()
+                finally:
+                    self.confirmed_ref=None
+        return self.open_overlay(pane,finished)
 
     def question(self,title,action):
-        self.dialog("Bestätigen",title,action)
+        return self.dialog("Bestätigen",title,action)
 
-    def enter_text(self,title,value,limit,callback,secret=False,mode="text"):
-        editor=Keyboard(self,self.t(title),value,limit,secret,mode)
-        self.edit_depth+=1
-        try:
-            if editor.exec()==QDialog.Accepted:
-                callback(editor.edit.text())
-        finally:
-            self.edit_depth-=1
-            editor.deleteLater()
+    def enter_text(self,title,value,limit,callback,secret=False,mode="text",closed=None):
+        editor=Keyboard(self,self.t(title),value,limit,secret,mode,embedded=True)
+        def finish(accepted):
+            try:
+                if accepted:
+                    callback(editor.edit.text())
+            finally:
+                editor.edit.clear()
+                if closed:
+                    closed()
+        editor.finished.connect(lambda code:self.close_overlay(bool(code)))
+        if not self.open_overlay(editor,finish):
+            if closed:
+                closed()
+            return
+        editor.edit.setFocus()
+        editor.edit.selectAll()
+
+    def select(self,title,values,current,callback):
+        pane=QWidget(self)
+        pane.setObjectName("operatorOverlay")
+        layout=QVBoxLayout(pane)
+        self.section(layout,title)
+        scroll=QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        QScroller.grabGesture(scroll.viewport(),QScroller.TouchGesture)
+        inner=QWidget()
+        choices=QVBoxLayout(inner)
+        selected=[current]
+        def pick(index):
+            selected[0]=index
+            self.close_overlay(True)
+        for i,value in enumerate(values):
+            choices.addWidget(button(self.t(value),lambda i=i:pick(i),i==current))
+        choices.addStretch()
+        scroll.setWidget(inner)
+        layout.addWidget(scroll,1)
+        layout.addWidget(button(self.t("Abbrechen"),lambda:self.close_overlay(False)))
+        self.open_overlay(pane,lambda ok:callback(selected[0]) if ok else None)
 
     def ref(self):
         d=self.state.get("draft") or {}
         return {"draft":d.get("id"),"version":d.get("version")}
 
     def draft_action(self,op,extra=None):
-        self.call(op,dict(self.ref(),**(extra or {})))
+        self.call(op,dict(self.confirmed_ref or self.ref(),**(extra or {})))
 
     def edit(self,key,previous,value,ref=None):
         self.call("draft.edit",dict(ref or self.ref(),previous={key:previous},changes={key:value}))
@@ -454,15 +566,19 @@ class Surface(QWidget):
         ref=self.ref()
         lease={"draft":ref["draft"],"field":key}
         def edit_locked(_=None):
+            if self.overlay:
+                self.call("draft.editor",{"active":False,**lease})
+                return
             self.editor_draft=lease
             self.lease_at=monotonic()+5
-            try:
-                self.enter_text(title,value,limit,lambda text:self.edit(key,value,text,ref),
-                                mode="ticket" if key=="ticket" else "text")
-            finally:
+            def release():
                 self.editor_draft=None
                 self.call("draft.editor",{"active":False,**lease})
+            self.enter_text(title,value,limit,lambda text:self.edit(key,value,text,ref),
+                            mode="ticket" if key=="ticket" else "text",closed=release)
         def open_editor():
+            if self.overlay or self.editor_draft:
+                return
             if self.preview:
                 edit_locked()
             else:
@@ -525,9 +641,9 @@ class Surface(QWidget):
         if not self.state:
             self.section(v,"FMI Printstation","Verbindung zur Station wird gesucht.")
         else:
-            menus={"home":self.render_home,"menu":self.render_menu,"history":self.render_history,"settings":self.render_settings,
+            menus={"home":self.render_home,"history":self.render_history,"settings":self.render_settings,
                    "wifi":self.render_wifi,"people":self.render_people,"templates":self.render_templates,
-                   "workshop":self.render_workshop,"arcade":self.render_arcade,
+                   "connection":self.render_connection,"download":self.render_download,"achievements":self.render_achievements,
                    "printer":self.render_printer,"display":self.render_display,
                    "tester":self.render_tester,"personality":self.render_personality,"system":self.render_system,
                    "report":self.render_report,"pet":self.render_pet,"info":self.render_info,"novelty":self.render_novelty}
@@ -562,20 +678,18 @@ class Surface(QWidget):
 
     def render_home(self,v):
         self.section(v,"FMI Printstation","Prüfprotokolle")
-        personality=self.state.get("personality",{})
-        if personality.get("slogan"):
-            text=personality["slogan"][self.state["language"]=="en"]
-            if personality.get("milestone"):
-                text=self.t("{count} Prüfungen dokumentiert. Danke, Werkstattteam!",count=personality["milestone"])
-            quote=label(text)
-            quote.setStyleSheet("font-size: 21px; color: #ffd098; padding: 12px 0px;")
-            v.addWidget(quote)
         if self.state.get("draft") and self.state["draft"]["stage"]!="report":
             self.actions(v,[("Prüfung fortsetzen",lambda:self.route("work",False),True)])
         else:
             self.actions(v,[("Geführte Prüfung",lambda:self.begin("guided"),True),
                             ("Direkt",lambda:self.begin("direct"),False)])
-        self.actions(v,[("Verlauf",self.open_history,False),("Einstellungen",lambda:self.route("settings"),False)])
+        self.actions(v,[("Verlauf",self.open_history,False),("Web-Verbindung",lambda:self.route("connection"),False)])
+        if self.leisure():
+            from hdmi_personality import Wolf
+            mascot=Wolf(self.pet_gate,home=True)
+            mascot.setFixedSize(160,min(155,max(92,self.height()//4)))
+            v.addWidget(mascot,alignment=Qt.AlignHCenter)
+            v.addWidget(button(self.t("Werkstattwolf"),lambda:self.route("pet")))
 
 
     def begin(self,mode):
@@ -591,13 +705,12 @@ class Surface(QWidget):
                                   button(self.t("Prüfperson"),self.open_people),
                                   button(self.t("Bericht: {language}",language=self.state["report_language"].upper()),
                                          self.toggle_report_language)]))
-        combo=QComboBox()
-        combo.setAccessibleName(self.t("Prüfart"))
-        combo.setMinimumHeight(48)
-        combo.addItems([self.t(phase) for phase in PHASES])
-        combo.setCurrentIndex(d["phase"])
-        combo.activated[int].connect(lambda n:self.edit("phase",d["phase"],n,{"draft":d["id"],"version":d["version"]}))
-        v.addWidget(combo)
+        if self.state.get("recovery_note"):
+            v.addWidget(label(self.t(self.state["recovery_note"]),role="section"))
+        ref={"draft":d["id"],"version":d["version"]}
+        phase_label=self.t("Prüfart")+" · "+self.t(PHASES[d["phase"]])
+        v.addWidget(button(phase_label,lambda:self.select("Prüfart",PHASES,d["phase"],
+                                      lambda n:self.edit("phase",d["phase"],n,ref))))
         self.actions(v,[("Prüfung beginnen",lambda:self.draft_action("exam.start"),True),
                         ("Vorhandene Messung",lambda:self.draft_action("review.find"),False),
                         ("Entwurf verwerfen",lambda:self.question("Entwurf verwerfen?",
@@ -607,11 +720,24 @@ class Surface(QWidget):
         g=self.state.get("guide")
         if not g:
             return
+        ref=self.ref()
         self.section(v,g["title"])
-        v.addWidget(label(self.t("Schritt {step} von 7  ·  BENNING ST 725 CH",step=g["phase"]),role="section"))
-        if g["art"]!="lcd":
+        v.addWidget(label(self.t("Phase {step}  ·  BENNING ST 725 CH",step=g["phase"]),role="section"))
+        if g["art"]!="lcd" and not g.get("rows"):
             v.addWidget(self.art(g["art"]))
-        v.addWidget(label(g["instruction"][self.state["language"]]))
+        if not (g["step"]=="start" and g.get("rows")):
+            v.addWidget(label(g["instruction"][self.state["language"]]))
+        for art,title,body in g.get("rows",()):
+            row=QHBoxLayout()
+            if art:
+                image=self.art(art)
+                image.setPixmap(image.pixmap().scaled(88,48,Qt.KeepAspectRatio,Qt.SmoothTransformation))
+                row.addWidget(image)
+            copy=QVBoxLayout()
+            copy.addWidget(label(self.t(title),role="section"))
+            copy.addWidget(label(self.t(body)))
+            row.addLayout(copy,1)
+            v.addLayout(row)
         if g["step"]=="exam":
             if not self.people and d["examiner"] and not getattr(self,"people_requested",False):
                 self.people_requested=True
@@ -621,17 +747,15 @@ class Surface(QWidget):
             if person:
                 v.addWidget(label(person,role="muted"))
             v.addWidget(self.field("remarks","Bemerkung",d["remarks"],64))
-            combo=QComboBox()
-            combo.setAccessibleName(self.t("Funktion"))
             values=("Offen","Ohne Befund","Mangel","Nicht geprüft")
-            combo.addItems([self.t(i) for i in values])
-            combo.setCurrentIndex(values.index(g["functional"]))
-            combo.activated[int].connect(lambda n:self.draft_action("exam.function",{"value":values[n]}))
-            v.addWidget(combo)
+            ref=self.ref()
+            v.addWidget(button(self.t("Funktion")+" · "+self.t(g["functional"]),
+                lambda:self.select("Funktion",values,values.index(g["functional"]),
+                    lambda n:self.call("exam.function",dict(ref,value=values[n])))))
             self.actions(v,[("Zum Import" if g["stored"] and not g["blocked"] else "Unvollständig speichern",
                              lambda:self.draft_action("exam.submit"),True)])
         else:
-            self.actions(v,[(choice,lambda i=i,step=g["step"]:self.draft_action("guide.choose",{"choice":i,"step":step}),
+            self.actions(v,[(choice,lambda i=i,step=g["step"]:self.call("guide.choose",dict(ref,choice=i,step=step)),
                              i==0 and g["step"] not in ("start","running","low_continue","energise","warnings"))
                             for i,choice in enumerate(g["choices"])],limit=3)
         self.actions(v,[("Zurück",lambda:self.draft_action("guide.back"),False),
@@ -737,17 +861,63 @@ class Surface(QWidget):
             v.addWidget(label(self.t(notes),role="section"))
         self.actions(v,[("Beleg drucken",lambda:self.question("Beleg jetzt drucken?",lambda:
                              self.call("report.print",{"report":ident,"confirmed":True})),True),
-                        ("PDF / QR-Code",lambda:self.call("report.link",{"report":ident},lambda x:self.set_url(x,ident)),False),
+                        ("PDF / QR-Code",lambda:self.open_download(ident),False),
                         ("Zurück",lambda:self.dismiss_report(ident),False)])
-        if self.url and getattr(self,"url_report",None)==ident:
+
+    def open_download(self,ident):
+        self.url=""
+        self.url_report=ident
+        self.qr_requested=None
+        self.route("download")
+
+    def set_url(self,url,ident,base):
+        if self.view=="download" and self.url_report==ident and self.state.get("download_base")==base:
+            self.url=url
+            self.render()
+
+    def render_download(self,v):
+        self.section(v,"PDF herunterladen")
+        if self.report:
+            kind=result_kind(self.report)
+            result=label(self.t(RESULTS[kind][0]),role="title")
+            result.setStyleSheet(f"color:{RESULTS[kind][1]}; font-weight:800; font-size:30px;")
+            v.addWidget(result)
+            for key,value in report_checks(self.report,self.state["language"]):
+                if key in ("Protokoll","Freigabe"):
+                    v.addWidget(label(f"{self.t(key)} · {value}",role="muted"))
+        if self.url:
             v.addWidget(QRCodeWidget(self.url),alignment=Qt.AlignHCenter)
             v.addWidget(label(self.url))
-            v.addWidget(button(self.t("PDF öffnen"),lambda:QDesktopServices.openUrl(QUrl(self.url))))
+        else:
+            base=self.state.get("download_base")
+            if base and getattr(self,"qr_requested",None)!=base:
+                self.qr_requested=base
+                ident=self.url_report
+                self.call("report.link",{"report":ident},lambda url:self.set_url(url,ident,base))
+            v.addWidget(label(self.t("Bitte warten ..." if base else "PDF-Link nicht verfügbar. Bitte erneut öffnen.")))
+            if base:
+                v.addWidget(button(self.t("Aktualisieren"),lambda:self.open_download(self.url_report)))
+        self.actions(v,[("Zurück",self.go_back,False)])
 
-    def set_url(self,url,ident):
-        self.url,self.url_report=url,ident
-        self.render()
-        QTimer.singleShot(0,lambda:self.scroll.verticalScrollBar().setValue(self.scroll.verticalScrollBar().maximum()))
+    def render_connection(self,v):
+        self.section(v,"Web-Verbindung")
+        web=self.state.get("web") or {}
+        status={"reachable":"Web-HMI im Stationsnetz","no-address":"Web-HMI wartet auf eine lokale Adresse.",
+                "loopback":"Web-HMI nur lokal am Stationsrechner.","proxy":"Web-HMI über HTTPS."}
+        v.addWidget(label(self.t(status.get(web.get("status"),"Web-HMI ist nicht verfügbar.")),role="section"))
+        if web.get("hostname") or web.get("port"):
+            v.addWidget(label(" · ".join(str(v) for v in (web.get("hostname"),web.get("ip"),web.get("port")) if v)))
+        wifi=self.state.get("wifi") or {}
+        if wifi.get("ssid"):
+            v.addWidget(label(self.t("WLAN")+" · "+wifi["ssid"]))
+        if wifi.get("ssid")=="FMI-RC-Printstation":
+            v.addWidget(label(self.t("Gerät mit dem geschützten Stations-Hotspot verbinden.")))
+        urls=web.get("urls") or []
+        if urls:
+            v.addWidget(QRCodeWidget(urls[0]),alignment=Qt.AlignHCenter)
+            for url in urls:
+                v.addWidget(label(url))
+        self.actions(v,[("Zurück",self.go_back,False)])
 
     def dismiss_report(self,ident):
         if self.view=="report":
@@ -805,12 +975,6 @@ class Surface(QWidget):
     def edit_person(self,p):
         self.enter_text("Prüfperson",p.get("name",""),48,lambda n:self.call(
                         "person.save",{"name":n,"examiner":p.get("id")},lambda _:self.open_people()))
-
-    def render_menu(self,v):
-        self.section(v,"Station")
-        self.actions(v,[("Prüfung",lambda:self.route("work"),True),("Verlauf",self.open_history,False),
-                        ("Einstellungen",lambda:self.route("settings"),False),("WLAN",lambda:self.route("wifi"),False),
-                        ("Engineering-Modus",self.open_info,False)])
 
     def configure(self,key,value):
         self.call("settings.save",{"values":{key:value}})
@@ -873,8 +1037,27 @@ class Surface(QWidget):
                         lambda:self.configure("brightness",next((n for n in (25,50,75,100) if n>c["brightness"]),25)),False),
                         (self.t("Standby")+" "+str(c["standby"])+" s",
                         lambda:self.configure("standby",next((n for n in (30,60,120,300,600) if n>c["standby"]),0)),False)])
+        if self.rotation:
+            self.actions(v,[(f"{n}°"+(" ✓" if n==self.rotation.saved else ""),
+                             lambda n=n:self.preview_rotation(n),False) for n in ANGLES])
         self.actions(v,[("Touchscreen kalibrieren",lambda:self.dialog("Touchscreen kalibrieren",
                         "Kalibrierung am Linux-Gerät mit tools/touch_calibrate.py starten."),False)])
+
+    def preview_rotation(self,angle):
+        if self.overlay or not self.rotation:
+            return
+        self.rotation.start(angle)
+        def finish(committed):
+            try:
+                self.rotation.done(committed)
+            except OSError:
+                self.notify("Anzeigeeinstellung konnte nicht gespeichert werden.")
+        self.dialog("Anzeige drehen", "Ausrichtung innerhalb von 15 Sekunden bestätigen.",
+                    lambda:None,closed=finish)
+        pane=self.overlay
+        timer=QTimer(pane,singleShot=True)
+        timer.timeout.connect(lambda:self.close_overlay(False) if self.overlay is pane else None)
+        timer.start(15000)
 
     def render_system(self,v):
         self.section(v,"System")
@@ -901,7 +1084,7 @@ class Surface(QWidget):
             if net["saved"]:
                 text+="  ·  "+self.t("Gespeichert")
             v.addWidget(button(text,lambda _=False,n=net:self.join(n)))
-        self.actions(v,[("Zurück",lambda:self.route("settings"),False)])
+        self.actions(v,[("Zurück",self.go_back,False)])
 
     def join(self,net):
         action=lambda password:self.call("wifi.connect",{"network":net["id"],"password":password})
@@ -934,11 +1117,11 @@ class Surface(QWidget):
                 "RAM / Datenträger":f"{ram} % / {disk} %" if ram is not None else self.t("Nicht verfügbar"),
                 "Betriebszeit":f"{uptime} s" if uptime is not None else self.t("Nicht verfügbar"),"Backend":self.details["version"],"Drucker (TCP)":self.t("Erreichbar" if printer else "Nicht erreichbar"),
                 "Prüfungen / bestandene Tests":f"{exams} / {passed}","Gespeicherte Berichte":self.details["total"],
-                "Streicheleinheiten":pets,"OpenAI heute (UTC)":f"{requests} / ~{tokens}",
+                "Streicheleinheiten":pets,
             }
             v.addWidget(self.columns([label(f"{self.t(key)}  ·  {value}") for key,value in cells.items()]))
         self.actions(v,[("Aktualisieren",lambda:self.call("system.info",callback=self.set_info),False),
-                        ("Zurück",lambda:self.route("menu"),False)])
+                        ("Zurück",self.go_back,False)])
 
     def render_pet(self,v):
         from hdmi_personality import Wolf
@@ -955,12 +1138,14 @@ class Surface(QWidget):
         self.actions(v,[("Streicheln",lambda:mascot.react("happy"),True),
                         ("Leckerli",lambda:mascot.react("treat"),False),
                         ("Awoo",lambda:mascot.react("awoo"),False),
-                        ("Werkstattpause",lambda:self.route("workshop"),False),
+                        ("Werkstatt-Meilensteine",lambda:self.route("achievements"),False),
                         ("Spassbelege",lambda:self.route("novelty"),False),
                         ("Zurück",lambda:self.route("work"),False)])
+    def render_achievements(self,v):
+        self.section(v,"Werkstatt-Meilensteine")
+        p=self.state["personality"]
         progress=p.get("achievements",{})
         if progress:
-            self.section(v,"Werkstatt-Meilensteine")
             for key,name,goal in (("pets","Streicheleinheiten",10),("prints","Gedruckte Prüfbelege",10),
                                   ("exams","Dokumentierte Prüfungen",10),("switches","Sprachwechsel",5),
                                   ("seconds","Betriebsstunden",3600),("engineering","Engineering-Aufrufe",3),("treats","Leckerli",5)):
@@ -969,44 +1154,7 @@ class Surface(QWidget):
                     total,goal=total//3600,goal//3600
                 v.addWidget(label(("✓  " if total>=goal else "")+f"{self.t(name)}  ·  {total} / {goal}",role="muted"))
 
-    def render_workshop(self,v):
-        from workshop import MESSAGES, TERMINAL
-        self.section(v,"Werkstattpause")
-        def terminal(text):
-            answer=TERMINAL.get(text.strip().lower(),"Unbekannter Spielbefehl. help zeigt die Auswahl.")
-            self.dialog("FMI BIOS",answer)
-        self.actions(v,[(name,lambda body=body,name=name:self.dialog(name,body),False) for name,body in MESSAGES.items()])
-        self.actions(v,[("FMI BIOS",lambda:self.enter_text("FMI BIOS","help",24,terminal),False),
-                        ("Teetimer",lambda:self.tea(v),False)])
-        self.actions(v,[(name,lambda game=name:self.open_arcade(game),False) for name in ("Pong","Snake","Breakout","Logo")])
-
-    def tea(self,v):
-        due=monotonic()+180
-        text=label("")
-        v.addWidget(text)
-        timer=QTimer(text)
-        def update():
-            seconds=max(0,int(due-monotonic()+.999))
-            text.setText(f"{self.t('Teetimer')}  {seconds//60}:{seconds%60:02d}")
-            if not seconds:
-                timer.stop()
-        timer.timeout.connect(update)
-        timer.start(500)
-        update()
-
-    def open_arcade(self,game):
-        self.game=game
-        self.route("arcade")
-
-    def render_arcade(self,v):
-        from hdmi_arcade import Arcade
-        self.section(v,self.game)
-        game=Arcade(self.game)
-        v.addWidget(game)
-        if self.game=="Snake":
-            self.actions(v,[(arrow,lambda d=d:game.direction(d),False)
-                            for arrow,d in (("←",(-1,0)),("↑",(0,-1)),("↓",(0,1)),("→",(1,0)))],limit=3)
-        self.actions(v,[("Neu starten",game.restart,False)])
+        self.actions(v,[("Zurück",self.go_back,False)])
 
     def render_novelty(self,v):
         self.section(v,"Spassbelege","Kein Prüfprotokoll oder Nachweis.")
@@ -1019,9 +1167,10 @@ class Surface(QWidget):
 
     def resizeEvent(self,event):
         self.brand.setVisible(self.width()>=650)
+        self.logo.setVisible(self.width()>=400)
         previous=getattr(self,"wide",None)
         self.wide=2 if self.width()>=760 else 1 if self.width()>=600 else 0
-        if previous is not None and previous!=self.wide and not self.edit_depth:
+        if previous is not None and previous!=self.wide:
             QTimer.singleShot(0,self.render)
         super().resizeEvent(event)
 
@@ -1040,13 +1189,22 @@ class RotatedSurface(QGraphicsView):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
+    def change_rotation(self,angle):
+        self.angle=angle
+        self.setTransform(QTransform().rotate(angle))
+        self.fit_surface()
+
     def resizeEvent(self,event):
         super().resizeEvent(event)
+        self.fit_surface()
+
+    def fit_surface(self):
         w,h=self.viewport().width(),self.viewport().height()
         if self.angle in (90,270):
             w,h=h,w
         self.proxy.resize(w,h)
         self.setSceneRect(0,0,w,h)
+        self.centerOn(w/2,h/2)
 
     def closeEvent(self,event):
         self.proxy.widget().close()
@@ -1065,7 +1223,8 @@ def main():
     surface=Surface(a.socket)
     if a.backlight and a.backlight not in (".","..") and "/" not in a.backlight:
         surface.backlight=a.backlight
-    window=RotatedSurface(surface,a.rotation) if a.rotation else surface
+    window=RotatedSurface(surface,a.rotation)
+    surface.rotation=Rotation(a.screen,window.change_rotation,a.rotation)
     if a.size:
         width,height=map(int,a.size.split("x",1))
         window.resize(width,height)
@@ -1073,6 +1232,8 @@ def main():
         screen=next((screen for screen in app.screens() if a.screen in screen.name()),None)
         if screen:
             window.setGeometry(screen.geometry())
+            window.winId()
+            window.windowHandle().setScreen(screen)
     window.show() if a.window else window.showFullScreen()
     return app.exec()
 

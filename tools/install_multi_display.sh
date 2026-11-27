@@ -2,7 +2,7 @@
 # Render first. Unit installation is explicit and does not start services.
 set -euo pipefail
 if ((EUID == 0)); then echo "Run as the station user."; exit 1; fi
-mode=auto
+mode=hdmi
 board=pi4
 backend=linuxfb
 rotation=0
@@ -125,10 +125,9 @@ if ((web)); then
     units+=(rc-printstation-web.service)
     cat > "$unit_dir/rc-printstation-web.service" <<EOF
 [Unit]
-Description=FMI authenticated operator web gateway
+Description=FMI trusted-network operator web gateway
 Wants=rc-printstation.service
 After=rc-printstation.service
-ConditionPathExists=$home_dir/.config/rc-printstation/web-auth.json
 [Service]
 Type=simple
 User=$user

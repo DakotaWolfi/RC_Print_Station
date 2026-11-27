@@ -2,6 +2,15 @@
 
 The station has a physically validated v0.6.2 baseline for Class I output. The v0.7 branch adds bilingual operation and has a separate [physical acceptance checklist](hmi/VALIDATION-v07.md). Older milestones remain below.
 
+## v0.8.2 reliability and usability
+
+- [x] Qt widget callback and revision refresh fixes.
+- [x] In-window touch controls, persisted rotation and separate connection/PDF QR pages.
+- [x] Trusted-network browser operation and separately protected administration.
+- [x] Draft checkpoint, receiver regression coverage and scope cleanup.
+- [ ] Independent physical HDMI and browser acceptance, hotplug, network changes, and real receipt printing.
+- [ ] Revisit the optional frozen Nextion once primary operation is mature.
+
 ## v0.8.1 usability and web HMI
 
 - [x] Responsive HDMI navigation, categorized settings and touch keyboard.

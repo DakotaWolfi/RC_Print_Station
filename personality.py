@@ -10,11 +10,10 @@ import sqlite3
 import time
 
 from benning_csv import PASS
-from slogan_store import LIMIT, OFFLINE, SloganStore
+from slogan_store import LIMIT, SloganStore
 
 VERSION = "0.7.1"
 PROTOCOL = 71
-ROTATE_SECONDS = 300
 LOG = logging.getLogger(__name__)
 PET_REPLIES = (
     "Schnurr... äh, wuff!", "Eine Pfote voller Dank.", "Ich passe auf die Werkbank auf.",
@@ -76,10 +75,8 @@ class Personality:
         self.eggs,self.clock,self.metrics=eggs,clock,metrics
         self.worker=ThreadPoolExecutor(max_workers=1,thread_name_prefix="personality")
         self.job=None
-        self.slogan=OFFLINE[0]
         self.redraw_home=True
         self.redraw_pet=False
-        self.next_rotation=0
         self.next_stats=0
         self.next_metrics=0
         self.stats_dirty=False
@@ -96,12 +93,8 @@ class Personality:
             self.job=(kind,self.worker.submit(fn,*args))
 
     def draw_home(self):
-        if self.ui.settings.page!="home":
-            return
-        if self.milestone and self.clock()<self.milestone_until:
-            self.ui.say("tSlogan","{count} Prüfungen dokumentiert. Danke, Werkstattteam!",LIMIT,count=self.milestone)
-        else:
-            self.ui.text("tSlogan",self.slogan[self.ui.language=="en"],LIMIT)
+        if self.ui.settings.page=="home":
+            self.ui.text("tSlogan","",LIMIT)
 
     def draw_pet(self):
         if self.ui.settings.page=="pet":
@@ -177,11 +170,11 @@ class Personality:
             ("Prüfungen / bestandene Tests",f"{exams} / {passed}" if exams is not None else missing),
             ("Gespeicherte Berichte",str(self.total_reports) if self.total_reports is not None else missing),
             ("Streicheleinheiten",str(pets)),
-            ("OpenAI heute (UTC)",tr("{count} Anfr. / ~{tokens} Tokens",count=requests,tokens=tokens)),
-            ("Offene Token-Reserve",str(reserved)),
+            ("", ""),
+            ("", ""),
         )
         for i,(label,value) in enumerate(values):
-            self.ui.text(f"tD{i}",f"{tr(label)}: {value}",62)
+            self.ui.text(f"tD{i}",f"{tr(label)}: {value}" if label else "",62)
 
     def count_all(self, endpoint):
         try:
@@ -201,18 +194,9 @@ class Personality:
             value=future.result()
         except Exception as exc:
             LOG.warning("Personality %s unavailable (%s)",kind,type(exc).__name__)
-            if kind=="slogan":
-                self.slogan=random.choice([pair for pair in OFFLINE if pair!=self.slogan])
-                if not self.active():
-                    self.draw_home()
             return
-        if kind=="slogan":
-            self.slogan=value
-            if not self.active():
-                self.draw_home()
-        elif kind=="stats":
-            if value[2] and self.eggs:
-                self.milestone=value[2]
+        if kind=="stats":
+            return
         elif kind=="diagnostic":
             self.total_reports,result=value
             self.draw_diagnostic(result)
@@ -239,17 +223,6 @@ class Personality:
         self.count_pets()
         if self.job is not None:
             return
-        if page=="home" and not self.active():
-            if self.milestone and self.milestone_until==0:
-                self.milestone_until=now+16
-                self.draw_home()
-            elif self.milestone and now>=self.milestone_until:
-                self.milestone=self.milestone_until=0
-                self.draw_home()
-            if now>=self.next_rotation:
-                self.next_rotation=now+ROTATE_SECONDS
-                self.drive("slogan",self.store.next)
-                return
         if now>=self.next_stats and (self.stats_dirty or self.next_stats==0):
             self.next_stats=now+2
             self.stats_dirty=False

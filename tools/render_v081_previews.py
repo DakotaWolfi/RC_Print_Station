@@ -4,16 +4,15 @@ from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
 
-from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QApplication
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
-from hdmi_frontend import Keyboard, Surface
+from hdmi_frontend import Surface
 from tools.render_v080_previews import fixture, run, showcase
 
 RESOLUTIONS=((480,800),(800,480),(600,1024),(1024,600))
-SETTINGS=("settings","printer","wifi","display","tester","people","personality","system","info","pet","workshop","novelty")
+SETTINGS=("settings","printer","wifi","display","tester","people","personality","system","info","pet","achievements","novelty","connection")
 
 
 def capture(widget,path):
@@ -43,6 +42,8 @@ def main():
                     for name,state,report in scenes:
                         win.loaded_report=state["report"] if report else None
                         win.report=report
+                        state=dict(state,web={"status":"reachable","urls":["http://192.168.9.221:8090"],
+                                              "hostname":"printstation.local","ip":"192.168.9.221","port":8090})
                         win.show_state(state)
                         capture(win,target/f"{name}.png")
                     for view in SETTINGS:
@@ -53,16 +54,16 @@ def main():
                               ("ipv4","IPv4-Adresse","169.254.25.23","ipv4",False),
                               ("password","Passwort","","text",True))
                     for filename,title,value,mode,secret in captures:
-                        editor=Keyboard(win,win.t(title),value,64,secret,mode)
-                        editor.show()
-                        capture(editor,target/f"{filename}.png")
-                        editor.close()
-                    def dialog_preview():
-                        popup=app.activeModalWidget()
-                        capture(popup,target/"confirmation.png")
-                        popup.reject()
-                    QTimer.singleShot(25,dialog_preview)
+                        win.enter_text(title,value,64,lambda _:None,secret=secret,mode=mode)
+                        capture(win,target/f"{filename}.png")
+                        win.close_overlay(False)
                     win.question("Beleg jetzt drucken?",lambda:None)
+                    capture(win,target/"confirmation.png")
+                    win.close_overlay(False)
+                    win.open_download(win.loaded_report)
+                    win.url="http://192.168.9.221:8080/r/demonstration-only"
+                    win.render()
+                    capture(win,target/"download.png")
                     win.close()
                     app.processEvents()
         finally:

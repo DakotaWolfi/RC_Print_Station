@@ -28,6 +28,10 @@ python3 station.py display-test --port /dev/ttyUSB0 --baud 9600
 
 `station.py simulate` writes a visibly marked simulation. Imported BENNING records preserve the original tester verdict and do not constitute independent certification by the station. The installed Epson is at `169.254.25.23:9100`. The Pi Ethernet address is `169.254.100.1/16`.
 
+## v0.8.2 reliability and usability candidate
+
+Primary interfaces are HDMI and the trusted-network web HMI. See the [migration and physical acceptance guide](docs/reliability-usability-v082.md).
+
 ## v0.8.1 usability and web HMI bench candidate
 
 Use the shared station through the existing Nextion, redesigned HDMI interface or authenticated tablet/phone web HMI. See the [installation, touch calibration, web security, RS232 and rollback guide](docs/usability-web-v081.md).

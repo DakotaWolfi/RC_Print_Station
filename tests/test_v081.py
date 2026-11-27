@@ -204,7 +204,7 @@ class WebTests(TestCase):
         with self.assertRaises(OSError):
             urlopen(self.core.base_url+"/api/session",timeout=2)
         self.assertEqual(self.http("/api/logout",{})[0],200)
-        self.assertEqual(self.http("/api/session")[0],401)
+        self.assertFalse(json.loads(self.http("/api/session",cookie=False)[2])["admin"])
 
     def test_tab_field_lease_conflict_expiry_recovery_and_replay(self):
         self.login()
@@ -249,3 +249,27 @@ class WebTests(TestCase):
         self.command("personality.treat",code=409)
         self.command("novelty.print",{"kind":"awoo","confirmed":True},code=409)
         self.assertEqual(self.core.achievements_pending,{})
+
+    def test_fresh_browser_anonymous_commands_and_admin_gate(self):
+        code,headers,content=self.http("/api/session",cookie=False)
+        self.assertEqual(code,200)
+        self.cookie=headers["Set-Cookie"].split(";")[0]
+        data=json.loads(content)
+        self.csrf=data["csrf"]
+        self.assertFalse(data["admin"])
+        snap=self.command("state")["data"]
+        self.assertNotIn("printer_host",snap["settings"])
+        self.command("draft.new",{"mode":"guided"})
+        self.command("settings.save",{"values":{"language":"en"}})
+        for op,args in (("settings.save",{"values":{"language":"de","professional":True}}),
+                        ("wifi.hotspot",{"confirmed":True}),("printer.test",{"confirmed":True}),
+                        ("power.halt",{"confirmed":True}),("person.save",{"name":"unauthorized"})):
+            self.command(op,args,code=403)
+        self.login()
+        self.command("settings.save",{"values":{"professional":True}})
+        status,headers,content=self.http("/api/logout",{})
+        self.assertEqual(status,200)
+        self.cookie=headers["Set-Cookie"].split(";")[0]
+        self.csrf=json.loads(content)["csrf"]
+        self.command("settings.save",{"values":{"professional":False}},code=403)
+        self.assertEqual(self.command("state")["data"]["draft"]["mode"],"guided")

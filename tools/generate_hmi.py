@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 from panel_text import printable, quote as text_quote, word_lines
 from i18n import tr
-from slogan_store import LIMIT, OFFLINE
+from slogan_store import LIMIT
 from benning_workflow import ART
 APP = ROOT / "hmi/native"
 DESIGN = ROOT / "hmi/design"
@@ -151,7 +151,7 @@ class Page:
                     locale_lines.extend(["if(home.lang.val==1)","{",'bReportLang.txt="Report: EN"',
                                          "}else","{",'bReportLang.txt="Bericht: DE"',"}"])
                 elif comp["name"]=="tSlogan":
-                    locale_lines.extend(["if(home.lang.val==1)","{",f'tSlogan.txt={quote(OFFLINE[0][1])}',
+                    locale_lines.extend(["if(home.lang.val==1)","{",f'tSlogan.txt={quote('')}',
                                          "}else","{",f'tSlogan.txt={quote(value)}',"}"])
                 else:
                     locale_lines.append(f'{comp["name"]}.txt={quote(value)}')
@@ -206,7 +206,7 @@ def make_home():
     p.var("proto", 71)
     p.var("lang")
     p.var("shownLang",global_=False)
-    p.text("tSlogan",24,177,432,82,OFFLINE[0][0],size=28,
+    p.text("tSlogan",24,177,432,82,"",size=28,
            color=WHITE,bg=BG,limit=LIMIT)
     p.add("hLogo","hotspot",x=385,y=5,w=93,h=151)
     p.on("hLogo.up",[wire("RC71:LOGO")])

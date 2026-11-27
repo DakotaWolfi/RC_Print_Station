@@ -19,10 +19,10 @@ OBSERVATIONS = (("Lo LOAD", "low"), ("I LEAK blinkt", "leak"),
 STOP = ("Abbrechen / unsicher", "stop")
 
 STEPS = {
-    "visual": Step("Sichtprüfung", "Prüfling, Messgerät und Leitungen auf Schäden prüfen. Arbeitsplatz und Kalibrierstatus prüfen.",
+    "visual": Step("Sichtprüfung", "Prüfling, Tester, Leitungen und Arbeitsplatz auf Schäden und Gefahren prüfen.",
                    "Nur geschult oder unter Aufsicht arbeiten. Bei Schäden, Feuchtigkeit oder Unsicherheit stoppen. §§2, 8.1, 11.",
                    1, (("Ohne Befund", "kind"), ("Mangel", "stop"), ("Ungeklärt", "stop"))),
-    "kind": Step("Prüfling einordnen", "Schutzklasse oder Leitungsart am Prüfling bestimmen.",
+    "kind": Step("Prüfling einordnen", "Typenschild und Aufbau prüfen. Bei Unklarheit «Fachverfahren» wählen.",
                   "Typenschild, Aufbau und Schutzleiter prüfen. Eine Beschreibung oder der Stecker allein reicht nicht. §§8.4, 9.",
                   2, (("Schutzklasse I", "connect1"), ("Schutzklasse II", "connect2"), ("Schutzklasse III", "class3"),
                       ("Leitung", "cable"), ("Fachverfahren", "special"))),
@@ -32,10 +32,10 @@ STEPS = {
     "cable": Step("Leitungsart wählen", "Die Leitung einzeln und ohne Verbindung zum Netz prüfen.",
                   "Geräteanschlussleitung wie Bild 6a. Verlängerung, Verteiler oder Roller wie Bild 6b. §9.3.",
                   2, (("IEC-Geräteleitung", "iec"), ("Verlängerung / Verteiler", "extension"))),
-    "connect1": Step("Anschliessen · Klasse I", "Spannungslosen Prüfling an 1 anschliessen. Klemme von 9 an ein PE-Metallteil legen.",
+    "connect1": Step("Anschliessen · Klasse I", "Prüfling vom Netz trennen und Spannungsfreiheit prüfen. An 1 anschliessen. Klemme von 9 an PE-Metallteil.",
                      "Typenschild und Last prüfen. Geräteschalter für die Prüfung einschalten. Teile ohne PE gesondert beurteilen. Bild 4, §9.1.",
                      3, (("Netz + 500 V geprüft", "start"), ("Abweichendes Verfahren", "exception"), STOP), "class1"),
-    "connect2": Step("Anschliessen · Klasse II", "Prüfling spannungslos an 1. Klemme von 9 an berührbares Metallteil. Für IB den Prüfling ohne Erdpfad aufstellen.",
+    "connect2": Step("Anschliessen · Klasse II", "Prüfling vom Netz trennen und Spannungsfreiheit prüfen. An 1 anschliessen. Klemme von 9 an berührbares Metall. Für IB ohne Erdpfad.",
                      "Typenschild und Last prüfen. Geräteschalter für die Prüfung einschalten. Bild 5, §9.2.",
                      3, (("Netz + 500 V geprüft", "start"), ("Abweichendes Verfahren", "exception"), STOP), "class2"),
     "exception": Step("Abweichendes Verfahren", "Betriebsart fachlich festlegen. Prüfspannung mit Taste 5 einstellen und die Anzeige am BENNING prüfen.",
@@ -157,6 +157,23 @@ class Guide:
         if self.step=="save":
             return t("{verdict} am BENNING. Diskette (13) drücken, dann STORE und Slot prüfen.",verdict=self.observed)
         return t(STEPS[self.step].instruction)
+
+    def rows(self):
+        """Instruction cards. Observations still go through the decision graph."""
+        if self.step=="kind":
+            return (
+                ("key_i","Klasse I","Berührbare Metallteile mit Schutzleiter (PE)."),
+                ("key_ii","Klasse II","Doppelte oder verstärkte Isolierung, gekennzeichnet mit Doppelquadrat."),
+                (None,"Klasse III","Versorgung nur mit Schutzkleinspannung (SELV)."),
+                (None,"Leitung","IEC-Geräteleitung oder Verlängerung einzeln prüfen."),
+            )
+        if self.step=="start" and self.procedure=="I" and self.mode=="Netz":
+            return (
+                ("key_i","Start","Prüfling sichern und einschalten. Erdzeichen (2) am BENNING drücken."),
+                ("key_i","Lo LOAD","Schalter, Anschluss und Last prüfen. Bei erwarteter geringer Last dieselbe Taste (2) erneut drücken."),
+                ("key_leak","I LEAK blinkt","Nur bei gesichertem Netzaufbau Taste IPE/IB (4) drücken. Die Prüfsteckdose führt dann 230 V. Beide Polaritäten abwarten."),
+            )
+        return ()
 
     def choose(self,index):
         choices=self.choices()

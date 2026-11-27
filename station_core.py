@@ -24,13 +24,14 @@ from novelty import ITEMS, render as novelty_receipt
 from personality import PET_REPLIES, report_counts, system_metrics
 import random
 from report_web import publish
-from slogan_store import OFFLINE, SloganStore
+from slogan_store import SloganStore
 from station import receipt, send, simulate
 import station_config as config
 from station_network import NetworkError, NetworkManager
+from web_access import read_status
 
 LOG = logging.getLogger(__name__)
-VERSION = "0.8.1"
+VERSION = "0.8.2"
 FORMAT = 1
 STATES = ("entry","guide","waiting","review","report")
 MODES = {"auto":("usb","rs232"),"usb":("usb",),"rs232":("rs232",),
@@ -53,7 +54,7 @@ def limited(value, maximum, allow_empty=True):
 class StationCore:
     def __init__(self, db, *, receiver=None, config_path=None, cache=None, host=config.PRINTER_HOST,
                  printer_port=config.PRINTER_PORT, sender=send, publisher=publish,
-                 base_url="", auto_port=None, network=None, allow_power=False, power=None, hotspot_fallback=False):
+                 base_url="", auto_port=None, network=None, allow_power=False, power=None, hotspot_fallback=False, web_status=None):
         self.db=Path(db)
         self.store=Measurements(db)
         with closing(self.store.db()):
@@ -64,6 +65,7 @@ class StationCore:
         self.config=config.load(config_path)
         self.host,self.printer_port,self.sender=host,printer_port,sender
         self.publisher,self.fixed_url,self.base_url,self.auto_port=publisher,base_url,base_url,auto_port
+        self.downloads_online=True
         self.network=network or NetworkManager()
         self.allow_power=allow_power
         self.hotspot_fallback=hotspot_fallback
@@ -103,10 +105,15 @@ class StationCore:
         self.pools={name:ThreadPoolExecutor(max_workers=1,thread_name_prefix=name)
                     for name in ("printer","network","power","personality")}
         self.cache=cache or SloganStore()
-        self.slogan=OFFLINE[0]
-        self.next_slogan=0
+        # Kept for the frozen protocol 71 adapter. Its slogan component is blank.
+        self.slogan=("","")
+        self.web_status=web_status
+        self.web_connection={}
+        self.draft_checkpoint=None
+        self.recovery_note=""
         self.pet_reply="Ein kleiner Werkstattwolf sagt hallo."
         self.pet_count=None
+        self.pet_pending=0
         self.engineering={}
         self.metric_generation=0
         self.next_metrics=0
@@ -116,6 +123,37 @@ class StationCore:
         self.achievements_pending={}
         self.last_operating_sample=monotonic()
         self.next_achievement_sample=0
+        self.restore_checkpoint()
+
+    def restore_checkpoint(self):
+        with closing(self.store.db()) as db,db:
+            db.execute("CREATE TABLE IF NOT EXISTS fmi_resume (id INTEGER PRIMARY KEY CHECK(id=1), data TEXT NOT NULL)")
+            row=db.execute("SELECT data FROM fmi_resume WHERE id=1").fetchone()
+        if not row:
+            return
+        try:
+            saved=json.loads(row["data"])
+            draft=saved["draft"]
+            if not draft:
+                return
+            if draft["stage"]=="report":
+                self.report_id=saved["report"]
+                self.report=self.get_report(self.report_id)
+            else:
+                draft=dict(draft,id=uuid4().hex,version=0,stage="entry")
+                self.baseline=self.store.snapshot(tuple(SOURCES))
+                self.recovery_note="Entwurf nach Neustart wiederhergestellt. Prüfaufbau erneut kontrollieren und Prüfung neu beginnen."
+            self.draft=draft
+        except (ValueError,KeyError,TypeError):
+            LOG.warning("Stored draft checkpoint could not be restored")
+
+    def checkpoint(self):
+        value=json.dumps({"draft":self.draft,"report":self.report_id},ensure_ascii=False)
+        if value==self.draft_checkpoint:
+            return
+        with closing(self.store.db()) as db,db:
+            db.execute("INSERT INTO fmi_resume VALUES(1,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data",(value,))
+        self.draft_checkpoint=value
 
     @staticmethod
     def system_power(action):
@@ -187,8 +225,10 @@ class StationCore:
         self.touch()
 
     def require_draft(self, args, stages, *, version=False):
-        if not self.draft or args.get("draft")!=self.draft["id"] or self.phase not in stages:
-            raise ValueError("Der Entwurf hat sich geändert.")
+        if not self.draft or args.get("draft")!=self.draft["id"]:
+            raise ValueError("Der Entwurf ist nicht mehr aktiv.")
+        if self.phase not in stages:
+            raise ValueError("Die Prüfung ist bereits in einer anderen Phase.")
         if version and (type(args.get("version")) is not int or args["version"]!=self.draft["version"]):
             raise ValueError("Der Entwurf hat sich geändert.")
 
@@ -198,6 +238,7 @@ class StationCore:
         mode=args.get("mode")
         if mode not in ("guided","direct"):
             raise ValueError("Ungültige Eingabe.")
+        self.recovery_note=""
         self.baseline=self.store.snapshot(tuple(SOURCES))
         self.draft=dict(id=uuid4().hex,version=0,stage="entry",mode=mode,
                         ticket="",device="",phase=0,slot="",report_language=None,
@@ -241,6 +282,7 @@ class StationCore:
     def start_examination(self,args,command):
         self.require_draft(args,("entry",),version=True)
         ticket,device,_=self.fields()
+        self.recovery_note=""
         if self.receiver.mode=="simulation":
             if command=="review.find":
                 raise ValueError("Simulation ist aktiv.")
@@ -452,6 +494,9 @@ class StationCore:
                     if op in ("exam.start","review.find","exam.submit","guide.cancel","guide.back","draft.discard"):
                         self.guard_editors(source)
                     data=self.dispatch(op,args)
+                    if op in ("draft.new","draft.edit","draft.discard","exam.start","exam.submit",
+                              "review.confirm","language.report","person.pick","person.active"):
+                        self.checkpoint()
                 result={"ok":True,"data":data}
             except (ValueError,KeyError,TypeError,sqlite3.Error,OSError) as error:
                 if isinstance(error,(sqlite3.Error,OSError)):
@@ -508,8 +553,11 @@ class StationCore:
             self.require_draft(args,("guide",),version=True)
             if op=="guide.choose":
                 index=args.get("choice")
-                if args.get("step")!=self.guide.step or type(index) is not int or not self.guide.choose(index):
-                    raise ValueError("Der Entwurf hat sich geändert.")
+                if args.get("step")!=self.guide.step:
+                    raise ValueError("Der angezeigte Prüfschritt ist veraltet.")
+                if type(index) is not int or not self.guide.choose(index):
+                    LOG.warning("Guide choice rejected: step=%s type=%s",self.guide.step,type(index).__name__)
+                    raise ValueError("Ungültige Auswahl im Prüfschritt.")
             elif op=="guide.back":
                 if self.guide.step=="visual":
                     self.guide=None
@@ -603,7 +651,7 @@ class StationCore:
         elif op=="personality.pet":
             if self.config["professional"] or self.phase in ("guide","waiting","review"):
                 raise ValueError("Aktion fehlgeschlagen.")
-            self.job("personality","pet",self.cache.pet)
+            self.pet_pending=min(16,self.pet_pending+1)
         elif op=="personality.engineering":
             self.award("engineering")
         elif op=="system.info":
@@ -634,16 +682,20 @@ class StationCore:
         return {"system":system_metrics(self.db,self.endpoint()),"reports":report_counts(self.db),
                 "personality":self.cache.counts(),"version":VERSION,"total":total}
 
-    def maintenance(self, rotate, updates):
+    def maintenance(self, updates):
         exams,_=report_counts(self.db)
-        milestone=self.cache.milestones(exams)
-        return milestone,self.cache.next() if rotate else None,self.cache.achievements(updates)
+        self.cache.milestones(exams)
+        return self.cache.achievements(updates)
 
     def tick(self):
         with self.lock:
             now=monotonic()
             if now>=self.next_config_check:
-                self.next_config_check=now+4
+                self.next_config_check=now+2
+                if self.web_status:
+                    self.web_connection=read_status(self.web_status)
+                    if self.auto_port:
+                        self.update_download_base()
                 settings=config.load(self.config_path)
                 if settings!=self.config:
                     self.config=settings
@@ -665,6 +717,9 @@ class StationCore:
                 except Exception as error:
                     LOG.warning("%s job failed (%s)",pool,type(error).__name__)
                     if pool=="network":
+                        if action=="poll":
+                            self.ssid=self.ip=""
+                            self.update_download_base()
                         if action=="hotspot":
                             self.hotspot_due=now+180
                         self.network_note=str(error) if isinstance(error,NetworkError) else ""
@@ -685,10 +740,7 @@ class StationCore:
                         self.network_note="Netzwerke suchen"
                     else:
                         self.ssid,self.ip=value[:2]
-                        previous=self.base_url
-                        self.base_url=f"http://{self.ip}:{self.auto_port}" if self.auto_port and self.ip else self.fixed_url
-                        if self.base_url!=previous:
-                            self.links.clear()
+                        self.update_download_base()
                         self.network_note=""
                         if self.ssid:
                             self.hotspot_due=now+90
@@ -706,15 +758,11 @@ class StationCore:
                             self.award("prints")
                 elif action=="pet":
                     self.pet_count=value
+                    self.achievement_stats={**self.achievement_stats,"pets":value}
                     self.pet_reply=random.choice([reply for reply in PET_REPLIES if reply!=self.pet_reply])
                 elif action=="maintenance":
-                    milestone,slogan,self.achievement_stats=value
+                    self.achievement_stats=value
                     self.pet_count=max(self.pet_count or 0,self.achievement_stats["pets"])
-                    if milestone:
-                        self.milestone=milestone
-                        self.milestone_until=now+18
-                    if slogan:
-                        self.slogan=slogan
                 elif action=="metrics":
                     self.engineering=value
                     self.metric_generation+=1
@@ -729,17 +777,24 @@ class StationCore:
             elif now-self.last_operating_sample>=60:
                 self.award("seconds",int(now-self.last_operating_sample))
                 self.last_operating_sample=now
+            if self.pet_pending and "personality" not in self.jobs:
+                increment,self.pet_pending=self.pet_pending,0
+                self.job("personality","pet",self.cache.pet,increment)
             if ("personality" not in self.jobs and not self.config["professional"] and
                     self.phase not in ("guide","waiting","review") and
-                    (now>=self.next_slogan or self.maintenance_dirty or
+                    (self.maintenance_dirty or
                      self.achievements_pending and now>=self.next_achievement_sample)):
-                rotate=now>=self.next_slogan
-                if rotate:
-                    self.next_slogan=now+300
                 self.maintenance_dirty=False
                 updates,self.achievements_pending=self.achievements_pending,{}
                 self.next_achievement_sample=now+10
-                self.job("personality","maintenance",self.maintenance,rotate,updates)
+                self.job("personality","maintenance",self.maintenance,updates)
+
+    def update_download_base(self):
+        ip=self.web_connection.get("ip") or self.ip
+        base=(f"http://{ip}:{self.auto_port}" if ip and self.auto_port else self.fixed_url) if self.downloads_online else ""
+        if base!=self.base_url:
+            self.base_url=base
+            self.links.clear()
 
     def snapshot(self):
         """Bounded JSON state. Original report content is fetched on demand."""
@@ -750,7 +805,7 @@ class StationCore:
             step=STEPS[g.step]
             guide={"step":g.step,"title":step.title,"instruction":{lang:g.instruction(lang) for lang in ("de","en")},
                    "help":step.help,"art":g.art,"choices":[label for label,_ in g.choices()],
-                   "phase":step.phase,"functional":g.functional,"stored":g.stored,"blocked":g.blocked}
+                   "phase":step.phase,"rows":g.rows(),"functional":g.functional,"stored":g.stored,"blocked":g.blocked}
         get_row=lambda row: {"key":list(self.identity(row)),"slot":row["slot"],
                  "date":row["original"]["tester_date"],"verdict":row["original"]["verdict"],
                  "class":row["original"]["protection_class"]}
@@ -764,12 +819,12 @@ class StationCore:
                 "slots":[get_row(r) for r in self.slots[:999]],"import_art":art,"import_body":body,
                 "selected":get_row(self.selected) if self.selected else None,"wait_note":self.wait_note,
                 "report":self.report_id,"report_kind":result_kind(self.report) if self.report else None,
-                "download_base":self.base_url,"novelty_note":self.novelty_note,
+                "download_base":self.base_url,"web":self.web_connection,"recovery_note":self.recovery_note,"novelty_note":self.novelty_note,
                 "printing":"printer" in self.jobs,"print_note":self.print_note,"probe_note":self.probe_note,
                 "wifi":{"ssid":self.ssid,"ip":self.ip,"busy":"network" in self.jobs,"note":self.network_note,
                         "networks":[{"id":i,"name":n.name,"security":n.security,"signal":n.signal,"saved":bool(n.saved)}
                                     for i,n in self.access_points.items()]},
                 "power":{"enabled":self.allow_power,"note":self.power_note},
-                "personality":{"slogan":None if self.config["professional"] else self.slogan,
+                "personality":{"slogan":None,
                                "pets":self.pet_count,"pet_reply":self.pet_reply,"milestone":self.milestone,
                                "achievements":{} if self.config["professional"] else self.achievement_stats}}

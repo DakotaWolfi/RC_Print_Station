@@ -1,9 +1,9 @@
 """Touch keyboard with the same editing semantics as the physical keyboard."""
 from time import monotonic
 
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QValidator
-from PyQt5.QtWidgets import QDialog, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMenu, QPushButton, QSizePolicy, QVBoxLayout
+from PyQt5.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMenu, QPushButton, QSizePolicy, QVBoxLayout, QWidget
 
 ACCENTS = {
     "a": "äàáâãå", "c": "ç", "e": "éèêë", "i": "ïíìî", "n": "ñ",
@@ -23,13 +23,15 @@ class AddressValidator(QValidator):
         return state, value, position
 
 
-class Keyboard(QDialog):
-    def __init__(self, parent, title, value, limit, secret=False, mode="text"):
-        super().__init__(parent)
+class Keyboard(QWidget):
+    finished=pyqtSignal(int)
+    def __init__(self, parent, title, value, limit, secret=False, mode="text", *, embedded=False):
+        super().__init__(parent,Qt.Widget if embedded else Qt.Dialog)
+        self.embedded=embedded
+        self.code=0
         self.setWindowTitle(title)
         self.setObjectName("touchKeyboard")
         self.setStyleSheet(parent.styleSheet())
-        self.setModal(True)
         self.t = parent.t
         self.mode = mode
         self.layer = 0
@@ -69,6 +71,11 @@ class Keyboard(QDialog):
             self.eye = eye
             entry.addWidget(eye)
         layout.addLayout(entry)
+        self.accents=QHBoxLayout()
+        self.accent_row=QWidget()
+        self.accent_row.setLayout(self.accents)
+        self.accent_row.hide()
+        layout.addWidget(self.accent_row)
         self.grid = QGridLayout()
         self.grid.setSpacing(2)
         layout.addLayout(self.grid, 1)
@@ -86,16 +93,28 @@ class Keyboard(QDialog):
         self.rebuild()
         self.validate()
         self.edit.setFocus()
-        self.resize(min(parent.width() - 4, 1000), parent.height() - 12)
+        if not embedded:
+            self.resize(min(parent.width() - 4, 1000), parent.height() - 12)
 
     def validate(self):
         acceptable = self.edit.hasAcceptableInput() and (self.mode != "number" or self.edit.text().isascii()
                     and self.edit.text().isdecimal())
         self.done_button.setEnabled(acceptable)
 
+    def result(self):
+        return self.code
+
+    def finish(self,code):
+        self.code=code
+        self.hide()
+        self.finished.emit(code)
+
     def accept(self):
         if self.done_button.isEnabled():
-            super().accept()
+            self.finish(1)
+
+    def reject(self):
+        self.finish(0)
 
     def toggle_password(self):
         visible = self.eye.isChecked()
@@ -109,7 +128,7 @@ class Keyboard(QDialog):
         key.setFocusPolicy(Qt.NoFocus)
         key.setAutoDefault(False)
         key.setStyleSheet("padding: 2px; min-width: 0; min-height: 40px; font-size: 17px;")
-        key.clicked.connect(action)
+        key.clicked.connect(lambda _checked=False:action())
         return key
 
     def char(self, value):
@@ -142,7 +161,12 @@ class Keyboard(QDialog):
     def add_letter(self, letter, row, col, span):
         key = self.key(letter.upper() if self.upper and not self.layer else letter,
                        lambda: self.char(key.text()))
-        if not self.layer and letter in ACCENTS:
+        if self.embedded and not self.layer and letter in ACCENTS:
+            timer=QTimer(key,singleShot=True,interval=450)
+            key.pressed.connect(timer.start)
+            key.released.connect(timer.stop)
+            timer.timeout.connect(lambda:self.show_accents(key,letter))
+        elif not self.layer and letter in ACCENTS:
             popup = QMenu(key)
             popup.setStyleSheet("QMenu::item {padding: 10px 20px;}")
             for raw in ACCENTS[letter]:
@@ -162,6 +186,21 @@ class Keyboard(QDialog):
             key.setProperty("letter", letter)
             self.letters.append(key)
         self.grid.addWidget(key, row, col, 1, span)
+
+    def show_accents(self,key,letter):
+        key.setDown(False)
+        while self.accents.count():
+            item=self.accents.takeAt(0).widget()
+            item.deleteLater()
+        def pick(value):
+            if value:
+                self.char(value)
+            self.accent_row.hide()
+        for raw in ACCENTS[letter]:
+            value=raw.upper() if self.upper else raw
+            self.accents.addWidget(self.key(value,lambda value=value:pick(value)))
+        self.accents.addWidget(self.key("×",lambda:pick("")))
+        self.accent_row.show()
 
     def erase(self):
         key = self.key("⌫", self.edit.backspace)

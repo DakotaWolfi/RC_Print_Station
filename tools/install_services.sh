@@ -5,8 +5,6 @@ if [[ $EUID == 0 ]]; then echo "Run as the normal station user, not root."; exit
 replace=0
 power=0
 render=
-render_slogans=
-local_model=0
 db=
 printer_host=
 printer_port=
@@ -14,13 +12,11 @@ while (($#)); do
   case "$1" in
     --replace) replace=1; shift;;
     --enable-local-power) power=1; shift;;
-    --render-slogan-worker) render_slogans="${2:?output directory required}"; shift 2;;
-    --local-llm) local_model=1; shift;;
     --render) render="${2:?output directory required}"; shift 2;;
     --printer-host) printer_host="${2:?IPv4 address required}"; shift 2;;
     --printer-port) printer_port="${2:?TCP port required}"; shift 2;;
     --db) db="${2:?absolute database path required}"; shift 2;;
-    *) echo "Usage: $0 [--db ABSOLUTE_PATH] [--printer-host ADDRESS] [--printer-port PORT] [--replace] [--enable-local-power] [--render DIR] [--render-slogan-worker DIR [--local-llm]]"; exit 2;;
+    *) echo "Usage: $0 [--db ABSOLUTE_PATH] [--printer-host ADDRESS] [--printer-port PORT] [--replace] [--enable-local-power] [--render DIR]"; exit 2;;
   esac
 done
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -31,46 +27,6 @@ for value in "$root" "$home" "$user" "$db"; do
   [[ "$value" =~ ^[a-zA-Z0-9_./-]+$ ]] || { echo "Unsupported service path/user"; exit 1; }
 done
 [[ "$db" = /* ]] || { echo "--db requires an absolute path"; exit 1; }
-if [[ -n "$render_slogans" ]]; then
-  memory=96M
-  if ((local_model)); then memory=1200M; fi
-  mkdir -p -- "$render_slogans"
-  cat > "$render_slogans/rc-printstation-slogans.service" <<EOF
-[Unit]
-Description=Repair Cafe optional slogan cache worker
-ConditionPathExists=/etc/rc-printstation/slogans.env
-[Service]
-Type=oneshot
-User=$user
-Environment=HOME=$home
-EnvironmentFile=/etc/rc-printstation/slogans.env
-WorkingDirectory=$root
-ExecStart=/usr/bin/python3 $root/slogan_worker.py
-TimeoutStartSec=120
-Nice=15
-CPUQuota=70%
-CPUWeight=15
-MemoryMax=$memory
-TasksMax=12
-UMask=0077
-NoNewPrivileges=yes
-PrivateTmp=yes
-ProtectSystem=full
-StandardOutput=null
-EOF
-  cat > "$render_slogans/rc-printstation-slogans.timer" <<EOF
-[Unit]
-Description=Check the optional Repair Cafe slogan cache every five minutes
-[Timer]
-OnBootSec=2min
-OnUnitInactiveSec=5min
-[Install]
-WantedBy=timers.target
-EOF
-  echo "Rendered optional slogan worker units only: $render_slogans"
-  exit 0
-fi
-((local_model == 0)) || { echo "--local-llm requires --render-slogan-worker"; exit 2; }
 backend=rc-printstation.service
 admin=rc-printstation-admin.service
 dest=/etc/systemd/system

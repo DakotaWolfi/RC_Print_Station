@@ -19,7 +19,6 @@ from benning_store import Measurements, PHASES
 from native_ui import END, ENCODING, NativeUI
 from station_panel_settings import PAGES
 from station_config import PRINTER_HOST
-from slogan_store import OFFLINE
 from station_network import Network
 from i18n import LANGUAGES
 from report_web import render_pdf
@@ -143,7 +142,6 @@ def render(out,language):
             (out/f"hmi/{name}.png").write_bytes(sim.screen()["png"])
 
         ui.settings.page="home"
-        ui.personality.slogan=OFFLINE[8]
         ui.personality.draw_home()
         shot("home")
         ui.personality.milestone=50

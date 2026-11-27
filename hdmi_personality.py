@@ -10,9 +10,10 @@ ART=Path(__file__).resolve().parent/"assets/wolf"
 
 
 class Wolf(QWidget):
-    def __init__(self, pet, treat=lambda:None):
+    def __init__(self, pet, treat=lambda:None, *, home=False):
         super().__init__()
         self.pet=pet
+        self.home=home
         self.treat=treat
         self.last=monotonic()
         self.start=None
@@ -54,7 +55,7 @@ class Wolf(QWidget):
             self.reset.start(140)
 
     def react(self,name):
-        if monotonic()-self.last<.45 and self.sprite!="idle":
+        if not self.home and monotonic()-self.last<.45 and self.sprite!="idle":
             return
         self.last=monotonic()
         self.show_sprite(name)
@@ -72,7 +73,8 @@ class Wolf(QWidget):
     def stroke(self,point):
         if self.start is not None and not self.moved and (point-self.start).manhattanLength()>20:
             self.moved=True
-            self.react("happy")
+            if not self.home:
+                self.react("happy")
 
     def press(self,point):
         self.start=point

@@ -74,42 +74,62 @@ async function http(path, body) {
     } finally { clearTimeout(timer); }
 }
 const query = (op,args={}) => http("/api/command",{op,args,tab}).then(answer => answer.data);
-function loginScreen() {
-    $("home").hidden=$("back").hidden=$("settings").hidden=true;
-    replace(main);
-    title("FMI Printstation");
-    para(t("Mit dem lokalen Stationspasswort anmelden."));
-    const form = node("form","card");
-    const input = field(form,"Passwort","",{type:"password",autocomplete:"current-password",required:true,maxLength:128});
-    const submit = node("button","primary",t("Anmelden"));
+function applySession(value) {
+    app.csrf=value.csrf;
+    app.admin=value.admin;
+    app.adminAvailable=value.admin_available;
+}
+function adminLogin() {
+    title("Administration");
+    if(!app.adminAvailable) {
+        para(t("Administration ist nur an der Station verfügbar."));
+        return;
+    }
+    const form=node("form","card");
+    const input=field(form,"Passwort","",{type:"password",autocomplete:"current-password",required:true,maxLength:128});
+    const submit=node("button","primary",t("Anmelden"));
     form.append(submit);
-    form.onsubmit=async event => {
-        event.preventDefault();
-        submit.disabled=true;
+    form.onsubmit=async event=>{
+        event.preventDefault(); submit.disabled=true;
         try {
-            app.csrf=(await http("/api/login",{password:input.value})).csrf;
+            applySession(await http("/api/login",{password:input.value}));
             app.note="";
             await poll(true);
-        } catch(error) { app.note=error.code ? error.message : "Verbindung zur Station unterbrochen."; setStatus(); }
+        } catch(error) { app.note=error.message; setStatus(); }
         finally { input.value=""; submit.disabled=false; }
     };
     main.append(form);
-    setStatus();
+}
+async function signOut() {
+    try {
+        applySession(await http("/api/logout",{}));
+        await poll(true);
+    } catch(error) {
+        app.note=error.message;
+        setStatus();
+    }
 }
 async function poll(force=false) {
-    if (!app.csrf || app.polling || app.busy && !force) return;
+    if (app.polling || app.busy && !force) return;
     app.polling=true;
     try {
+        if(!app.csrf) applySession(await http("/api/session"));
         const next = await query("state");
         const changed = !app.state || JSON.stringify(next)!==JSON.stringify(app.state);
+        const newRoute = (next.draft?.stage!==app.state?.draft?.stage ||
+                          next.guide?.step!==app.state?.guide?.step);
+        const baseChanged=app.state && app.state.download_base!==next.download_base;
+        if(baseChanged) app.pdf=null;
         if (app.state && app.state.epoch!==next.epoch) {
             app.note="Die Station wurde neu gestartet.";
             app.loaded=app.pdf=null;
+            if(dialog.open && !app.input) dialog.close();
+            app.view="work";app.nav=[];
         }
         app.online=true;
         if(app.note==="Verbindung zur Station unterbrochen.") app.note="";
         app.state=next;
-        if ((["pet","novelty","play","workshop"].includes(app.view)) && !leisure()) {
+        if ((["pet","novelty","achievements"].includes(app.view)) && !leisure()) {
             app.view="work"; app.nav=[];
             if (dialog.open) dialog.close();
         }
@@ -118,13 +138,18 @@ async function poll(force=false) {
         }
         const editing = main.contains(document.activeElement) &&
             ["INPUT","SELECT","TEXTAREA"].includes(document.activeElement.tagName);
-        if (force || (changed && !editing && !app.input && !dialog.open && app.view!=="play")) render();
+        if (!app.input && !dialog.open && (force || changed && !editing)) {
+            if(newRoute && app.view==="work") window.scrollTo(0,0);
+            render();
+            if(baseChanged && app.view==="download" && app.state.download_base) loadPDF();
+        }
     } catch(error) {
         app.online=false;
         if (error.code===401) {
-            app.csrf=""; app.state=app.input=null;
-            if (dialog.open) dialog.close();
-            loginScreen();
+            app.csrf="";
+            app.admin=false;
+            if(dialog.open && !app.input) dialog.close();
+            if(!app.input && app.state) render();
         }
     } finally { app.polling=false; setStatus(); }
 }
@@ -139,7 +164,8 @@ async function cmd(op,args={},options={}) {
         return true;
     } catch(error) {
         app.note=error.code ? error.message : "Verbindung zur Station unterbrochen. Aktion prüfen.";
-        if (!error.code || error.code===503) app.online=false;
+        if(error.code===401) {app.csrf="";app.admin=false;}
+        if (!error.code || error.code===503 || error.code===401) app.online=false;
         return false;
     } finally {
         app.busy=false;
@@ -224,16 +250,38 @@ async function changeField(key,title,value,props={}) {
 const edit = (d,key,value) => draft("draft.edit",{previous:{[key]:d[key]},changes:{[key]:value}});
 function home() {
     title("FMI Printstation"); para(t("Prüfprotokolle"),"badge");
-    const d=app.state.draft, slogan=app.state.personality?.slogan;
-    if (slogan && !active()) para(slogan[lang()==="en"?1:0]);
+    const d=app.state.draft;
     const begin = mode => cmd("draft.new",{mode},{done:()=>app.view="work"});
     main.append(d && d.stage!=="report" ?
         group(B("Prüfung fortsetzen",()=>navigate("work"),true)) :
         group(B("Geführte Prüfung",()=>begin("guided"),true),B("Direkt",()=>begin("direct"))),
-        group(B("Verlauf",history),B("Einstellungen",()=>navigate("settings"))));
+        group(B("Verlauf",history),B("Web-Verbindung",()=>navigate("connection"))));
+    if(leisure()) {
+        const control=B("Werkstattwolf",()=>homePet(img));
+        control.classList.add("mascot");
+        const img=node("img","wolf home-wolf");
+        img.src="/wolf/"+(Date.now()<(app.petAnimation||0)?"happy":"idle")+".webp";img.alt="";
+        control.prepend(img);
+        control.setAttribute("aria-label",t("Wolf streicheln. Zweimal tippen zum Öffnen."));
+        main.append(control,B("Zum Werkstattwolf",()=>navigate("pet")));
+    }
+}
+function homePet(img) {
+    if(!leisure()) return;
+    const now=Date.now();
+    if(app.petAt && now-app.petAt<=700) {
+        app.petAt=0;
+        navigate("pet");
+        return;
+    }
+    app.petAt=now;app.petAnimation=now+700;
+    img.src="/wolf/happy.webp";
+    cmd("personality.pet",{}, {poll:false});
+    setTimeout(()=>{if(img.isConnected) img.src="/wolf/idle.webp";},700);
 }
 function entry(d) {
     title("Prüfung erfassen"); para(t(d.mode==="guided"?"Geführte Prüfung":"Direkt"),"badge");
+    if(app.state.recovery_note) para(t(app.state.recovery_note),"badge");
     const panel=node("section");
     panel.append(group(action(t("Prüfnummer")+" · "+(d.ticket || t("Eingeben")),
         ()=>changeField("ticket","Prüfnummer",d.ticket,{maxLength:32,inputMode:"text"})),
@@ -247,16 +295,24 @@ function entry(d) {
         B("Vorhandene Messung",()=>draft("review.find")),
         B("Entwurf verwerfen",()=>confirm("Entwurf verwerfen?",()=>draft("draft.discard",{confirmed:true})))));
 }
-function art(key) {
+function art(key,parent=main) {
     if(!key || key==="lcd") return;
     const image=node("img","guide");
     image.src="/art/g_"+key+(lang()==="en"?"_en":"")+".png";
     image.onerror=()=>{if(image.src.endsWith("_en.png")) image.src="/art/g_"+key+".png";else image.remove();};
-    image.alt="BENNING ST 725"; main.append(image);
+    image.alt="BENNING ST 725"; parent.append(image);
 }
 function guide(d,g) {
-    title(g.title); para(t("Schritt {step} von 7  ·  BENNING ST 725 CH",{step:g.phase}),"badge");
-    art(g.art); para(g.instruction[lang()]);
+    title(g.title); para(t("Phase {step}  ·  BENNING ST 725 CH",{step:g.phase}),"badge");
+    if(!g.rows?.length) art(g.art);
+    if(g.step!=="start" || !g.rows?.length) para(g.instruction[lang()]);
+    for(const [image,heading,body] of g.rows || []) {
+        const row=node("div","guide-row");
+        art(image,row);
+        const words=node("div");
+        words.append(node("strong","badge",t(heading)),node("p","",t(body)));
+        row.append(words);main.append(row);
+    }
     if(g.step==="exam") {
         const panel=node("section");
         panel.append(group(action(t("Prüfperson")+(d.examiner && app.people.find(p=>p.id===d.examiner) ?
@@ -323,13 +379,15 @@ function peopleView() {
     title("Prüfpersonen");
     const add=person=>formDialog("Prüfperson",person?.name,{maxLength:48,required:true},
         name=>cmd("person.save",{name,examiner:person?.id || null},{done:refreshPeople}));
-    main.append(group(B("Neu",()=>add(null),true)));
+    if(app.admin) main.append(group(B("Neu",()=>add(null),true)));
     for(const p of app.people) {
         const card=node("section"), d=app.state.draft;
         card.append(node("strong","",p.name));
         const pick=B("Auswählen",()=>cmd("person.pick",{...ref(),examiner:p.id},{done:()=>app.view="work"}),true);
         pick.disabled=!p.active||!(d?.stage==="entry" || app.state.guide?.step==="exam");
-        card.append(group(pick,B("Bearbeiten",()=>add(p)),
+        if(!app.admin && !p.active) continue;
+        card.append(group(pick));
+        if(app.admin) card.append(group(B("Bearbeiten",()=>add(p)),
             B(p.active?"Deaktivieren":"Aktivieren",()=>confirm("Änderung bestätigen?",()=>
                 cmd("person.active",{examiner:p.id,active:!p.active,confirmed:true},{done:refreshPeople})))));
         main.append(card);
@@ -358,23 +416,61 @@ function showReport(id) {
     }
     for(const [name,value] of r.checks) para(t(name)+" · "+value);
     main.append(group(B("Beleg drucken",()=>confirm("Beleg jetzt drucken?",()=>cmd("report.print",{report:id,confirmed:true})),true),
-        B("PDF / QR-Code",()=>cmd("report.qr",{report:id},{done:qr=>app.pdf=qr}))));
+        B("PDF / QR-Code",()=>openPDF(id))));
     for (const message of [app.state.print_note]) { if(message) para(t(message)); }
+}
+function openPDF(id) {
+    app.pdf=null;app.pdfId=id;
+    navigate("download");
+    loadPDF();
+}
+function loadPDF() {
+    const id=app.pdfId, base=app.state.download_base;
+    cmd("report.qr",{report:id},{done:qr=>{
+        if(app.view==="download"&&app.pdfId===id&&app.state.download_base===base) app.pdf=qr;
+    }});
+}
+function downloadView() {
+    title("PDF herunterladen");
+    const r=app.report;
+    if(r) {
+        para(t(verdicts[r.kind] || "UNBEKANNT"),"result "+r.kind.toLowerCase());
+        for(const [name,value] of r.checks) {
+            if(name==="Protokoll" || name==="Freigabe") para(t(name)+" · "+value);
+        }
+    }
     if(app.pdf && /^https?:\/\//.test(app.pdf.url)) {
         const link=node("a","button",t("PDF öffnen"));
         link.href=app.pdf.url;link.rel="noopener noreferrer";link.target="_blank";main.append(link);
         const n=app.pdf.modules.length, canvas=node("canvas","qr");
-        canvas.width=canvas.height=(n+8)*4; canvas.setAttribute("aria-label","PDF QR");
+        canvas.width=canvas.height=(n+8)*4;canvas.setAttribute("aria-label","PDF QR");
         const ctx=canvas.getContext("2d");
         ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
         ctx.fillStyle="#000";
         app.pdf.modules.forEach((row,y)=>row.forEach((black,x)=>{if(black)ctx.fillRect((x+4)*4,(y+4)*4,4,4);}));
-        main.append(canvas);
+        main.append(canvas);para(app.pdf.url);
+    } else {
+        para(t(app.state.download_base?"Bitte warten ...":"PDF-Link nicht verfügbar. Bitte erneut öffnen."));
+        if(app.state.download_base) main.append(B("Aktualisieren",loadPDF));
     }
+    main.append(B("Zurück",back));
+}
+function connectionView() {
+    title("Web-Verbindung");
+    const status=app.state.web;
+    if(!status?.urls?.length) {
+        para(t("Diese Adresse im Stationsnetz öffnen."));
+        para(location.origin);
+        return;
+    }
+    para([status.hostname,status.ip,status.port].filter(Boolean).join(" · "));
+    for(const url of status.urls) para(url);
 }
 const config = (key,value) => cmd("settings.save",{values:{[key]:value}});
 function settings() {
+    if(!app.admin) return adminLogin();
     title("Einstellungen");
+    main.append(B("Abmelden",signOut));
     const categories=[["Drucker","printer"],["WLAN","wifi"],["Anzeige","display"],["Prüfgerät","tester"],
         ["Prüfpersonen","people"],["Persönlichkeit","personality"],["System","system"]];
     main.append(group(...categories.map(([text,view])=>{
@@ -387,6 +483,7 @@ function settings() {
     })));
 }
 function settingsView(view) {
+    if(!app.admin) return adminLogin();
     const s=app.state,c=s.settings;
     function valueField(title,key,type="number",maxLength=15) {
         return action(t(title)+" · "+c[key],()=>formDialog(title,String(c[key]),{type:"text",inputMode:type==="number"?"numeric":"decimal",maxLength,required:true},
@@ -422,7 +519,7 @@ function settingsView(view) {
     } else if(view==="system") {
         title("System");
         main.append(group(B("Engineering-Modus",()=>navigate("info")),
-            B("Abmelden",async()=>{try{await http("/api/logout",{});}finally{app.csrf="";app.state=null;loginScreen();}})));
+            B("Abmelden",signOut)));
         if(s.power.enabled) main.append(group(
             B("Jetzt neu starten",()=>confirm("Station neu starten?",()=>cmd("power.reboot",{confirmed:true}))),
             B("Jetzt ausschalten",()=>confirm("Station ausschalten?",()=>cmd("power.halt",{confirmed:true})))));
@@ -454,11 +551,13 @@ function pet() {
     para(t("Fiktive Telemetrie: Werkstattlaune stabil."));
     main.append(group(B("Streicheln",()=>motion("happy","personality.pet")),
         B("Leckerli",()=>motion("treat","personality.treat")),B("Awoo",()=>motion("awoo")),
-        B("Spassbeleg",()=>navigate("novelty")),B("Werkstattpause",()=>navigate("workshop"))));
+        B("Spassbeleg",()=>navigate("novelty")),B("Werkstatt-Meilensteine",()=>navigate("achievements"))));
+}
+function achievements() {
+    title("Werkstatt-Meilensteine");
     const counts=app.state.personality.achievements;
     if(counts && Object.keys(counts).length) {
         const panel=node("section");
-        panel.append(node("h2","",t("Werkstatt-Meilensteine")));
         for(const [key,name,goal] of [["pets","Streicheleinheiten",10],["treats","Leckerli",5],
           ["prints","Gedruckte Prüfbelege",10],["exams","Dokumentierte Prüfungen",10],["switches","Sprachwechsel",5],
           ["seconds","Betriebsstunden",1],["engineering","Engineering-Aufrufe",3]]) {
@@ -466,51 +565,6 @@ function pet() {
             panel.append(node("p","",(value>=goal?"✓ ":"")+t(name)+" · "+value+" / "+goal));
         }
         main.append(panel);
-    }
-}
-function workshop() {
-    title("Werkstattpause");
-    if(!app.workshop) {
-        para(t("Bitte warten ..."));
-        http("/workshop.json").then(data=>{app.workshop=data;if(app.view==="workshop")render();})
-            .catch(()=>{app.note="Verbindung zur Station unterbrochen.";setStatus();});
-        return;
-    }
-    main.append(group(...Object.entries(app.workshop.messages).map(([name,message])=>B(name,()=>help(message))),
-        B("FMI BIOS",()=>formDialog("FMI BIOS","help",{maxLength:24},command=>{
-            const key=command.trim().toLowerCase();
-            const cmds=app.workshop.terminal;
-            help(Object.prototype.hasOwnProperty.call(cmds,key)?cmds[key]:"Unbekannter Spielbefehl. help zeigt die Auswahl.");
-        })),B("Teetimer",()=>{
-            app.tea=Date.now()+180000;
-            render();
-        })));
-    if(app.tea) {
-        const label=node("p","badge");
-        main.append(label);
-        const update=()=>{
-            const remaining=Math.max(0,Math.ceil((app.tea-Date.now())/1000));
-            label.textContent=t("Teetimer")+" · "+Math.floor(remaining/60)+":"+String(remaining%60).padStart(2,"0");
-            if(remaining && label.isConnected) setTimeout(update,500);
-        };
-        update();
-    }
-    main.append(group(...["Pong","Snake","Breakout","Logo"].map(name=>B(name,()=>{app.game=name;navigate("play");}))));
-}
-function play() {
-    title(app.game);
-    const canvas=node("canvas","game");
-    canvas.width=640;canvas.height=320;canvas.tabIndex=0;canvas.ariaLabel=app.game;
-    main.append(canvas);
-    const buttons=app.game==="Snake" ? [["←",[-1,0]],["↑",[0,-1]],["↓",[0,1]],["→",[1,0]]]
-        .map(([symbol,move])=>[action(symbol,()=>{}),move]) : [];
-    const restart=B("Neu starten",()=>{});
-    main.append(group(...buttons.map(([button])=>button),restart));
-    const setup=()=>{if(canvas.isConnected&&leisure())window.makeArcade(app.game,canvas,buttons,restart);};
-    if(window.makeArcade) setup();
-    else {
-        const script=node("script");
-        script.src="/arcade.js";script.onload=setup;document.head.append(script);
     }
 }
 function render() {
@@ -536,8 +590,9 @@ function render() {
         main.append(group(...app.items.map(value=>action(value,()=>{edit(d,"device",value);navigate("work");}))));
     } else if(app.view==="people") peopleView();
     else if(app.view==="pet"&&leisure()) pet();
-    else if(app.view==="workshop"&&leisure()) workshop();
-    else if(app.view==="play"&&leisure()) play();
+    else if(app.view==="achievements"&&leisure()) achievements();
+    else if(app.view==="download") downloadView();
+    else if(app.view==="connection") connectionView();
     else if(app.view==="novelty"&&leisure()) {
         title("Spassbeleg");para(t("SPASSBELEG · OHNE GÜLTIGKEIT"),"badge");
         main.append(group(...Object.entries({awoo:"Awoo Permit",pointless:"Certificate of Pointlessness",jank:"Certified Jank",
@@ -545,6 +600,7 @@ function render() {
                 ()=>cmd("novelty.print",{kind,confirmed:true}))))));
         if(s.novelty_note) para(t(s.novelty_note));
     } else if(app.view==="info") {
+        if(!app.admin) return adminLogin();
         title("Engineering-Modus");
         main.append(group(B("Aktualisieren",()=>read("system.info",{},data=>{app.details=data;render();}),true)));
         if(app.details) for(const [name,value] of Object.entries(app.details.system || {})) para(name+" · "+value);
@@ -556,20 +612,15 @@ $("back").onclick=back;
 $("settings").onclick=()=>navigate("settings");
 $("language").onclick=()=>{
     const language=lang()==="en"?"de":"en";
-    if(app.state) config("language",language); else {app.locale=language;loginScreen();}
-};
-$("brand").onclick=()=>{
-    const now=Date.now();
-    app.taps=app.taps.filter(stamp=>now-stamp<3000).concat(now);
-    if(app.taps.length>=5 && leisure()) {app.taps=[];navigate("pet");}
+    if(app.state) config("language",language);
 };
 window.addEventListener("offline",()=>{app.online=false;setStatus();});
 window.addEventListener("online",()=>poll(true));
 async function start() {
     try { app.dictionary=await http("/locale.json"); } catch {}
-    try { app.csrf=(await http("/api/session")).csrf; await poll(true); }
-    catch { loginScreen(); }
-    if(!app.state) loginScreen();
+    title("FMI Printstation");
+    para(t("Verbindung zur Station wird gesucht."));
+    await poll(true);
     setInterval(()=>poll(),1400);
 }
 start();

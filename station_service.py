@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import signal
 from threading import Event
+from time import monotonic
 
 from benning_receiver import MODES, Receiver, same_device
 from benning_store import Measurements
@@ -16,6 +17,7 @@ from station_config import PRINTER_HOST, PRINTER_PORT, load
 from station_core import StationCore
 from station_ipc import DEFAULT_SOCKET, serving
 from station_network import HOTSPOT_PASSWORD, NetworkManager
+from web_access import status_path
 
 LOG=logging.getLogger(__name__)
 OPTIONS=("auto","nextion","hdmi","both","headless")
@@ -25,7 +27,7 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--db",type=Path,default=Path("reports.sqlite3"))
     p.add_argument("--socket",default=DEFAULT_SOCKET)
-    p.add_argument("--mode",choices=OPTIONS,default="auto")
+    p.add_argument("--mode",choices=OPTIONS,default="hdmi")
     p.add_argument("--port",default="/dev/serial0")
     p.add_argument("--baud",type=int,default=115200)
     p.add_argument("--host",default=PRINTER_HOST)
@@ -49,7 +51,7 @@ def main():
             a.report_url=report_base(a.report_url)
         except ValueError as exc:
             p.error(str(exc))
-    use_serial=a.mode in ("auto","nextion","both")
+    use_serial=a.mode in ("nextion","both")
     if use_serial and any(port and same_device(port,a.port) for port in (a.tester_device,a.tester_rs232_device)):
         p.error("BENNING and Nextion require separate serial devices")
     a.db=a.db.resolve()
@@ -66,19 +68,31 @@ def main():
         core=StationCore(a.db,receiver=receiver,host=a.host,printer_port=a.printer_port,
                          base_url=a.report_url,auto_port=a.web_port if a.auto_report_url else None,
                          network=NetworkManager(a.wifi_interface,protected_hotspot=a.hotspot_password_file,require_protected=True),
-                         allow_power=a.enable_local_power,hotspot_fallback=a.hotspot_fallback)
+                         allow_power=a.enable_local_power,hotspot_fallback=a.hotspot_fallback,web_status=status_path(a.socket))
         serial=SerialLink(a.port,a.baud) if use_serial else None
         adapter=None
         web=None
+        next_report_start=0
+        core.downloads_online=False
+        core.update_download_base()
         try:
             with serving(a.socket,core):
-                if a.report_url or a.auto_report_url:
-                    web=start_server(a.db,a.web_port)
                 core.start()
                 if serial:
                     serial.start()
                 LOG.info("Station core ready (%s)",a.mode)
                 while not stop.wait(.075):
+                    if (a.report_url or a.auto_report_url) and web is None and monotonic()>=next_report_start:
+                        try:
+                            web=start_server(a.db,a.web_port)
+                        except OSError as error:
+                            LOG.warning("PDF listener could not bind port %s (%s). Local workflow remains available.",
+                                        a.web_port,error.errno)
+                            next_report_start=monotonic()+10
+                        else:
+                            with core.lock:
+                                core.downloads_online=True
+                                core.update_download_base()
                     core.tick()
                     if serial and serial.ready.is_set():
                         with core.lock:

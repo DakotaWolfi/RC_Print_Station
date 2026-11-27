@@ -1,26 +1,18 @@
 """Personality stays out of the report path and runs without a provider."""
 from contextlib import closing
-from io import BytesIO
 import json
 from pathlib import Path
 import tempfile
 from unittest import TestCase, skipIf
 from unittest.mock import Mock
-from urllib.error import URLError
 
 from benning_guide import Guide
 from native_ui import NativeUI
-from panel_text import fit
-from personality import ROTATE_SECONDS, report_counts
-from slogan_store import LIMIT, OFFLINE, SloganStore, utc_day
-from slogan_worker import BATCH, SAFE_PAIRS, local, openai, replenish, validate
+from personality import report_counts
+from slogan_store import SloganStore
 from station import database, receipt, simulate
 from test_hmi_native import APP, PanelSerial, Simulation
 from test_native_ui import MemorySerial
-
-
-def reply_payload(keys):
-    return {"pairs":[{"first":a,"last":b} for a,b in keys]}
 
 
 class CacheTests(TestCase):
@@ -29,75 +21,6 @@ class CacheTests(TestCase):
         self.addCleanup(self.temp.cleanup)
         self.path=Path(self.temp.name)/"slogans.sqlite3"
         self.store=SloganStore(self.path)
-
-    def test_curated_and_safe_model_text_fit_whole_words(self):
-        self.assertGreaterEqual(len(OFFLINE),100)
-        self.assertEqual(len({pair[0] for pair in OFFLINE}),len(OFFLINE))
-        self.assertEqual(len({pair[1] for pair in OFFLINE}),len(OFFLINE))
-        for pair in (*OFFLINE,*SAFE_PAIRS.values()):
-            for text in pair:
-                self.assertLessEqual(len(text),LIMIT)
-                self.assertEqual(fit("home","tSlogan",text,LIMIT).split(),text.split(),text)
-        values=[SloganStore(self.path).next() for _ in range(len(OFFLINE))]
-        self.assertEqual(set(values),set(OFFLINE))
-        self.assertEqual(SloganStore(self.path).next(),values[0])
-
-    def test_reject_duplicates_foreign_text_and_non_integer_indices(self):
-        rows=[{"first":0,"last":0},{"first":0,"last":0},{"first":"bad","last":1},
-              {"first":-1,"last":0},{"first":1,"last":True},
-              {"first":1,"last":1,"de":"Unreviewed content"}]
-        self.assertEqual(validate(json.dumps({"pairs":rows}),len(rows)),[SAFE_PAIRS[(0,0)]])
-        self.store.add([SAFE_PAIRS[(0,0)]]*2,"openai")
-        self.assertEqual(self.store.remaining(),1)
-        self.assertEqual(SloganStore(self.path).next(),SAFE_PAIRS[(0,0)])
-        self.store.add([SAFE_PAIRS[(0,0)]],"openai")
-        self.assertEqual(self.store.remaining(),0)
-        self.assertIn(self.store.next(),OFFLINE)
-
-    def test_openai_static_only_is_bounded_and_accounts_for_failure(self):
-        batch=reply_payload(list(SAFE_PAIRS)[:BATCH])
-        calls=[]
-        def request(req,timeout):
-            calls.append(req)
-            self.assertEqual(req.full_url,"https://api.openai.com/v1/responses")
-            self.assertEqual(timeout,15)
-            payload=json.loads(req.data)
-            self.assertIs(payload["store"],False)
-            self.assertIn("exactly 50",payload["input"])
-            self.assertEqual(payload["model"],"unit-test-model")
-            self.assertNotIn("example-secret",req.data.decode())
-            data={"status":"completed","usage":{"total_tokens":1450},
-                  "output":[{"type":"message","content":[{"type":"output_text","text":json.dumps(batch)}]}]}
-            return BytesIO(json.dumps(data).encode())
-        self.assertEqual(len(openai(self.store,"example-secret","unit-test-model",2,40000,request=request)),50)
-        self.assertEqual(self.store.counts()[1],(1,1450,0))
-        self.assertEqual(openai(self.store,"key","model",2,1000,request=request),[])
-        fail=Mock(side_effect=URLError("offline"))
-        with self.assertRaises(URLError):
-            openai(self.store,"key","unit-test-model",2,40000,request=fail)
-        requests,tokens,reserve=self.store.counts()[1]
-        self.assertEqual((requests,tokens),(2,1450))
-        self.assertGreater(reserve,0)
-        self.assertEqual(openai(self.store,"key","model",2,40000,request=request),[])
-        self.assertEqual(len(calls),1)
-        self.assertIn(self.store.next(),OFFLINE)
-        self.assertEqual(utc_day().count("-"),2)
-
-    def test_disabled_and_no_key_do_not_touch_cache(self):
-        replenish(self.store,{})
-        replenish(self.store,{"FMI_SLOGAN_PROVIDER":"openai"})
-        self.assertFalse(self.path.exists())
-
-    def test_local_runtime_is_isolated_and_timeboxed(self):
-        good=reply_payload(list(SAFE_PAIRS)[:8])
-        def run(args,**opts):
-            self.assertEqual(args[:3],["nice","-n","15"])
-            self.assertIn("--grammar",args)
-            self.assertEqual(args[args.index("--threads")+1],"1")
-            self.assertEqual(opts["timeout"],11)
-            self.assertNotIn("OPENAI_API_KEY",opts["env"])
-            opts["stdout"].write(json.dumps(good).encode())
-        self.assertEqual(len(local("/fixtures/llama-cli","/fixtures/model.gguf",11,runner=run)),8)
 
     def test_real_milestones_and_distinct_passed_tests(self):
         reports=Path(self.temp.name)/"reports.sqlite3"
@@ -201,24 +124,11 @@ class NativePersonalityTests(TestCase):
         self.assertNotIn("bChange",[obj.name for obj in self.sim.components()])
         self.sim.release()
 
-    def test_five_minute_rotation_and_active_guide_suppression(self):
+    def test_frozen_home_clears_old_slogan_and_does_not_interrupt_guide(self):
         personality=self.ui.personality
         personality.tick()
-        self.done()
-        self.assertEqual(personality.next_rotation,self.now+ROTATE_SECONDS)
-        first=personality.slogan
-        self.now+=ROTATE_SECONDS
+        self.assertEqual(self.sim.values()["tSlogan.txt"],"")
         self.ui.workflow.guide=Guide()
-        shown=self.sim.values()["tSlogan.txt"]
         for _ in range(5):
             self.tap("hLogo")
         self.assertEqual(self.sim.page,"home")
-        personality.tick()
-        if personality.job:
-            self.done()
-        self.assertEqual(personality.slogan,first)
-        self.assertEqual(self.sim.values()["tSlogan.txt"],shown)
-        self.ui.workflow.guide=None
-        personality.tick()
-        self.done()
-        self.assertNotEqual(personality.slogan,first)

@@ -1,4 +1,4 @@
-"""Authenticated operator gateway for the private station socket."""
+"""Trusted-network operator gateway with separately authorized administration."""
 import argparse
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -9,6 +9,7 @@ from http.cookies import SimpleCookie, CookieError
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from ipaddress import ip_address
 import json
+import logging
 import os
 from pathlib import Path
 import re
@@ -20,12 +21,13 @@ from urllib.parse import urlsplit
 
 from i18n import catalogue
 from station_ipc import DEFAULT_SOCKET, request
-from workshop import MESSAGES, TERMINAL
+from web_access import HOSTNAME, LocalAccess, serve_status, status_path
 
 ROOT = Path(__file__).resolve().parent
 CREDENTIALS = Path.home()/".config/rc-printstation/web-auth.json"
 COOKIE = "fmi_operator"
 MAX_BODY = 8192
+LOG=logging.getLogger(__name__)
 READ = frozenset(("state", "history", "people", "templates", "report.view", "system.info"))
 MUTATE = frozenset("""
     draft.new draft.edit draft.editor draft.discard
@@ -41,7 +43,6 @@ CONFIG_KEYS = frozenset("""
 ASSETS = {
     "/": ("text/html; charset=utf-8", ROOT/"web/index.html"),
     "/app.js": ("text/javascript; charset=utf-8", ROOT/"web/app.js"),
-    "/arcade.js": ("text/javascript; charset=utf-8", ROOT/"web/arcade.js"),
     "/app.css": ("text/css; charset=utf-8", ROOT/"web/app.css"),
     "/icon.svg": ("image/svg+xml", ROOT/"web/icon.svg"),
     "/manifest.webmanifest": ("application/manifest+json", ROOT/"web/manifest.webmanifest"),
@@ -51,7 +52,15 @@ ICONS = re.compile(r"/icons/(printer|wifi|display|tester|people|personality|syst
 WOLF = re.compile(r"/wolf/(idle|happy|sleep|treat|awoo)\.webp")
 TOKEN = re.compile(r"[a-f0-9]{32}")
 ORIGIN = re.compile(r"https?://(?:[a-zA-Z0-9._-]+|\[[a-fA-F0-9:]+\])(?::[0-9]{1,5})?")
-MAX_SESSIONS = 32
+MAX_SESSIONS = 64
+ADMIN = frozenset("""
+    settings.save person.save person.active printer.probe printer.test
+    wifi.scan wifi.connect wifi.hotspot wifi.stop power.halt power.reboot
+    system.info personality.engineering
+""".split())
+PRINT = frozenset(("report.print","printer.test","novelty.print"))
+STATE_PUBLIC = frozenset(("language","professional"))
+
 
 
 def digest(password, salt):
@@ -59,8 +68,8 @@ def digest(password, salt):
 
 
 def set_password(path, password):
-    if not isinstance(password, str) or not 12 <= len(password) <= 128:
-        raise ValueError("Use a password of 12–128 characters")
+    if not isinstance(password, str) or not 8 <= len(password) <= 128:
+        raise ValueError("Use a password of 8–128 characters")
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     salt = secrets.token_bytes(16)
     fd, name = tempfile.mkstemp(prefix=".web-auth-", dir=path.parent)
@@ -90,10 +99,11 @@ class Session:
     csrf: str
     expires: float
     client: str
+    admin: bool=False
 
 
 class Gateway:
-    def __init__(self, credential, origins, socket=DEFAULT_SOCKET, transport=request, *, clock=monotonic):
+    def __init__(self, credential, origins, socket=DEFAULT_SOCKET, transport=request, *, clock=monotonic, access=None):
         if not origins or any(not ORIGIN.fullmatch(origin) for origin in origins):
             raise ValueError("Provide exact allowed HTTP or HTTPS origins")
         if len({origin.split(":")[0] for origin in origins}) != 1:
@@ -101,6 +111,7 @@ class Gateway:
         self.secure = origins[0].startswith("https://")
         self.origins = frozenset(origins)
         self.credential = credential
+        self.access = access
         self.socket, self.transport = socket, transport
         self.clock = clock
         self.lock = Lock()
@@ -108,9 +119,31 @@ class Gateway:
         self.attempts = OrderedDict()
         self.hash_limit = BoundedSemaphore(2)
         self.login_window = (0, 0)
+        self.print_window = (0, 0)
+
+    def new_session(self, prior="", *, admin=False):
+        token=secrets.token_urlsafe(32)
+        session=Session(secrets.token_urlsafe(32),self.clock()+12*3600,
+                        "web-"+secrets.token_hex(12),admin)
+        with self.lock:
+            self.sessions.pop(prior,None)
+            self.sessions[token]=session
+            while len(self.sessions)>MAX_SESSIONS:
+                # Preserve administrators during bursts of new anonymous tablets.
+                oldest=next((t for t,s in self.sessions.items() if not s.admin),next(iter(self.sessions)))
+                self.sessions.pop(oldest)
+        return token,session
+
+    def session_data(self,session):
+        return {"csrf":session.csrf,"admin":session.admin,"admin_available":bool(self.credential)}
+
+    def trusted_host(self,host,local):
+        if self.access and not ip_address(local).is_loopback:
+            return not self.secure and host in self.access.dynamic_hosts(local)
+        return any(urlsplit(origin).netloc==host for origin in self.origins)
 
     def login(self, password, address, prior=""):
-        if not isinstance(password, str) or not 1 <= len(password) <= 128:
+        if not self.credential or not isinstance(password, str) or not 1 <= len(password) <= 128:
             return 401, {"error": "Anmeldung fehlgeschlagen."}, ""
         now = self.clock()
         with self.lock:
@@ -137,15 +170,10 @@ class Gateway:
             self.hash_limit.release()
         if not valid:
             return 401, {"error": "Anmeldung fehlgeschlagen."}, ""
-        token = secrets.token_urlsafe(32)
-        session = Session(secrets.token_urlsafe(32), now + 12*3600, "web-"+secrets.token_hex(12))
         with self.lock:
-            self.attempts.pop(address, None)
-            self.sessions.pop(prior, None)
-            self.sessions[token] = session
-            while len(self.sessions) > MAX_SESSIONS:
-                self.sessions.popitem(last=False)
-        return 200, {"csrf": session.csrf}, token
+            self.attempts.pop(address,None)
+        token,session=self.new_session(prior,admin=True)
+        return 200,self.session_data(session),token
 
     def session(self, token):
         with self.lock:
@@ -160,10 +188,11 @@ class Gateway:
         max_age = 43200 if token else 0
         return f"{COOKIE}={token}; Path=/; HttpOnly; SameSite=Strict; Max-Age={max_age}{suffix}"
 
-    def valid_origin(self, headers):
-        return (headers.get("Origin") in self.origins and
-                urlsplit(headers.get("Origin")).netloc == headers.get("Host") and
-                headers.get("Sec-Fetch-Site", "same-origin") == "same-origin")
+    def valid_origin(self, headers, local):
+        host=headers.get("Host","")
+        scheme="https" if self.secure else "http"
+        return (self.trusted_host(host,local) and headers.get("Origin")==scheme+"://"+host and
+                headers.get("Sec-Fetch-Site","same-origin")=="same-origin")
 
     def command(self, session, packet):
         if not isinstance(packet, dict) or set(packet)-{"op", "args", "id", "epoch", "tab"}:
@@ -180,14 +209,31 @@ class Gateway:
                                     for field in ("id", "epoch")):
             return 400, {"error": "Ungültige Eingabe."}
         if op == "settings.save":
-            values = args.get("values")
-            if not isinstance(values, dict) or set(values) - CONFIG_KEYS:
-                return 403, {"error": "Ungültige Eingabe."}
+            values=args.get("values")
+            if not isinstance(values,dict) or not values or set(values)-CONFIG_KEYS:
+                return 403,{"error":"Ungültige Eingabe."}
+        language_only=op=="settings.save" and set(args["values"])=={"language"}
+        if op in ADMIN and not language_only and not session.admin:
+            return 403,{"error":"Administratoranmeldung erforderlich."}
+        if op in PRINT:
+            with self.lock:
+                now=self.clock()
+                start,count=self.print_window
+                if now-start>=60:
+                    start,count=now,0
+                if count>=12:
+                    return 429,{"error":"Zu viele Druckanfragen. Bitte kurz warten."}
+                self.print_window=start,count+1
         try:
             data = self.transport(self.socket, {**{k:v for k,v in packet.items() if k!="tab"}, "client": session.client+tab})
         except (OSError, ValueError):
             return 503, {"error": "Verbindung zur Station unterbrochen."}
-        return (200 if data.get("ok") else 409), data
+        if data.get("ok") and op=="state" and not session.admin:
+            value=data["data"]
+            data={"ok":True,"data":{**value,
+                "settings":{k:v for k,v in value.get("settings",{}).items() if k in STATE_PUBLIC},
+                "wifi":{},"power":{"enabled":False,"note":""}}}
+        return (200 if data.get("ok") else 409),data
 
 
 def token_from(headers):
@@ -227,17 +273,23 @@ class Handler(BaseHTTPRequestHandler):
         if len(self.headers.get_all("Host") or [])!=1:
             return False
         host = self.headers.get("Host", "")
-        return any(urlsplit(origin).netloc == host for origin in self.server.gateway.origins)
+        return self.server.gateway.trusted_host(host,self.connection.getsockname()[0])
 
     def do_GET(self):
         if not self.host_valid():
             return self.send_payload(400, {})
         path = urlsplit(self.path).path
+        if path == "/api/health":
+            return self.send_payload(200,{"status":"fmi-web"})
         if path == "/api/session":
-            session = self.server.gateway.session(token_from(self.headers))
-            return self.send_payload(200, {"csrf": session.csrf}) if session else self.send_payload(401, {})
-        if path == "/workshop.json":
-            return self.send_payload(200, {"messages":MESSAGES,"terminal":TERMINAL})
+            gateway=self.server.gateway
+            if self.headers.get("Sec-Fetch-Site","same-origin") not in ("same-origin","none"):
+                return self.send_payload(403,{})
+            session=gateway.session(token_from(self.headers))
+            if session:
+                return self.send_payload(200,gateway.session_data(session))
+            token,session=gateway.new_session()
+            return self.send_payload(200,gateway.session_data(session),cookie=gateway.cookie(token))
         if path == "/locale.json":
             return self.send_payload(200, catalogue())
         asset = ASSETS.get(path)
@@ -254,7 +306,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         gateway = self.server.gateway
         if (not self.host_valid() or len(self.headers.get_all("Origin") or [])!=1
-                or not gateway.valid_origin(self.headers)):
+                or not gateway.valid_origin(self.headers,self.connection.getsockname()[0])):
             return self.send_payload(403, {"error": "Anfrage abgelehnt."})
         if self.path not in ("/api/login", "/api/logout", "/api/command"):
             return self.send_payload(404, {})
@@ -277,14 +329,13 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_payload(code, data, cookie=gateway.cookie(new_token) if new_token else None)
         session = gateway.session(token)
         if not session:
-            return self.send_payload(401, {"error": "Bitte anmelden."})
+            return self.send_payload(401, {"error": "Verbindung neu aufbauen."})
         csrf = self.headers.get("X-CSRF-Token", "")
         if not csrf.isascii() or not compare_digest(csrf, session.csrf):
             return self.send_payload(403, {"error": "Anfrage abgelehnt."})
         if self.path == "/api/logout":
-            with gateway.lock:
-                gateway.sessions.pop(token, None)
-            return self.send_payload(200, {}, cookie=gateway.cookie(""))
+            token,session=gateway.new_session(token)
+            return self.send_payload(200,gateway.session_data(session),cookie=gateway.cookie(token))
         code, data = gateway.command(session, payload)
         self.send_payload(code, data)
 
@@ -297,6 +348,10 @@ class Server(ThreadingHTTPServer):
         self.gateway = gateway
         self.limit = BoundedSemaphore(12)
         super().__init__(address, Handler)
+
+    def verify_request(self,connection,address):
+        access=self.gateway.access
+        return not access or access.accepts(connection.getsockname()[0],address[0])
 
     def process_request(self, connection, address):
         if not self.limit.acquire(blocking=False):
@@ -327,23 +382,64 @@ def main():
     p.add_argument("--port", type=int, default=os.environ.get("FMI_WEB_PORT", "8090"))
     p.add_argument("--origins", default=os.environ.get("FMI_WEB_ORIGINS", ""))
     p.add_argument("--allow-lan-http", action="store_true", default=os.environ.get("FMI_WEB_ALLOW_LAN_HTTP")=="1")
+    p.add_argument("--interfaces", default=os.environ.get("FMI_WEB_INTERFACES",""))
+    p.add_argument("--hostname", default=os.environ.get("FMI_WEB_HOSTNAME",""))
+    p.add_argument("--trusted-profiles", default=os.environ.get("FMI_WEB_TRUSTED_PROFILES",""))
+    p.add_argument("--public-origin", default=os.environ.get("FMI_WEB_PUBLIC_ORIGIN",""))
     p.add_argument("--socket", default=DEFAULT_SOCKET)
     a = p.parse_args()
+    logging.basicConfig(level=logging.INFO)
     try:
         if a.set_password:
-            password = getpass.getpass("Operator password: ")
-            if password != getpass.getpass("Repeat password: "):
+            password=getpass.getpass("Administrator password: ")
+            if password!=getpass.getpass("Repeat password: "):
                 p.error("Passwords differ")
-            set_password(a.credentials, password)
+            set_password(a.credentials,password)
             return
-        origins = a.origins.split(",") if a.origins else [f"http://127.0.0.1:{a.port}", f"http://localhost:{a.port}"]
-        if not ip_address(a.bind).is_loopback and (not a.allow_lan_http or any(urlsplit(o).scheme != "http" for o in origins)):
-            p.error("Bind locally for an HTTPS proxy. Direct LAN HTTP requires explicit opt-in.")
-        gateway = Gateway(load_auth(a.credentials), origins, a.socket)
-    except (OSError, ValueError, KeyError) as error:
-        p.error(f"Operator web gateway configuration: {error}")
-    with Server((a.bind, a.port), gateway) as server:
-        server.serve_forever()
+        port=int(a.port)
+        launch_ip=ip_address(a.bind)
+        if launch_ip.version!=4 or not 1<=port<=65535:
+            raise ValueError("Use an IPv4 listener and valid TCP port")
+        interfaces=tuple(dict.fromkeys(a.interfaces.split(","))) if a.interfaces else ()
+        origins=a.origins.split(",") if a.origins else []
+        # v0.8.1 explicit direct-LAN opt-in is retained while dropping
+        # its fixed DHCP address from both the bind and allowed origins.
+        if not interfaces and not launch_ip.is_loopback and a.allow_lan_http:
+            interfaces=("wlan0",)
+            LOG.warning("Migrating fixed LAN bind to trusted wlan0 addresses")
+        if interfaces:
+            if not a.allow_lan_http or any(not re.fullmatch(r"[A-Za-z0-9_.:-]{1,15}",i) or i=="lo" for i in interfaces):
+                raise ValueError("Direct LAN HTTP requires opt-in and trusted interface names")
+            if any(origin.startswith("https:") for origin in origins):
+                raise ValueError("Use the loopback profile for HTTPS reverse proxy")
+            origins=[]
+        elif not launch_ip.is_loopback:
+            raise ValueError("Configure explicit trusted interfaces for direct LAN HTTP")
+        if a.hostname and not HOSTNAME.fullmatch(a.hostname):
+            raise ValueError("Use a configured local hostname without scheme or port")
+        origins=origins or [f"http://127.0.0.1:{port}",f"http://localhost:{port}"]
+        if a.public_origin and (interfaces or not a.public_origin.startswith("https://") or a.public_origin not in origins):
+            raise ValueError("Advertised HTTPS origin must match the loopback proxy profile")
+        access=LocalAccess(interfaces,port,a.hostname,
+                           trusted_profiles=tuple(a.trusted_profiles.split(",")) if a.trusted_profiles else (),
+                           public_origin=a.public_origin)
+        if interfaces:
+            access.update()
+        try:
+            auth=load_auth(a.credentials)
+        except FileNotFoundError:
+            auth=None
+        gateway=Gateway(auth,origins,a.socket,access=access)
+    except (OSError,ValueError,KeyError) as error:
+        p.error(f"Web gateway configuration: {error}")
+    address=("0.0.0.0" if interfaces else a.bind,port)
+    with Server(address,gateway) as server:
+        LOG.info("Web listener %s:%s, trusted interfaces=%s",*address,",".join(interfaces) or "loopback")
+        stop=serve_status(status_path(a.socket),access)
+        try:
+            server.serve_forever()
+        finally:
+            stop.set()
 
 
 if __name__ == "__main__":

@@ -42,3 +42,9 @@ dialog::backdrop { background:rgb(4 9 15 / 78%); }
 .category { display:flex; align-items:center; gap:10px; text-align:left; }
 .category-icon { width:24px; height:24px; flex:0 0 24px; }
 .game { display:block; width:min(100%,640px); height:auto; border:1px solid var(--line); border-radius:12px; touch-action:none; }
+.guide-row { display:flex; align-items:center; gap:12px; padding:10px; background:var(--card); border-radius:10px; margin:0 0 8px; }
+.guide-row img.guide { width:clamp(54px,13vw,100px); max-height:66px; flex:none; margin:0; }
+.guide-row p { margin:3px 0 0; }
+.mascot { display:grid; place-items:center; width:fit-content; margin:8px auto; background:transparent; border-color:transparent; color:var(--accent); }
+img.home-wolf { width:min(33vw,156px); height:min(24vh,150px); }
+dialog { max-height:88dvh; overscroll-behavior:contain; }
