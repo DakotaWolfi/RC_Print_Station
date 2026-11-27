@@ -20,7 +20,7 @@ def resolve(unit, host=None, port=None):
         if not line.startswith("ExecStart="):
             continue
         parts=shlex.split(line.partition("=")[2])
-        if not any(arg.endswith("/native_ui.py") or arg=="native_ui.py" for arg in parts):
+        if not any(Path(arg).name in ("native_ui.py","station_service.py") for arg in parts):
             continue
         for arg in ("--host","--printer-port"):
             for idx,value in enumerate(parts):

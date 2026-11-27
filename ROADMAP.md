@@ -2,6 +2,15 @@
 
 The station has a physically validated v0.6.2 baseline for Class I output. The v0.7 branch adds bilingual operation and has a separate [physical acceptance checklist](hmi/VALIDATION-v07.md). Older milestones remain below.
 
+## v0.8.0 shared core and native HDMI
+
+- [x] Isolate the BENNING receiver, shared draft, reports and printing from displays.
+- [x] Add native Qt and protocol 71 adapters, HDMI supervision and headless operation.
+- [x] Add independent language selection, editing conflicts and duplicate print protection.
+- [x] Add Professional Mode, mascot gestures and opt-in novelty receipts.
+- [ ] Physically validate both displays, hotplug, ARM memory/CPU and the January installation.
+- [ ] Add optional games and extra entertainment after bench acceptance.
+
 ## v0.7.1 bilingual diagnostics and personality
 
 - [x] Audit language controls in both the editable HMI and the compiled TFT.

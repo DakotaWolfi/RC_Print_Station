@@ -1,7 +1,7 @@
 """HMI coordination for guided examination and fresh BENNING imports."""
 import sqlite3
 
-from benning_csv import outcome
+from examination_rules import fresh_slot, validate_selection
 from benning_guide import Guide, STEPS
 
 ART=("lcd","class1","class2","iec","extension","store","recall","print","ports","key_i","key_ii","key_leak","key_voltage")
@@ -10,21 +10,6 @@ DISPLAY={"visual":"SICHTPRÜFUNG","kind":"SCHUTZKLASSE","class3":"SELV",
          "low":"Lo LOAD","high":"HIGH LOAD","table":"tAbLE","hot":"StOP / hot",
          "wrong":"PRÜFLAUF PRÜFEN","leak":"I LEAK BLINKT","unsaved":"FULL",
          "stop":"ABGEBROCHEN","special":"FACHVERFAHREN","exam":"SICHT UND FUNKTION"}
-
-
-def fresh_slot(baseline,source,current):
-    before=baseline.get(source)
-    batch,records=current.get(source,(0,{}))
-    if not before:
-        return ("Erster Import. Slot manuell bestätigen.",None) if batch else ("",None)
-    if batch<=before[0]:
-        return "",None
-    changed=[slot for slot,record in records.items() if before[1].get(slot)!=record]
-    if before[1].keys()-records.keys() or len(changed)>1:
-        return "Mehrere Änderungen oder Speicher-Reset. Slot manuell wählen.",None
-    if not changed:
-        return "Kein neuer Datensatz erkennbar. Vorhandenen Slot nur bewusst wählen.",None
-    return "Neuer Datensatz empfangen. Slot, Datum und Ergebnis prüfen.",changed[0]
 
 
 class WorkflowPanel:
@@ -207,15 +192,7 @@ class WorkflowPanel:
             self.ui.cmd("gAdvance.val=2")
 
     def save_selection(self,selected):
-        if self.exam:
-            record=selected["original"]
-            if self.exam["observed"]!=outcome(record["verdict"]):
-                raise ValueError("Testergebnis weicht von der bestätigten Anzeige ab. Auswahl prüfen.")
-            actual=(record.get("protection_class") or "").upper()
-            expected={"I":{"KLASSE I"},"II":{"KLASSE II"},"III":{"KLASSE II","KLASSE III"}}
-            classes=expected.get(self.exam["procedure"],set())
-            if classes and actual and actual not in classes:
-                raise ValueError("Schutzklasse passt nicht zur geführten Prüfung. Slot prüfen.")
+        validate_selection(self.exam,selected["original"])
         return self.store.create_report(*self.tester.pending,selected,require_current=True,examination=self.exam,examiner_id=self.examiner_id if self.exam else None,language=self.report_language)
 
     def handle(self,frame):

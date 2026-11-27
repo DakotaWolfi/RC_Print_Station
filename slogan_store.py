@@ -114,6 +114,18 @@ class SloganStore:
             conn.execute("UPDATE slogan_usage SET reserved=reserved-?,tokens=tokens+? WHERE day=?",
                          (estimate,billed,day))
 
+    def achievements(self, updates=None):
+        names=("prints","switches","seconds","engineering")
+        with self.db() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            for name in names:
+                if updates and updates.get(name):
+                    self.set_value(conn,"achievement_"+name,self.value(conn,"achievement_"+name)+updates[name])
+            stats={name:self.value(conn,"achievement_"+name) for name in names}
+            stats["pets"]=self.value(conn,"pets")
+            stats["exams"]=self.value(conn,"exams_highwater")
+            return stats
+
     def counts(self):
         with self.db() as conn:
             today = conn.execute("SELECT requests,tokens,reserved FROM slogan_usage WHERE day=?",

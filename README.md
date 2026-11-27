@@ -28,6 +28,17 @@ python3 station.py display-test --port /dev/ttyUSB0 --baud 9600
 
 `station.py simulate` writes a visibly marked simulation. Imported BENNING records preserve the original tester verdict and do not constitute independent certification by the station. The installed Epson is at `169.254.25.23:9100`. The Pi Ethernet address is `169.254.100.1/16`.
 
+## v0.8.0 multi-display bench candidate
+
+One core drives the existing protocol 71 Nextion, a native Qt HDMI frontend, both together, or a headless station. The existing report database, BENNING parser and compact receipt/PDF renderers are retained.
+
+![Bilingual HDMI bench preview](hmi/previews/overview-v080.png)
+
+- [Architecture and v0.7.1 audit](docs/architecture-v080.md)
+- [Pi 4 and Orange Pi Zero 3 setup, touchscreen rotation, AI and rollback](docs/multi-display-v080.md)
+- [Private operator command interface](docs/multi-display-ipc.md)
+- [Validation, bench checklist and resource measurements](hmi/VALIDATION-v080.md)
+
 ## v0.7.1 candidate
 
 The bilingual controls now confirm receipt and rendering over UART. The home screen rotates bilingual repair slogans and includes a workshop wolf and read-only diagnostics. Offline operation is the default.

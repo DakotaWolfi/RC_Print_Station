@@ -11,6 +11,7 @@ import tempfile
 import time
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
+from station_config import load as station_settings
 from slogan_store import CACHE, LIMIT, OFFLINE, SloganStore, utc_day
 
 LOG = logging.getLogger(__name__)
@@ -171,7 +172,7 @@ def bounded(env, name, default, lo, hi):
 
 def replenish(store, env):
     provider=env.get("FMI_SLOGAN_PROVIDER","off").lower()
-    if provider=="off":
+    if provider=="off" or station_settings()["professional"]:
         return
     if provider not in ("openai","local"):
         raise ValueError("Unknown slogan provider")
