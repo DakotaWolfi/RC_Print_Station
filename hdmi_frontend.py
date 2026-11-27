@@ -8,8 +8,8 @@ import sys
 from time import monotonic
 from uuid import uuid4
 
-from PyQt5.QtCore import QEvent, QRect, Qt, QTimer, QUrl
-from PyQt5.QtGui import QColor, QDesktopServices, QPainter, QPixmap, QTransform
+from PyQt5.QtCore import QEvent, QRect, QSize, Qt, QTimer, QUrl
+from PyQt5.QtGui import QColor, QDesktopServices, QIcon, QPainter, QPixmap, QTransform
 from PyQt5.QtWidgets import (
     QApplication, QComboBox, QDialog, QFrame, QGridLayout, QHBoxLayout, QLabel,
     QGraphicsScene, QGraphicsView, QLineEdit, QMessageBox, QPushButton, QScrollArea, QScroller, QSizePolicy,
@@ -19,6 +19,7 @@ from PyQt5.QtWidgets import (
 from benning_output import RESULTS, result_kind, measurement_summary, visible_measurements, report_checks, selected_fields
 from benning_store import PHASES
 from i18n import tr
+from hdmi_keyboard import Keyboard
 from novelty import ITEMS
 from station_ipc import DEFAULT_SOCKET, request
 
@@ -59,21 +60,27 @@ class TouchButton(QPushButton):
         self.setSizePolicy(policy)
 
     def heightForWidth(self,width):
-        rect=self.fontMetrics().boundingRect(QRect(0,0,max(12,width-22),1000),Qt.TextWordWrap,self.text())
+        inset=52 if not self.icon().isNull() else 22
+        rect=self.fontMetrics().boundingRect(QRect(0,0,max(12,width-inset),1000),Qt.TextWordWrap,self.text())
         return max(48,rect.height()+16)
 
     def paintEvent(self,event):
         option=QStyleOptionButton()
         self.initStyleOption(option)
         option.text=""
+        option.icon=QIcon()
         painter=QStylePainter(self)
         painter.drawControl(QStyle.CE_PushButton,option)
         colour="#17202a" if self.property("primary") else "#edf4f8"
         if not self.isEnabled():
             colour="#9eabb4"
         painter.setPen(QColor(colour))
-        painter.drawText(self.rect().adjusted(10,4,-10,-4),
-                         Qt.AlignCenter|Qt.TextWordWrap,self.text())
+        icon=self.icon()
+        inset=10
+        if not icon.isNull():
+            painter.drawPixmap(13,(self.height()-23)//2,icon.pixmap(QSize(23,23)))
+            inset=42
+        painter.drawText(self.rect().adjusted(inset,4,-10,-4),Qt.AlignCenter|Qt.TextWordWrap,self.text())
 
 
 def button(text,fn,primary=False):
@@ -91,63 +98,6 @@ def label(text, *, role=None):
     if role:
         item.setProperty(role,True)
     return item
-
-
-class Keyboard(QDialog):
-    """Small local editor. Cancel leaves the previous shared value intact."""
-    def __init__(self,parent,title,value,limit,secret=False):
-        super().__init__(parent)
-        self.setWindowTitle(title)
-        self.t=parent.t
-        self.upper=False
-        self.symbols=False
-        self.secret=secret
-        layout=QVBoxLayout(self)
-        self.edit=QLineEdit(value)
-        self.edit.setAccessibleName(title)
-        self.edit.setMaxLength(limit)
-        self.edit.setEchoMode(QLineEdit.Password if secret else QLineEdit.Normal)
-        self.edit.selectAll()
-        layout.addWidget(self.edit)
-        self.grid=QGridLayout()
-        self.grid.setSpacing(3)
-        layout.addLayout(self.grid)
-        actions=QHBoxLayout()
-        for name,action in (("⇧",self.shift),("123 / !",self.toggle),("␣",lambda:self.edit.insert(" ")),
-                            ("⌫",self.edit.backspace)):
-            item=button(name,action)
-            item.setFocusPolicy(Qt.NoFocus)
-            actions.addWidget(item)
-        layout.addLayout(actions)
-        row=QHBoxLayout()
-        row.addWidget(button(self.t("Abbrechen"),self.reject))
-        row.addWidget(button(self.t("Übernehmen"),self.accept,True))
-        layout.addLayout(row)
-        self.edit.returnPressed.connect(self.accept)
-        self.keys()
-        self.resize(min(parent.width()-18,700),min(parent.height()-18,420))
-
-    def shift(self):
-        self.upper=not self.upper
-        self.keys()
-
-    def toggle(self):
-        self.symbols=not self.symbols
-        self.keys()
-
-    def keys(self):
-        while self.grid.count():
-            self.grid.takeAt(0).widget().deleteLater()
-        rows=("0123456789","@#%&*()_-+","/\\[]{}:;!?","€£^~|=<>+'") if self.symbols else (
-            "1234567890","qwertzuiop","asdfghjklö","yxcvbnmäüé")
-        for i,row in enumerate(rows):
-            for j,char in enumerate(row):
-                value=char.upper() if self.upper and not self.symbols else char
-                key=button(value,lambda _=False,c=value:self.edit.insert(c))
-                key.setMinimumWidth(28)
-                key.setStyleSheet("padding: 3px; min-width: 0px;")
-                key.setFocusPolicy(Qt.NoFocus)
-                self.grid.addWidget(key,i,j)
 
 
 class QRCodeWidget(QWidget):
@@ -184,6 +134,7 @@ class Surface(QWidget):
         self.next_poll=0
         self.state={}
         self.view="work"
+        self.route_stack=[]
         self.notice=""
         self.connected=False
         self.epoch=None
@@ -212,6 +163,7 @@ class Surface(QWidget):
         self.blank.setStyleSheet("background:black")
         self.blank.hide()
         QApplication.instance().installEventFilter(self)
+        self.setMinimumSize(320,360)
         self.setWindowTitle("FMI Printstation")
         self.setStyleSheet(STYLE)
         layout=QVBoxLayout(self)
@@ -225,16 +177,25 @@ class Surface(QWidget):
         self.logo.setStyleSheet("font-weight: 800; color: #ffb457; padding: 3px;")
         self.logo.clicked.connect(self.pet_gate)
         top.addWidget(self.logo)
+        self.home=button("⌂",self.go_home)
+        self.home.setFixedSize(51,48)
+        self.home.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Fixed)
+        top.addWidget(self.home)
+        self.back=button("←",self.go_back)
+        self.back.setFixedSize(51,48)
+        self.back.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Fixed)
+        top.addWidget(self.back)
         self.brand=label("Repair Café Riehen")
         self.brand.setStyleSheet("font-weight: 750; font-size: 19px;")
         top.addWidget(self.brand,1)
+        top.addStretch()
         self.lang=button("DE / EN",self.change_language)
-        self.lang.setMaximumWidth(106)
-        self.lang.setMinimumWidth(93)
+        self.lang.setFixedSize(93,48)
+        self.lang.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Fixed)
         top.addWidget(self.lang)
         self.menu=button("☰",self.toggle_menu)
-        self.menu.setMaximumWidth(58)
-        self.menu.setMinimumWidth(48)
+        self.menu.setFixedSize(53,48)
+        self.menu.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Fixed)
         self.menu.setAccessibleName("Station menu")
         top.addWidget(self.menu)
         layout.addLayout(top)
@@ -337,7 +298,7 @@ class Surface(QWidget):
                     self.notify("Status der Aktion prüfen. Bitte nicht sofort wiederholen.")
         if self.editor_draft and monotonic()>=self.lease_at:
             self.lease_at=monotonic()+5
-            self.call("draft.editor",{"active":True,"draft":self.editor_draft})
+            self.call("draft.editor",{"active":True,**self.editor_draft})
         if self.view=="info" and monotonic()>=self.next_info:
             self.next_info=monotonic()+2
             self.call("system.info",callback=self.set_info)
@@ -378,16 +339,29 @@ class Surface(QWidget):
             value+="  ·  "+self.t(tests["detail"])
         self.status.setText("BENNING  /  "+value)
         self.status.setAccessibleName(self.status.text())
+        self.home.setAccessibleName(self.t("Startseite"))
+        self.back.setAccessibleName(self.t("Zurück"))
+        self.menu.setAccessibleName(self.t("Einstellungen"))
         self.lang.setText("EN / DE" if state.get("language")=="en" else "DE / EN")
         signature={k:v for k,v in state.items() if k not in ("sequence","receiver")}
         signature["receiver"]=(tests.get("state"),tests.get("detail"))
+        if (self.view=="pet" and self.last_signature and signature!=self.last_signature
+                and signature.keys()==self.last_signature.keys()
+                and all(signature[key]==self.last_signature[key] for key in signature if key!="personality")):
+            self.last_signature=signature
+            personality=state["personality"]
+            self.pet_amount.setText(self.t("Streicheleinheiten: {count}",count=personality.get("pets") or 0))
+            self.pet_response.setText(self.t(personality["pet_reply"]))
+            return
         if signature!=self.last_signature and not self.edit_depth:
             self.last_signature=signature
-            if self.view in ("pet","novelty") and (state.get("settings",{}).get("professional") or work.get("stage") in ACTIVE):
+            if self.view in ("pet","novelty","workshop","arcade") and (state.get("settings",{}).get("professional") or work.get("stage") in ACTIVE):
                 self.view="work"
             self.render()
 
-    def route(self,view):
+    def route(self,view,remember=True):
+        if remember and view!=self.view:
+            self.route_stack=(self.route_stack+[self.view])[-12:]
         self.view=view
         self.notify("")
         self.render()
@@ -395,8 +369,27 @@ class Surface(QWidget):
     def change_language(self):
         self.call("settings.save",{"values":{"language":"de" if self.state.get("language")=="en" else "en"}})
 
+    def go_home(self):
+        self.route_stack.clear()
+        self.route("home" if self.state.get("draft") else "work",False)
+
+    def go_back(self):
+        if self.route_stack:
+            self.route(self.route_stack.pop(),False)
+        elif self.view!="work":
+            self.route("work",False)
+        else:
+            stage=(self.state.get("draft") or {}).get("stage")
+            if stage=="guide":
+                self.draft_action("guide.back")
+            elif stage in ("waiting","review"):
+                self.draft_action("review.back")
+            else:
+                self.go_home()
+
     def toggle_menu(self):
-        self.route("work" if self.view=="menu" else "menu")
+        self.route("settings")
+
 
     def pet_gate(self):
         now=monotonic()
@@ -407,18 +400,38 @@ class Surface(QWidget):
             self.route("pet")
             self.clicks=[]
 
-    def question(self,title,action):
+    def dialog(self,title,body,action=None):
+        pane=QDialog(self)
+        pane.setWindowTitle(self.t(title))
+        pane.setStyleSheet(STYLE)
+        layout=QVBoxLayout(pane)
+        layout.addWidget(label(self.t(title),role="title"))
+        text=QScrollArea()
+        text.setWidgetResizable(True)
+        text.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        content=label(self.t(body))
+        content.setAlignment(Qt.AlignTop|Qt.AlignLeft)
+        text.setWidget(content)
+        layout.addWidget(text,1)
+        choices=QHBoxLayout()
+        choices.addWidget(button(self.t("Abbrechen" if action else "Schliessen"),pane.reject))
+        if action:
+            choices.addWidget(button(self.t("Bestätigen"),pane.accept,True))
+        layout.addLayout(choices)
+        pane.resize(min(560,self.width()-24),min(345,self.height()-24))
         self.edit_depth+=1
         try:
-            reply=QMessageBox.question(self,self.t("Bestätigen"),self.t(title),
-                                       QMessageBox.Yes|QMessageBox.Cancel,QMessageBox.Cancel)
+            if pane.exec()==QDialog.Accepted and action:
+                action()
         finally:
             self.edit_depth-=1
-        if reply==QMessageBox.Yes:
-            action()
+            pane.deleteLater()
 
-    def enter_text(self,title,value,limit,callback,secret=False):
-        editor=Keyboard(self,self.t(title),value,limit,secret)
+    def question(self,title,action):
+        self.dialog("Bestätigen",title,action)
+
+    def enter_text(self,title,value,limit,callback,secret=False,mode="text"):
+        editor=Keyboard(self,self.t(title),value,limit,secret,mode)
         self.edit_depth+=1
         try:
             if editor.exec()==QDialog.Accepted:
@@ -439,14 +452,21 @@ class Surface(QWidget):
 
     def field(self,key,title,value,limit):
         ref=self.ref()
-        def open_editor():
-            self.editor_draft=ref["draft"]
-            self.lease_at=0
+        lease={"draft":ref["draft"],"field":key}
+        def edit_locked(_=None):
+            self.editor_draft=lease
+            self.lease_at=monotonic()+5
             try:
-                self.enter_text(title,value,limit,lambda text:self.edit(key,value,text,ref))
+                self.enter_text(title,value,limit,lambda text:self.edit(key,value,text,ref),
+                                mode="ticket" if key=="ticket" else "text")
             finally:
                 self.editor_draft=None
-                self.call("draft.editor",{"active":False,"draft":ref["draft"]})
+                self.call("draft.editor",{"active":False,**lease})
+        def open_editor():
+            if self.preview:
+                edit_locked()
+            else:
+                self.call("draft.editor",{"active":True,**lease},edit_locked)
         item=button(self.t(title)+"  ·  "+(value or self.t("Eingeben")),open_editor)
         item.setToolTip(value)
         return item
@@ -505,8 +525,11 @@ class Surface(QWidget):
         if not self.state:
             self.section(v,"FMI Printstation","Verbindung zur Station wird gesucht.")
         else:
-            menus={"menu":self.render_menu,"history":self.render_history,"settings":self.render_settings,
+            menus={"home":self.render_home,"menu":self.render_menu,"history":self.render_history,"settings":self.render_settings,
                    "wifi":self.render_wifi,"people":self.render_people,"templates":self.render_templates,
+                   "workshop":self.render_workshop,"arcade":self.render_arcade,
+                   "printer":self.render_printer,"display":self.render_display,
+                   "tester":self.render_tester,"personality":self.render_personality,"system":self.render_system,
                    "report":self.render_report,"pet":self.render_pet,"info":self.render_info,"novelty":self.render_novelty}
             if self.view in menus:
                 menus[self.view](v)
@@ -535,6 +558,9 @@ class Surface(QWidget):
             return self.render_import(v,d,stage=="review")
         if stage=="report" and self.state.get("report")!=getattr(self,"dismissed",None):
             return self.render_report(v)
+        self.render_home(v)
+
+    def render_home(self,v):
         self.section(v,"FMI Printstation","Prüfprotokolle")
         personality=self.state.get("personality",{})
         if personality.get("slogan"):
@@ -544,12 +570,17 @@ class Surface(QWidget):
             quote=label(text)
             quote.setStyleSheet("font-size: 21px; color: #ffd098; padding: 12px 0px;")
             v.addWidget(quote)
-        self.actions(v,[("Geführte Prüfung",lambda:self.begin("guided"),True),
-                        ("Direkt",lambda:self.begin("direct"),False),
-                        ("Verlauf",self.open_history,False),("Station",lambda:self.route("settings"),False)])
+        if self.state.get("draft") and self.state["draft"]["stage"]!="report":
+            self.actions(v,[("Prüfung fortsetzen",lambda:self.route("work",False),True)])
+        else:
+            self.actions(v,[("Geführte Prüfung",lambda:self.begin("guided"),True),
+                            ("Direkt",lambda:self.begin("direct"),False)])
+        self.actions(v,[("Verlauf",self.open_history,False),("Einstellungen",lambda:self.route("settings"),False)])
+
 
     def begin(self,mode):
         self.dismissed=None
+        self.route("work",False)
         self.call("draft.new",{"mode":mode})
 
     def render_entry(self,v,d):
@@ -557,6 +588,7 @@ class Surface(QWidget):
         v.addWidget(self.columns([self.field("ticket","Prüfnummer",d["ticket"],32),
                                   self.field("device","Gerätebeschreibung",d["device"],64)]))
         v.addWidget(self.columns([button(self.t("Vorlagen"),self.open_templates),
+                                  button(self.t("Prüfperson"),self.open_people),
                                   button(self.t("Bericht: {language}",language=self.state["report_language"].upper()),
                                          self.toggle_report_language)]))
         combo=QComboBox()
@@ -603,7 +635,7 @@ class Surface(QWidget):
                              i==0 and g["step"] not in ("start","running","low_continue","energise","warnings"))
                             for i,choice in enumerate(g["choices"])],limit=3)
         self.actions(v,[("Zurück",lambda:self.draft_action("guide.back"),False),
-                        ("Hilfe",lambda:QMessageBox.information(self,self.t("Hilfe"),self.t(g["help"])),False),
+                        ("Hilfe",lambda:self.dialog("Hilfe",g["help"]),False),
                         ("Abbrechen",lambda:self.question("Prüfung abbrechen?",
                           lambda:self.draft_action("guide.cancel",{"confirmed":True})),False)])
 
@@ -752,17 +784,20 @@ class Surface(QWidget):
     def render_people(self,v):
         self.section(v,"Prüfperson auswählen")
         for person in self.people:
-            panel=QHBoxLayout()
+            panel=QVBoxLayout()
+            actions=QHBoxLayout()
             name=button(person["name"],lambda _=False,p=person:self.choose_person(p))
-            name.setEnabled(person["active"])
-            panel.addWidget(name,1)
-            panel.addWidget(button(self.t("Bearbeiten"),lambda _=False,p=person:self.edit_person(p)))
-            panel.addWidget(button(self.t("Deaktivieren" if person["active"] else "Aktivieren"),
+            name.setEnabled(person["active"] and ((self.state.get("draft") or {}).get("stage")=="entry" or
+                              (self.state.get("guide") or {}).get("step")=="exam"))
+            panel.addWidget(name)
+            actions.addWidget(button(self.t("Bearbeiten"),lambda _=False,p=person:self.edit_person(p)))
+            actions.addWidget(button(self.t("Deaktivieren" if person["active"] else "Aktivieren"),
                             lambda _=False,p=person:self.question("Änderung bestätigen?",lambda:self.call(
                                 "person.active",{"examiner":p["id"],"active":not p["active"],"confirmed":True},
                                 lambda _:self.open_people()))))
+            panel.addLayout(actions)
             v.addLayout(panel)
-        self.actions(v,[("Neu",lambda:self.edit_person({}),True),("Zurück",lambda:self.route("work"),False)])
+        self.actions(v,[("Neu",lambda:self.edit_person({}),True)])
 
     def choose_person(self,p):
         self.call("person.pick",dict(self.ref(),examiner=p["id"]),lambda _:self.route("work"))
@@ -781,28 +816,69 @@ class Surface(QWidget):
         self.call("settings.save",{"values":{key:value}})
 
     def render_settings(self,v):
-        self.section(v,"Einstellungen")
+        self.section(v,"Einstellungen","Station")
+        entries=(
+            ("Drucker","printer",lambda:self.route("printer")),
+            ("WLAN","wifi",lambda:self.route("wifi")),
+            ("Anzeige","display",lambda:self.route("display")),
+            ("Prüfgerät","tester",lambda:self.route("tester")),
+            ("Prüfpersonen","people",self.open_people),
+            ("Persönlichkeit","personality",lambda:self.route("personality")),
+            ("System","system",lambda:self.route("system")),
+        )
+        tiles=[]
+        for name,icon,fn in entries:
+            tile=button(self.t(name),fn)
+            tile.setIcon(QIcon(str(ROOT/"assets/interfaces"/f"{icon}.svg")))
+            tiles.append(tile)
+        v.addWidget(self.columns(tiles,limit=3))
+
+    def render_personality(self,v):
+        self.section(v,"Persönlichkeit")
         c=self.state["settings"]
         self.actions(v,[("Professioneller Modus: Aus" if not c["professional"] else "Professioneller Modus: Ein",
-                         lambda:self.configure("professional",not c["professional"]),True),
-                       ("WLAN",lambda:self.route("wifi"),False)])
+                         lambda:self.configure("professional",not c["professional"]),True)])
+
+    def render_tester(self,v):
+        self.section(v,"Prüfgerät","BENNING ST 725")
+        r=self.state["receiver"]
+        v.addWidget(label(f"{r.get('transport') or r.get('source') or r.get('mode','')}"))
+        v.addWidget(label(self.status.text(),role="muted"))
+        if "tester_mode" in self.state["settings"]:
+            self.actions(v,[(name,lambda m=mode:self.question("Änderung bestätigen?",
+                            lambda:self.configure("tester_mode",m)),False)
+                            for mode,name in (("auto","Automatisch"),("usb","USB-CSV"),("rs232","RS232-PRINT"),
+                                              ("file","Datei"),("simulation","Simulation"))])
+
+    def render_printer(self,v):
+        self.section(v,"Drucker")
+        c=self.state["settings"]
         self.actions(v,[(f"Epson  {c['printer_host']}",lambda:self.enter_text("IPv4-Adresse",c["printer_host"],15,
-                        lambda x:self.configure("printer_host",x)),False),
+                        lambda x:self.configure("printer_host",x),mode="ipv4"),False),
                         (f"TCP  {c['printer_port']}",lambda:self.enter_text("TCP-Port",str(c["printer_port"]),5,
-                        lambda x:self.configure("printer_port",int(x)) if x.isascii() and x.isdecimal() else self.notify("Ungültige Eingabe.")),False),
+                        lambda x:self.configure("printer_port",int(x)) if x.isascii() and x.isdecimal() else self.notify("Ungültige Eingabe."),mode="number"),False),
                         ("TCP-Verbindung testen",lambda:self.call("printer.probe"),False),
                         ("Testbeleg drucken",lambda:self.question("Beleg jetzt drucken?",lambda:self.call("printer.test",{"confirmed":True})),False),
                         ("Kopf: Grafik" if c["graphic"] else "Kopf: Text",lambda:self.configure("graphic",not c["graphic"]),False),
                         (f"{self.t('Papiervorschub')}  {c['feed_mm']} mm",lambda:self.enter_text("Papiervorschub",
-                         str(c["feed_mm"]),3,lambda x:self.configure("feed_mm",int(x)) if x.isascii() and x.isdecimal() else self.notify("Ungültige Eingabe.")),False)])
+                         str(c["feed_mm"]),3,lambda x:self.configure("feed_mm",int(x)) if x.isascii() and x.isdecimal() else self.notify("Ungültige Eingabe."),mode="number"),False)])
         for element in ("probe_note","print_note"):
             if self.state.get(element):
                 v.addWidget(label(self.t(self.state[element]),role="muted"))
+
+    def render_display(self,v):
+        self.section(v,"Anzeige")
+        c=self.state["settings"]
         self.actions(v,[(self.t("Helligkeit")+" "+str(c["brightness"])+" %",
                         lambda:self.configure("brightness",next((n for n in (25,50,75,100) if n>c["brightness"]),25)),False),
                         (self.t("Standby")+" "+str(c["standby"])+" s",
                         lambda:self.configure("standby",next((n for n in (30,60,120,300,600) if n>c["standby"]),0)),False)])
-        self.actions(v,[("Engineering-Modus",self.open_info,False),("Zurück",lambda:self.route("menu"),False)])
+        self.actions(v,[("Touchscreen kalibrieren",lambda:self.dialog("Touchscreen kalibrieren",
+                        "Kalibrierung am Linux-Gerät mit tools/touch_calibrate.py starten."),False)])
+
+    def render_system(self,v):
+        self.section(v,"System")
+        self.actions(v,[("Engineering-Modus",self.open_info,False)])
         if self.state["power"]["enabled"]:
             self.actions(v,[("Jetzt neu starten",lambda:self.question("Station neu starten?",lambda:
                              self.call("power.reboot",{"confirmed":True})),False),
@@ -867,11 +943,19 @@ class Surface(QWidget):
     def render_pet(self,v):
         from hdmi_personality import Wolf
         self.section(v,"Werkstattwolf","Ein kleiner Besuch in der Werkstatt")
-        v.addWidget(Wolf(lambda:self.call("personality.pet")),alignment=Qt.AlignHCenter)
+        mascot=Wolf(lambda:self.call("personality.pet"),lambda:self.call("personality.treat"))
+        mascot.setFixedSize(260,min(255,max(151,self.height()//3)))
+        v.addWidget(mascot,alignment=Qt.AlignHCenter)
         p=self.state["personality"]
-        v.addWidget(label(self.t("Streicheleinheiten: {count}",count=p.get("pets") or 0)))
-        v.addWidget(label(self.t(p.get("pet_reply","Ein kleiner Werkstattwolf sagt hallo.")),role="muted"))
-        self.actions(v,[("Streicheln",lambda:self.call("personality.pet"),True),
+        self.pet_amount=label(self.t("Streicheleinheiten: {count}",count=p.get("pets") or 0))
+        self.pet_response=label(self.t(p.get("pet_reply","Ein kleiner Werkstattwolf sagt hallo.")),role="muted")
+        v.addWidget(self.pet_amount)
+        v.addWidget(self.pet_response)
+        v.addWidget(label(self.t("Fiktive Telemetrie: Werkstattlaune stabil."),role="muted"))
+        self.actions(v,[("Streicheln",lambda:mascot.react("happy"),True),
+                        ("Leckerli",lambda:mascot.react("treat"),False),
+                        ("Awoo",lambda:mascot.react("awoo"),False),
+                        ("Werkstattpause",lambda:self.route("workshop"),False),
                         ("Spassbelege",lambda:self.route("novelty"),False),
                         ("Zurück",lambda:self.route("work"),False)])
         progress=p.get("achievements",{})
@@ -879,11 +963,50 @@ class Surface(QWidget):
             self.section(v,"Werkstatt-Meilensteine")
             for key,name,goal in (("pets","Streicheleinheiten",10),("prints","Gedruckte Prüfbelege",10),
                                   ("exams","Dokumentierte Prüfungen",10),("switches","Sprachwechsel",5),
-                                  ("seconds","Betriebsstunden",3600),("engineering","Engineering-Aufrufe",3)):
+                                  ("seconds","Betriebsstunden",3600),("engineering","Engineering-Aufrufe",3),("treats","Leckerli",5)):
                 total=progress.get(key,0)
                 if key=="seconds":
                     total,goal=total//3600,goal//3600
                 v.addWidget(label(("✓  " if total>=goal else "")+f"{self.t(name)}  ·  {total} / {goal}",role="muted"))
+
+    def render_workshop(self,v):
+        from workshop import MESSAGES, TERMINAL
+        self.section(v,"Werkstattpause")
+        def terminal(text):
+            answer=TERMINAL.get(text.strip().lower(),"Unbekannter Spielbefehl. help zeigt die Auswahl.")
+            self.dialog("FMI BIOS",answer)
+        self.actions(v,[(name,lambda body=body,name=name:self.dialog(name,body),False) for name,body in MESSAGES.items()])
+        self.actions(v,[("FMI BIOS",lambda:self.enter_text("FMI BIOS","help",24,terminal),False),
+                        ("Teetimer",lambda:self.tea(v),False)])
+        self.actions(v,[(name,lambda game=name:self.open_arcade(game),False) for name in ("Pong","Snake","Breakout","Logo")])
+
+    def tea(self,v):
+        due=monotonic()+180
+        text=label("")
+        v.addWidget(text)
+        timer=QTimer(text)
+        def update():
+            seconds=max(0,int(due-monotonic()+.999))
+            text.setText(f"{self.t('Teetimer')}  {seconds//60}:{seconds%60:02d}")
+            if not seconds:
+                timer.stop()
+        timer.timeout.connect(update)
+        timer.start(500)
+        update()
+
+    def open_arcade(self,game):
+        self.game=game
+        self.route("arcade")
+
+    def render_arcade(self,v):
+        from hdmi_arcade import Arcade
+        self.section(v,self.game)
+        game=Arcade(self.game)
+        v.addWidget(game)
+        if self.game=="Snake":
+            self.actions(v,[(arrow,lambda d=d:game.direction(d),False)
+                            for arrow,d in (("←",(-1,0)),("↑",(0,-1)),("↓",(0,1)),("→",(1,0)))],limit=3)
+        self.actions(v,[("Neu starten",game.restart,False)])
 
     def render_novelty(self,v):
         self.section(v,"Spassbelege","Kein Prüfprotokoll oder Nachweis.")
@@ -895,8 +1018,9 @@ class Surface(QWidget):
         self.actions(v,[("Zurück",lambda:self.route("pet"),False)])
 
     def resizeEvent(self,event):
+        self.brand.setVisible(self.width()>=650)
         previous=getattr(self,"wide",None)
-        self.wide=self.width()>=600
+        self.wide=2 if self.width()>=760 else 1 if self.width()>=600 else 0
         if previous is not None and previous!=self.wide and not self.edit_depth:
             QTimer.singleShot(0,self.render)
         super().resizeEvent(event)

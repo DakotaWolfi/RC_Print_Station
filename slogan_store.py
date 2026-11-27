@@ -115,7 +115,7 @@ class SloganStore:
                          (estimate,billed,day))
 
     def achievements(self, updates=None):
-        names=("prints","switches","seconds","engineering")
+        names=("prints","switches","seconds","engineering","treats")
         with self.db() as conn:
             conn.execute("BEGIN IMMEDIATE")
             for name in names:

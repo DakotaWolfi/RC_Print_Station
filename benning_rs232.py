@@ -22,6 +22,8 @@ def parse_printout(data, encoding="cp437", *, wire=False):
     except (UnicodeError,LookupError):
         raise ImportErrorDetail("Druckbericht kann nicht dekodiert werden.") from None
     lines=[line.strip() for line in raw.splitlines() if line.strip()]
+    if not lines:
+        raise ImportErrorDetail("Druckbericht leer oder zu gross.")
     if not any("Prüfung gemäss" in line or "Prüfung gemäß" in line for line in lines[:3]):
         raise ImportErrorDetail("ST-725-Druckkopf fehlt.")
     if not re.fullmatch(r"Prüfer\s+_+",lines[-1]):
@@ -48,12 +50,12 @@ def parse_printout(data, encoding="cp437", *, wire=False):
                 raise ImportErrorDetail("Doppelte Messung im Druckbericht.")
             tests.append(Measurement(label,value,unit,limit=limit,limit_unit=limit_unit))
             seen.add(label)
-        elif re.match(r"[A-Za-z][A-Za-z0-9 /-]*:",line) and not line.startswith("VISO:"):
+        elif re.match(r"[A-Za-z][A-Za-z0-9 /-]*:",line) and not re.match(r"^[VU]ISO:",line):
             raise ImportErrorDetail("Unbekannte Messzeile im Druckbericht.")
     if not tests:
         raise ImportErrorDetail("Druckbericht enthält keine erkannten Messwerte.")
     voltage=None
-    if any(line.startswith("VISO:") for line in lines):
-        voltage=unique(r"VISO:\s*([0-9]+(?:[,.][0-9]+)?\s*V)")
+    if any(re.match(r"^[VU]ISO:",line) for line in lines):
+        voltage=unique(r"[VU]ISO:\s*([0-9]+(?:[,.][0-9]+)?\s*V)")
     return encoding,[Record(slot,tester_date,day,None,verdict,tuple(tests),voltage,None,
                             data.decode(encoding),base64.b64encode(data).decode("ascii"))]

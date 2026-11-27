@@ -12,10 +12,10 @@ from benning_store import Measurements
 from nextion_adapter import NextionAdapter, SerialLink
 from native_ui import report_base
 from report_web import start_server
-from station_config import PRINTER_HOST, PRINTER_PORT
+from station_config import PRINTER_HOST, PRINTER_PORT, load
 from station_core import StationCore
 from station_ipc import DEFAULT_SOCKET, serving
-from station_network import NetworkManager
+from station_network import HOTSPOT_PASSWORD, NetworkManager
 
 LOG=logging.getLogger(__name__)
 OPTIONS=("auto","nextion","hdmi","both","headless")
@@ -30,15 +30,18 @@ def main():
     p.add_argument("--baud",type=int,default=115200)
     p.add_argument("--host",default=PRINTER_HOST)
     p.add_argument("--printer-port",type=int,default=PRINTER_PORT)
-    p.add_argument("--report-url",default="")
+    p.add_argument("--report-url",default=os.environ.get("FMI_REPORT_FALLBACK_URL",""))
     p.add_argument("--auto-report-url",action="store_true")
     p.add_argument("--web-port",type=int,default=8080)
     p.add_argument("--wifi-interface",default="wlan0")
+    p.add_argument("--hotspot-fallback",action="store_true",default=os.environ.get("FMI_HOTSPOT_FALLBACK")=="1")
+    p.add_argument("--hotspot-password-file",type=Path,default=os.environ.get("FMI_HOTSPOT_PASSWORD_FILE",HOTSPOT_PASSWORD))
     p.add_argument("--enable-local-power",action="store_true")
     p.add_argument("--tester-mode",choices=MODES,default=os.environ.get("FMI_TESTER_MODE","auto"))
     p.add_argument("--tester-device",default=os.environ.get("FMI_TESTER_DEVICE"))
     p.add_argument("--tester-rs232-device",default=os.environ.get("FMI_TESTER_RS232_DEVICE"))
     p.add_argument("--tester-encoding",default=os.environ.get("FMI_TESTER_ENCODING","auto"))
+    p.add_argument("--tester-gpio",action="store_true",default=os.environ.get("FMI_TESTER_GPIO_RX")=="1")
     p.add_argument("--tester-idle",type=float,default=os.environ.get("FMI_TESTER_IDLE","1.8"))
     a=p.parse_args()
     if a.report_url:
@@ -58,10 +61,12 @@ def main():
     with a.db.with_suffix(".station.lock").open("a") as lease:
         fcntl.flock(lease,fcntl.LOCK_EX|fcntl.LOCK_NB)
         receiver=Receiver(Measurements(a.db),a.tester_mode,a.tester_device,a.tester_rs232_device,
-                          a.tester_encoding,a.tester_idle,a.port if use_serial else None)
+                          a.tester_encoding,a.tester_idle,a.port,gpio=a.tester_gpio)
+        receiver.set_mode(load().get("tester_mode",a.tester_mode))
         core=StationCore(a.db,receiver=receiver,host=a.host,printer_port=a.printer_port,
                          base_url=a.report_url,auto_port=a.web_port if a.auto_report_url else None,
-                         network=NetworkManager(a.wifi_interface),allow_power=a.enable_local_power)
+                         network=NetworkManager(a.wifi_interface,protected_hotspot=a.hotspot_password_file,require_protected=True),
+                         allow_power=a.enable_local_power,hotspot_fallback=a.hotspot_fallback)
         serial=SerialLink(a.port,a.baud) if use_serial else None
         adapter=None
         web=None

@@ -15,7 +15,7 @@ from uuid import uuid4
 
 from benning_csv import slot_value
 from benning_guide import Guide, STEPS
-from benning_output import result_kind
+from benning_output import measurement_summary, report_checks, result_kind, selected_fields, visible_measurements
 from benning_receiver import Receiver
 from benning_store import Measurements, PHASES, SOURCES
 from examination_rules import fresh_slot, validate_selection
@@ -30,7 +30,7 @@ import station_config as config
 from station_network import NetworkError, NetworkManager
 
 LOG = logging.getLogger(__name__)
-VERSION = "0.8.0"
+VERSION = "0.8.1"
 FORMAT = 1
 STATES = ("entry","guide","waiting","review","report")
 MODES = {"auto":("usb","rs232"),"usb":("usb",),"rs232":("rs232",),
@@ -53,7 +53,7 @@ def limited(value, maximum, allow_empty=True):
 class StationCore:
     def __init__(self, db, *, receiver=None, config_path=None, cache=None, host=config.PRINTER_HOST,
                  printer_port=config.PRINTER_PORT, sender=send, publisher=publish,
-                 base_url="", auto_port=None, network=None, allow_power=False, power=None):
+                 base_url="", auto_port=None, network=None, allow_power=False, power=None, hotspot_fallback=False):
         self.db=Path(db)
         self.store=Measurements(db)
         with closing(self.store.db()):
@@ -66,6 +66,8 @@ class StationCore:
         self.publisher,self.fixed_url,self.base_url,self.auto_port=publisher,base_url,base_url,auto_port
         self.network=network or NetworkManager()
         self.allow_power=allow_power
+        self.hotspot_fallback=hotspot_fallback
+        self.hotspot_due=monotonic()+90
         self.power=power or self.system_power
         self.lock=RLock()
         self.sequence=0
@@ -249,7 +251,8 @@ class StationCore:
         if command=="exam.start" and self.draft["mode"]=="guided":
             self.guide=Guide()
             people=self.operators.examiners()
-            self.draft["examiner"]=people[0]["id"] if people and people[0]["last_used"] else None
+            if self.draft["examiner"] is None:
+                self.draft["examiner"]=people[0]["id"] if people and people[0]["last_used"] else None
             self.advance("guide")
         elif command=="review.find":
             self.refresh_import()
@@ -290,8 +293,12 @@ class StationCore:
                 self.receiver.status.state=="receiving"):
             raise ValueError("Import läuft oder Auswahl geändert. Bitte erneut auswählen.")
         validate_selection(self.examination,self.selected["original"])
+        examiner_id=self.draft["examiner"]
+        examination=self.examination
+        if examination is None and examiner_id is not None:
+            examination={"examiner":self.operators.active_name(examiner_id)}
         ident,report=self.store.create_report(*self.fields(),self.selected,require_current=True,
-                    examination=self.examination,examiner_id=self.draft["examiner"],language=self.report_language())
+                    examination=examination,examiner_id=examiner_id,language=self.report_language())
         self.finish(ident,report)
 
     def store_report(self, report):
@@ -357,6 +364,7 @@ class StationCore:
         elif name=="wifi.hotspot":
             self.job("network","hotspot",self.network.hotspot)
         else:
+            self.hotspot_fallback=False
             self.job("network","status",self.network.stop_hotspot)
         self.network_note="Bitte warten ..."
 
@@ -372,9 +380,9 @@ class StationCore:
 
     def person(self,name,args):
         if name=="person.pick":
-            self.require_draft(args,("guide",),version=True)
+            self.require_draft(args,("entry","guide"),version=True)
             ident=args.get("examiner")
-            if self.guide.step!="exam" or type(ident) is not int or ident<1:
+            if (self.phase=="guide" and self.guide.step!="exam") or type(ident) is not int or ident<1:
                 raise ValueError("Ungültige Eingabe.")
             self.operators.active_name(ident)
             self.draft["examiner"]=ident
@@ -394,24 +402,32 @@ class StationCore:
                 self.touch()
             self.operators.set_active(ident,active)
 
-    def lease(self, source, kind, draft_id):
-        for client,(_,expires) in list(self.editors.items()):
-            if expires<monotonic():
-                del self.editors[client]
+    def lease(self, source, kind, draft_id, field=None):
+        if field not in (None,"ticket","device","remarks","slot","phase","autofill"):
+            raise ValueError("Ungültige Eingabe.")
+        key=(source,field)
+        now=monotonic()
+        for editor,(draft,expires) in list(self.editors.items()):
+            if expires<=now or not self.draft or draft!=self.draft["id"]:
+                del self.editors[editor]
         if kind is False:
-            self.editors.pop(source,None)
+            if draft_id is None or self.editors.get(key,(None,))[0]==draft_id:
+                self.editors.pop(key,None)
         elif (kind is True and self.draft and draft_id==self.draft["id"] and
-              (source in self.editors or len(self.editors)<12)):
-            self.editors[source]=(draft_id,monotonic()+20)
-        elif kind is not False:
+              self.phase in ("entry","guide") and (key in self.editors or len(self.editors)<12)):
+            if field is not None:
+                self.guard_editors(source,{field})
+            self.editors[key]=(draft_id,now+20)
+        else:
             raise ValueError("Der Entwurf hat sich geändert.")
 
-    def guard_editors(self,source):
+    def guard_editors(self,source,fields=None):
         if not self.draft:
             return
         now=monotonic()
-        if any(name!=source and draft==self.draft["id"] and expires>now
-               for name,(draft,expires) in self.editors.items()):
+        if any(name!=source and draft==self.draft["id"] and expires>now and
+               (fields is None or field in fields)
+               for (name,field),(draft,expires) in self.editors.items()):
             raise ValueError("Der Entwurf wird an einer anderen Anzeige bearbeitet.")
 
     def command(self, request, source="local"):
@@ -429,9 +445,11 @@ class StationCore:
                 if key and (source,key) in self.completed:
                     return self.completed[(source,key)]
                 if op=="draft.editor":
-                    data=self.lease(source,args.get("active"),args.get("draft"))
+                    data=self.lease(source,args.get("active"),args.get("draft"),args.get("field"))
                 else:
-                    if op in ("exam.start","review.find","exam.submit","guide.cancel","draft.discard"):
+                    if op=="draft.edit" and isinstance(args.get("changes"),dict):
+                        self.guard_editors(source,set(args["changes"]))
+                    if op in ("exam.start","review.find","exam.submit","guide.cancel","guide.back","draft.discard"):
                         self.guard_editors(source)
                     data=self.dispatch(op,args)
                 result={"ok":True,"data":data}
@@ -440,7 +458,7 @@ class StationCore:
                     LOG.warning("Command %s failed (%s)",op,type(error).__name__)
                 result={"ok":False,"error":str(error) if isinstance(error,ValueError) else "Aktion fehlgeschlagen."}
             # Only replay bounded mutations. Never cache report copies or secrets.
-            if key and op not in ("state","history","report.get","people","templates","draft.editor"):
+            if key and op not in ("state","history","report.get","report.view","people","templates","draft.editor"):
                 if len(self.completed)>=256:
                     self.completed.popitem(last=False)
                 self.completed[(source,key)]=result
@@ -457,6 +475,18 @@ class StationCore:
             return self.operators.appliances(self.language)
         if op=="report.get":
             return self.get_report(args.get("report"))
+        if op=="report.view":
+            report=self.get_report(args.get("report"))
+            return {"kind":result_kind(report),"fields":selected_fields(report,self.language),
+                    "measurements":[measurement_summary(m,language=self.language) for m in visible_measurements(report)],
+                    "checks":report_checks(report,self.language)}
+        if op=="report.qr":
+            from reportlab.graphics.barcode.qrencoder import QRCode, QRErrorCorrectLevel
+            url=self.report_link(args.get("report"))
+            qr=QRCode(None,QRErrorCorrectLevel.M)
+            qr.addData(url)
+            qr.make()
+            return {"url":url,"modules":qr.modules}
         if op=="draft.new":
             return self.begin(args)
         if op=="draft.edit":
@@ -523,8 +553,17 @@ class StationCore:
             updates=args.get("values")
             if not isinstance(updates,dict) or not updates:
                 raise ValueError("Ungültige Eingabe.")
+            if "tester_mode" in updates:
+                if self.phase in ("guide","waiting","review") or not hasattr(self.receiver,"set_mode"):
+                    raise ValueError("Prüfung zuerst beenden.")
+                mode=config.validated("tester_mode",updates["tester_mode"])
+                if mode=="rs232" and not self.receiver.has_rs232:
+                    raise ValueError("RS232-Port zuerst lokal konfigurieren.")
             previous_language=self.language
             self.config=config.save(updates,self.config_path)
+            if "tester_mode" in updates:
+                self.receiver.set_mode(mode)
+                self.refresh_import()
             if previous_language!=self.language:
                 self.award("switches")
             self.sequence+=1
@@ -555,6 +594,12 @@ class StationCore:
                 raise ValueError("Systemaktion nicht erlaubt oder fehlgeschlagen.")
             self.job("power","power",self.power,op.partition(".")[2])
             self.power_note="Systemaktion wird angefordert ..." if self.config["professional"] or op=="power.reboot" else "Bis bald, Werkstattteam!"
+        elif op=="personality.treat":
+            if self.config["professional"] or self.phase in ("guide","waiting","review"):
+                raise ValueError("Aktion fehlgeschlagen.")
+            if monotonic()>=getattr(self,"next_treat",0):
+                self.next_treat=monotonic()+2
+                self.award("treats")
         elif op=="personality.pet":
             if self.config["professional"] or self.phase in ("guide","waiting","review"):
                 raise ValueError("Aktion fehlgeschlagen.")
@@ -620,6 +665,8 @@ class StationCore:
                 except Exception as error:
                     LOG.warning("%s job failed (%s)",pool,type(error).__name__)
                     if pool=="network":
+                        if action=="hotspot":
+                            self.hotspot_due=now+180
                         self.network_note=str(error) if isinstance(error,NetworkError) else ""
                     elif pool=="printer":
                         if action=="probe":
@@ -643,6 +690,11 @@ class StationCore:
                         if self.base_url!=previous:
                             self.links.clear()
                         self.network_note=""
+                        if self.ssid:
+                            self.hotspot_due=now+90
+                        elif action=="poll" and self.hotspot_fallback and now>=self.hotspot_due:
+                            self.hotspot_due=now+180
+                            self.job("network","hotspot",self.network.hotspot)
                 elif pool=="printer":
                     if action=="probe":
                         self.probe_note="TCP-Verbindung erfolgreich."
@@ -668,7 +720,7 @@ class StationCore:
                     self.metric_generation+=1
             if self.milestone and now>=self.milestone_until:
                 self.milestone=0
-            if (self.auto_port or self.access_points) and now>=self.last_network_check and "network" not in self.jobs:
+            if (self.auto_port or self.access_points or self.hotspot_fallback) and now>=self.last_network_check and "network" not in self.jobs:
                 self.last_network_check=now+12
                 self.job("network","poll",self.network.status)
             if self.config["professional"]:
@@ -705,7 +757,7 @@ class StationCore:
         import_source=state.source or self.receiver.mode
         art,body=WAIT_BODY.get(import_source,WAIT_BODY["usb"])
         return {"format":FORMAT,"epoch":self.epoch,"sequence":self.sequence,"language":self.language,
-                "settings":dict(self.config,printer_host=self.endpoint()[0],printer_port=self.endpoint()[1]),
+                "settings":dict(self.config,printer_host=self.endpoint()[0],printer_port=self.endpoint()[1],tester_mode=self.receiver.mode),
                 "draft":dict(self.draft) if self.draft else None,"guide":guide,
                 "report_language":self.report_language() if self.draft else self.language,
                 "receiver":dict(asdict(state),mode=self.receiver.mode),"batch":self.batch,

@@ -14,6 +14,8 @@ DENSITIES = {"default": None, "light": 255, "dark": 1}
 
 
 def validated(key, value):
+    if key == "tester_mode" and value in ("auto","usb","rs232","file","simulation"):
+        return value
     if key == "language" and value in ("de","en"):
         return value
     if key in ("graphic","professional") and type(value) is bool:

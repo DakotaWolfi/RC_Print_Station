@@ -2,6 +2,16 @@
 
 The station has a physically validated v0.6.2 baseline for Class I output. The v0.7 branch adds bilingual operation and has a separate [physical acceptance checklist](hmi/VALIDATION-v07.md). Older milestones remain below.
 
+## v0.8.1 usability and web HMI
+
+- [x] Responsive HDMI navigation, categorized settings and touch keyboard.
+- [x] Authenticated web HMI, shared field leases and tablet-only profile.
+- [x] Receive-only USB RS232 and explicit onboard UART alongside USB CSV.
+- [x] Wayland autostart, calibration tooling and protected hotspot fallback.
+- [x] Illustrated wolf and optional workshop arcade.
+- [ ] Validate physical touch, printer-port wiring and protected fallback on the bench.
+- [ ] Measure production memory on the Orange Pi Zero 3 1 GB.
+
 ## v0.8.0 shared core and native HDMI
 
 - [x] Isolate the BENNING receiver, shared draft, reports and printing from displays.

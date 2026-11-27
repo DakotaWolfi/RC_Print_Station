@@ -29,6 +29,7 @@ def main():
         cmd.add_argument("--mode",choices=("auto","usb","rs232"),default="auto")
         cmd.add_argument("--usb-device")
         cmd.add_argument("--rs232-device")
+        cmd.add_argument("--gpio-rx",action="store_true",help="Explicit onboard RS232 RX converter")
         cmd.add_argument("--hmi-port",default="/dev/serial0")
         if name=="listen":
             cmd.add_argument("--idle",type=float,default=1.8)
@@ -47,7 +48,7 @@ def main():
         encoding=validate_encoding(args.encoding)
         db=Measurements(args.db)
         if args.command=="detect":
-            selected=choose_port(args.mode,args.usb_device,args.rs232_device,hmi=args.hmi_port)
+            selected=choose_port(args.mode,args.usb_device,args.rs232_device,hmi=args.hmi_port,gpio=args.gpio_rx)
             print(json.dumps(selected))
             return 0 if selected else 1
         if args.command=="import":
@@ -69,7 +70,7 @@ def main():
                 captured=True
 
         rx=Receiver(db,args.mode,args.usb_device,args.rs232_device,encoding,args.idle,
-                    args.hmi_port,raw_capture=capture,accept_reset=args.accept_memory_reset)
+                    args.hmi_port,gpio=args.gpio_rx,raw_capture=capture,accept_reset=args.accept_memory_reset)
         rx.start()
         previous=None
         start=time.monotonic()

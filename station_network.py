@@ -1,6 +1,8 @@
 """Use NetworkManager only on the selected wireless device. No password argv."""
 from dataclasses import dataclass
 import fcntl
+import os
+import stat
 from pathlib import Path
 from ipaddress import IPv4Address
 import json
@@ -67,9 +69,31 @@ def wifi_address(interface="wlan0"):
     return ""
 
 
+HOTSPOT_PASSWORD = Path.home()/".config/rc-printstation/hotspot.psk"
+
+
+def hotspot_password(path):
+    if path is None:
+        raise NetworkError("Hotspot-Passwort zuerst lokal konfigurieren.")
+    try:
+        fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
+        with os.fdopen(fd,"rb") as secret:
+            mode=os.fstat(secret.fileno()).st_mode
+            if not stat.S_ISREG(mode) or mode & 0o077:
+                raise ValueError
+            password=secret.read(65).decode("ascii").rstrip("\n")
+        if not 12<=len(password)<=63 or not all(32<=ord(c)<127 for c in password):
+            raise ValueError
+        return password
+    except (ValueError,OSError):
+        raise NetworkError("Hotspot-Passwortdatei fehlt oder ist ungültig (0600).") from None
+
+
 class NetworkManager:
-    def __init__(self, interface="wlan0"):
+    def __init__(self, interface="wlan0", *, protected_hotspot=None, require_protected=False):
         self.interface = interface
+        self.protected_hotspot=protected_hotspot
+        self.require_protected=require_protected
 
     def _open(self):
         try:
@@ -260,7 +284,7 @@ class NetworkManager:
             bus.close()
 
     def hotspot(self):
-        """Explicit temporary open access point."""
+        """Start a temporary access point using the selected deployment policy."""
         directory=Path.home()/".config"/"rc-printstation"
         directory.mkdir(parents=True,exist_ok=True)
         with (directory/"wifi.lock").open("a") as lock:
@@ -271,11 +295,11 @@ class NetworkManager:
             return self._hotspot()
 
     def _hotspot(self):
+        password=hotspot_password(self.protected_hotspot) if self.require_protected or self.protected_hotspot else ""
         dbus,bus=self._open()
         active=None
         previous_profile="/"
         ok=False
-        password=""
         ssid="FMI-RC-Printstation"
         try:
             root,path,_,props=self._device(dbus,bus)
@@ -289,6 +313,9 @@ class NetworkManager:
                 "ipv4":{"method":"shared","never-default":True,"address-data":dbus.Array([{"address":"10.42.0.1","prefix":dbus.UInt32(24)}],signature="a{sv}")},
                 "ipv6":{"method":"disabled"},
             }
+            if password:
+                settings["802-11-wireless-security"]={"key-mgmt":"wpa-psk","psk":password,
+                                                      "proto":dbus.Array(["rsn"],signature="s")}
             _,active,_=root.AddAndActivateConnection2(settings,path,"/",{"persist":"volatile"},signature="a{sa{sv}}ooa{sv}",timeout=12)
             p=dbus.Interface(bus.get_object(NM,active,introspect=False),PROPS)
             deadline=time.monotonic()+25
@@ -296,7 +323,7 @@ class NetworkManager:
                 state=int(p.Get(ACTIVE,"State",signature="ss",timeout=3))
                 if state==2 and wifi_address(self.interface):
                     ok=True
-                    return ssid,wifi_address(self.interface),password
+                    return ssid,wifi_address(self.interface),""
                 if state>=3: break
                 time.sleep(.4)
             raise NetworkError("Hotspot konnte nicht gestartet werden.")

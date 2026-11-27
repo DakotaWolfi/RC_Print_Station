@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101923">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>FMI Printstation</title>
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="/app.css">
+<script defer src="/app.js"></script>
+</head>
+<body>
+<header>
+  <button id="brand" class="brand" aria-label="FMI">FMI</button>
+  <button id="home" class="nav" aria-label="Startseite"><img src="/icons/home.svg" alt=""></button>
+  <button id="back" class="nav" aria-label="Zurück"><img src="/icons/back.svg" alt=""></button>
+  <span class="wordmark">Repair Café Riehen</span>
+  <button id="language">DE / EN</button>
+  <button id="settings" class="nav" aria-label="Einstellungen"><img src="/icons/menu.svg" alt=""></button>
+</header>
+<div id="status" role="status" aria-live="polite"></div>
+<main id="main" tabindex="-1"></main>
+<dialog id="dialog"></dialog>
+</body>
+</html>
