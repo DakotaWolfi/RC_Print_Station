@@ -3,18 +3,21 @@ import os
 import json
 import qt,slicer
 
-output=Path(os.environ.get("FMI_BROWSER_OUTPUT","/tmp/fmi-v082-browser"))
+output=Path(os.environ.get("FMI_BROWSER_OUTPUT","/tmp/fmi-v083-browser"))
 output.mkdir(parents=True,exist_ok=True)
 view=slicer.qSlicerWebWidget()
 view.resize(390,844)
 view.url="http://127.0.0.1:18191/"
 view.show()
 script=(Path.cwd()/"tests/browser/operator_flow.js").read_text()
-tasks=[]
-from itertools import product
-for lang,(w,h),page in product(("de","en"),((390,844),(844,390),(820,1180),(1180,820)),
-                               ("home","connection","admin","wolf","achievements","report","print-dialog")):
-    tasks.append((lang,w,h,page))
+tasks=[
+    ("de",390,844,"download"),
+    ("en",844,390,"download"),
+    ("de",820,1180,"novelty-preview"),
+    ("en",1180,820,"novelty-preview"),
+    ("de",390,844,"guide"),
+    ("en",844,390,"guide"),
+]
 current=None
 finished=False
 def request():
@@ -25,12 +28,12 @@ def request():
     current=tasks.pop(0)
     lang,w,h,page=current
     view.resize(w,h)
-    view.evalJS("if(dialog.open)dialog.close(); app.state.language='"+lang+"';")
-    route={"home":"home","connection":"connection","admin":"settings","wolf":"pet",
-           "achievements":"achievements","report":"work","print-dialog":"work"}[page]
-    view.evalJS("navigate('"+route+"',false)")
-    if page=="print-dialog":
-        view.evalJS("confirm('Beleg jetzt drucken?',()=>{})")
+    if page=="guide":
+        view.evalJS("app.state=JSON.parse(window.v083Guide); app.state.language='"+lang+"'; navigate('work',false)")
+    else:
+        view.evalJS("if(dialog.open)dialog.close(); app.state.language='"+lang+"';"
+                    "app.showReportQR=true; navigate('"+page+"',false)")
+
     qt.QTimer.singleShot(170,lambda:view.evalJS("JSON.stringify({width:innerWidth,client:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth,title:main.querySelector('h1')?.textContent,modal:dialog.open,visible:[...document.querySelectorAll('button')].filter(x=>x.offsetHeight).every(x=>x.offsetHeight>=48)})"))
 def result(js, value):
     global finished

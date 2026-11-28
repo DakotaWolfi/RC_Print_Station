@@ -14,6 +14,7 @@ class Wolf(QWidget):
         super().__init__()
         self.pet=pet
         self.home=home
+        self.setProperty("wantsStroke",not home)
         self.treat=treat
         self.last=monotonic()
         self.start=None

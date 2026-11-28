@@ -31,11 +31,16 @@ from station_network import NetworkError, NetworkManager
 from web_access import read_status
 
 LOG = logging.getLogger(__name__)
-VERSION = "0.8.2"
+VERSION = "0.8.3"
 FORMAT = 1
 STATES = ("entry","guide","waiting","review","report")
 MODES = {"auto":("usb","rs232"),"usb":("usb",),"rs232":("rs232",),
          "file":("file-csv","file-txt"),"simulation":()}
+ACTIVE_STAGES = ("guide","waiting","review")
+OWNER_LEASE = 20
+OWNER_OPS = frozenset(("draft.edit","draft.discard","language.report","person.pick","exam.submit",
+                       "exam.function","guide.choose","guide.back","guide.cancel","review.manual",
+                       "review.select","review.back","review.confirm","import.reset"))
 CYCLE = ("Offen","Ohne Befund","Mangel","Nicht geprüft")
 WAIT_BODY = {
     "rs232":("print","Beendeten Slot am BENNING per Ordner (14) aufrufen. Slot prüfen und Druckertaste (15) drücken."),
@@ -76,6 +81,7 @@ class StationCore:
         self.epoch=uuid4().hex
         self.completed=OrderedDict()
         self.editors={}
+        self.owner=None
         self.draft=None
         self.guide=None
         self.baseline={}
@@ -199,14 +205,14 @@ class StationCore:
                     self.wait_note="Import geändert. Speicherplatz erneut auswählen."
                     self.advance("waiting")
             self.sequence+=1
-        if self.phase=="waiting" and self.batch and state.state not in ("receiving","error","interrupted"):
+        if self.phase=="waiting" and self.batch and state.state not in ("receiving","error","interrupted","reset-pending"):
             batch=self.batch
             if batch["id"]==self.suggested_seen:
                 return
             self.suggested_seen=batch["id"]
             note,slot=fresh_slot(self.baseline,batch["source"],self.store.snapshot((batch["source"],)))
             self.wait_note=note
-            if slot:
+            if slot and batch["reason"]!="baseline":
                 self.selected=next((r for r in self.slots if r["slot"]==slot and r["batch"]==batch["id"]),None)
                 if self.selected:
                     self.advance("review")
@@ -328,6 +334,14 @@ class StationCore:
                          examiner_id=self.draft["examiner"],language=self.report_language())
             self.finish(ident,report)
 
+    def measurement_origin(self,row):
+        prior=self.baseline.get(row["source"])
+        if not prior:
+            return "operator-selected"
+        if row["batch"]<=prior[0]:
+            return "existing"
+        return "identical" if prior[1].get(row["slot"])==row["record_id"] else "changed"
+
     def save_selected(self,args):
         self.require_draft(args,("review",),version=True)
         self.refresh_import()
@@ -335,12 +349,16 @@ class StationCore:
                 self.receiver.status.state=="receiving"):
             raise ValueError("Import läuft oder Auswahl geändert. Bitte erneut auswählen.")
         validate_selection(self.examination,self.selected["original"])
+        origin=self.measurement_origin(self.selected)
+        if origin=="identical" and args.get("same_reading_confirmed") is not True:
+            raise ValueError("Identische Messung ausdrücklich als neue Prüfung bestätigen.")
         examiner_id=self.draft["examiner"]
         examination=self.examination
         if examination is None and examiner_id is not None:
             examination={"examiner":self.operators.active_name(examiner_id)}
         ident,report=self.store.create_report(*self.fields(),self.selected,require_current=True,
-                    examination=examination,examiner_id=examiner_id,language=self.report_language())
+                    examination=examination,examiner_id=examiner_id,language=self.report_language(),
+                    measurement_source=origin)
         self.finish(ident,report)
 
     def store_report(self, report):
@@ -417,7 +435,7 @@ class StationCore:
         if key not in self.links:
             if len(self.links)>=32:
                 self.links.pop(next(iter(self.links)))
-            self.links[key]=self.publisher(self.db,self.get_report(ident),self.base_url)
+            self.links[key]=self.publisher(self.db,dict(self.get_report(ident),_download_id=ident),self.base_url)
         return self.links[key]
 
     def person(self,name,args):
@@ -472,6 +490,45 @@ class StationCore:
                for (name,field),(draft,expires) in self.editors.items()):
             raise ValueError("Der Entwurf wird an einer anderen Anzeige bearbeitet.")
 
+    @staticmethod
+    def controller(source):
+        # Qt generates a process UUID; the web gateway mints a session+tab ID.
+        # Legacy device commands keep their existing API and cannot displace a live controller.
+        return source.startswith("web-") or len(source)==32 and all(c in "0123456789abcdef" for c in source)
+
+    def live_owner(self):
+        if self.phase not in ACTIVE_STAGES or not self.owner:
+            return None
+        holder,draft,expires=self.owner
+        return holder if draft==self.draft["id"] and expires>monotonic() else None
+
+    def claim_owner(self,source):
+        self.owner=(source,self.draft["id"],monotonic()+OWNER_LEASE)
+
+    def control(self,source,args):
+        self.require_draft(args,ACTIVE_STAGES,version=True)
+        if args.get("confirmed") is not True:
+            raise ValueError("Bitte zuerst bestätigen.")
+        holder=self.live_owner()
+        action=args.get("action")
+        if action=="release" and holder==source:
+            self.owner=None
+            self.editors={key:value for key,value in self.editors.items() if key[0]!=source}
+        elif action=="resume" and holder is None:
+            self.guard_editors(source)
+            self.claim_owner(source)
+        else:
+            raise ValueError("Diese Prüfung wird an einer anderen Anzeige bedient.")
+        self.touch()
+
+    def guard_owner(self,source):
+        if self.phase in ACTIVE_STAGES:
+            holder=self.live_owner()
+            if holder and holder!=source:
+                raise ValueError("Diese Prüfung wird an einer anderen Anzeige bedient.")
+            if not holder and self.controller(source):
+                raise ValueError("Prüfung an dieser Anzeige ausdrücklich fortsetzen.")
+
     def command(self, request, source="local"):
         """Serialize public state mutations and replay responses by client/key."""
         if not isinstance(request,dict) or set(request)-{"id","op","args","epoch"}:
@@ -486,14 +543,34 @@ class StationCore:
                     raise ValueError("Die Station wurde neu gestartet.")
                 if key and (source,key) in self.completed:
                     return self.completed[(source,key)]
-                if op=="draft.editor":
+                if op=="state":
+                    holder=self.live_owner()
+                    if holder==source:
+                        self.claim_owner(source)
+                    data=self.snapshot()
+                    if self.phase in ACTIVE_STAGES:
+                        data["control"]="yours" if holder==source else "other" if holder else "available"
+                elif op=="draft.control":
+                    data=self.control(source,args)
+                elif op=="draft.editor":
+                    if args.get("active") is True:
+                        self.guard_owner(source)
                     data=self.lease(source,args.get("active"),args.get("draft"),args.get("field"))
                 else:
+                    if op in OWNER_OPS:
+                        self.guard_owner(source)
                     if op=="draft.edit" and isinstance(args.get("changes"),dict):
                         self.guard_editors(source,set(args["changes"]))
                     if op in ("exam.start","review.find","exam.submit","guide.cancel","guide.back","draft.discard"):
                         self.guard_editors(source)
+                    if op=="review.confirm" and source=="nextion":
+                        # Frozen panel still requires the operator to select and use the slot explicitly.
+                        args=dict(args,same_reading_confirmed=True)
                     data=self.dispatch(op,args)
+                    if op in ("exam.start","review.find") and self.phase in ACTIVE_STAGES and self.controller(source):
+                        self.claim_owner(source)
+                    elif self.phase not in ACTIVE_STAGES:
+                        self.owner=None
                     if op in ("draft.new","draft.edit","draft.discard","exam.start","exam.submit",
                               "review.confirm","language.report","person.pick","person.active"):
                         self.checkpoint()
@@ -549,6 +626,16 @@ class StationCore:
             return self.guide_submit(args)
         if op=="review.confirm":
             return self.save_selected(args)
+        if op=="import.reset":
+            self.require_draft(args,("waiting","review"),version=True)
+            if args.get("confirmed") is not True or not hasattr(self.receiver,"confirm_reset"):
+                raise ValueError("Bitte zuerst bestätigen.")
+            self.receiver.confirm_reset(args.get("reset"))
+            self.selected=None
+            self.advance("waiting")
+            self.refresh_import()
+            self.wait_note="Speicher-Reset bestätigt. Messung und Slot bewusst auswählen."
+            return
         if op in ("guide.choose","guide.back","guide.cancel","exam.function"):
             self.require_draft(args,("guide",),version=True)
             if op=="guide.choose":
@@ -672,7 +759,7 @@ class StationCore:
             raise ValueError("Bitte zuerst bestätigen.")
         if "printer" in self.jobs or monotonic()-self.last_print.get("novelty",-5)<4:
             raise ValueError("Doppelter Druckauftrag unterdrückt.")
-        self.job("printer","novelty",self.sender,*self.endpoint(),novelty_receipt(args["kind"],self.language))
+        self.job("printer","novelty",self.sender,*self.endpoint(),novelty_receipt(args["kind"],self.language,self.config["feed_mm"]))
         self.last_print["novelty"]=monotonic()
         self.novelty_note="Spassbeleg wird gedruckt ..."
 
@@ -806,9 +893,12 @@ class StationCore:
             guide={"step":g.step,"title":step.title,"instruction":{lang:g.instruction(lang) for lang in ("de","en")},
                    "help":step.help,"art":g.art,"choices":[label for label,_ in g.choices()],
                    "phase":step.phase,"rows":g.rows(),"functional":g.functional,"stored":g.stored,"blocked":g.blocked}
+            if g.step in ("start","running","low_continue","energise"):
+                # Keep the unchanged safety graph; only group its existing observations.
+                guide["actions"]={"primary":[3,4],"observations":[0,1,5,6]}
         get_row=lambda row: {"key":list(self.identity(row)),"slot":row["slot"],
                  "date":row["original"]["tester_date"],"verdict":row["original"]["verdict"],
-                 "class":row["original"]["protection_class"]}
+                 "class":row["original"]["protection_class"],"origin":self.measurement_origin(row)}
         import_source=state.source or self.receiver.mode
         art,body=WAIT_BODY.get(import_source,WAIT_BODY["usb"])
         return {"format":FORMAT,"epoch":self.epoch,"sequence":self.sequence,"language":self.language,

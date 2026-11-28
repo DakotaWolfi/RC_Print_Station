@@ -13,6 +13,7 @@ from station_config import load as receipt_settings, DENSITIES
 from benning_output import (compact_checks, measurement_summary, report_language, report_timestamp, result_kind,
                             selected_fields, visible_measurements)
 
+from escpos import feed_and_cut
 from i18n import locale, tr
 
 DESIGN = pathlib.Path(__file__).resolve().parent/"hmi/design"
@@ -62,13 +63,7 @@ def receipt(report, settings=None):
     settings=receipt_settings() if settings is None else settings
     m=DENSITIES[settings.get("density","default")]
     density=b"" if m is None else b"\x1d(K\x02\x001"+bytes([m])
-    dots=round(settings["feed_mm"]*8)
-    chunks=[]
-    while dots:
-        step=min(240,dots)
-        chunks.append(b"\x1bJ"+bytes([step]))
-        dots-=step
-    feed_and_cut=b"".join(chunks)+b"\x1dV\x00"
+    tail=feed_and_cut(settings["feed_mm"])
     header=graphic_header(language) if settings["graphic"] else bold+b"\x1d!\x11"+line("REPAIR CAFÉ")+b"\x1d!\x00"+line("RIEHEN")+normal
     raster=(DESIGN/f"result-{result_kind(report)}{'-en' if language=='en' else ''}.bin").read_bytes()
     prefix=b"\x1b@"+density+b"\x1bt\x02"+center+header+normal+raster
@@ -88,7 +83,7 @@ def receipt(report, settings=None):
         data.append(rule)
         data.extend(field(t(key),value) for key,value in compact_checks(report))
         data.extend((heavy,
-                     center,bold,line("FMI Printstation"),normal,left,feed_and_cut))
+                     center,bold,line("FMI Printstation"),normal,left,tail))
         return b"".join(data)
     return (prefix+
             line(t("Reparieren statt wegwerfen."))+heavy+
@@ -99,7 +94,7 @@ def receipt(report, settings=None):
             bold+line(t("PRÜFERGEBNIS"))+
             line(t("NICHT GEPRÜFT / NOT TESTED"))+normal+
             line(t("Keine Messwerte vorhanden."))+line()+heavy+center+
-            bold+line(t("FMI Printstation"))+normal+line(t("Repair Café Riehen | Entwicklung"))+left+feed_and_cut)
+            bold+line(t("FMI Printstation"))+normal+line(t("Repair Café Riehen | Entwicklung"))+left+tail)
 
 def send(host, port, data):
     with socket.create_connection((host, port), timeout=5) as conn:

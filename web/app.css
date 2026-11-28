@@ -48,3 +48,12 @@ dialog::backdrop { background:rgb(4 9 15 / 78%); }
 .mascot { display:grid; place-items:center; width:fit-content; margin:8px auto; background:transparent; border-color:transparent; color:var(--accent); }
 img.home-wolf { width:min(33vw,156px); height:min(24vh,150px); }
 dialog { max-height:88dvh; overscroll-behavior:contain; }
+img.guide { width:min(100%,696px); max-height:182px; }
+img.guide.symbol { width:min(26vw,148px); min-width:90px; max-height:148px; image-rendering:auto; }
+.guide-row img.guide.symbol { width:clamp(92px,27vw,138px); max-height:138px; flex:none; }
+@media (min-width:760px) {
+  .guide-cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+  .guide-cards .guide-row { flex-direction:column; align-items:flex-start; }
+  .guide-cards .guide-row img.guide { align-self:center; width:104px; max-height:104px; }
+}
+.novelty-preview { width:min(100%,390px); height:auto; display:block; margin:16px auto; image-rendering:pixelated; }

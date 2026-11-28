@@ -45,12 +45,15 @@
     await click("Netz + 500 V geprüft");
     await wait(()=>app.state.guide?.step==="start","start step");
     check(document.querySelectorAll('.guide-row').length===3,"Class I instruction rows missing");
+    window.v083Guide=JSON.stringify(app.state);
     await click("Hilfe");
     check(dialog.open,"Help overlay did not open");
     await click("Schliessen",dialog);
-    await click("Lo LOAD");
+    await click("Meldung oder Unsicherheit");
+    await click("Lo LOAD",dialog);
     await click("Geringe Last bestätigt");
-    await click("I LEAK blinkt");
+    await click("Meldung oder Unsicherheit");
+    await click("I LEAK blinkt",dialog);
     await click("Sicherheit bestätigt");
     await click("PASS");
     await click("STORE + Slot gesehen");
@@ -62,7 +65,6 @@
     functionSelect.dispatchEvent(new Event('change',{bubbles:true}));
     await wait(()=>app.state.guide.functional==="Ohne Befund","Function selection");
     await click("Zum Import");
-    await click("Bestätigen",dialog);
     await wait(()=>app.state.draft.stage==="waiting","import state");
     await fetch("/__test/import");
     await wait(()=>app.state.batch&&app.state.batch.source==="rs232","stored RS232 frame");
@@ -72,8 +74,27 @@
     await click("Bestätigen",dialog);
     await wait(()=>app.state.draft.stage==="report"&&app.loaded,"report");
     await click("PDF / QR-Code");
-    await wait(()=>app.pdf&&document.querySelector(".qr"),"PDF QR");
-    check(main.querySelector("a").href===app.pdf.url,"PDF download points to the token URL");
+    await wait(()=>app.pdf&&main.querySelector("a"),"PDF download");
+    check(main.querySelector("a").href===app.pdf.url+"?download=1","PDF download points to the attachment URL");
+    await click("QR-Code anzeigen");
+    check(document.querySelector(".qr"),"missing PDF QR");
+    await click("QR-Code ausblenden");
+    // Avoid opening the test shell's native file chooser. Use the clicked
+    // attachment URL for the browser request and inspect its response.
+    let download;
+    const link=main.querySelector("a");
+    link.addEventListener("click",event=>{
+        event.preventDefault();
+        download=fetch(event.currentTarget.href);
+    },{once:true});
+    link.click();
+    const attachment=await download;
+    check(attachment.ok&&attachment.headers.get("content-type")==="application/pdf","PDF attachment response");
+    check(/^attachment; filename="FMI-\d{4}-\d{2}-\d{2}-.+-R\d+\.pdf"$/.test(
+        attachment.headers.get("content-disposition")||""),"dated, unique PDF filename");
+    check((await attachment.text()).startsWith("%PDF"),"downloaded PDF content");
+    check((await (await fetch("/__test/downloads")).json()).count===1,"PDF attachment navigation");
+    check(!document.querySelector(".qr"),"PDF QR toggle");
     check(!main.innerText.includes("RISO"),"QR page repeated measurements");
     await click("Zurück");
     await click("Beleg drucken");
@@ -100,6 +121,14 @@
     await click("Werkstatt-Meilensteine");
     await wait(()=>heading()==="Werkstatt-Meilensteine","achievement route");
     await wait(()=>app.state.personality.achievements.pets===1,"pet count persists");
-    return {ok:true,report:app.state.report,printed:1,verifiedAnonymous:true,view:heading()};
+    document.getElementById("back").click();
+    await click("Spassbeleg");
+    await click("Awoo-Busse");
+    await wait(()=>document.querySelector(".novelty-preview")?.naturalWidth===504,"printed raster preview");
+    await click("Spassbeleg drucken");
+    await click("Bestätigen",dialog);
+    await wait(()=>app.state.novelty_note.includes("gesendet"),"novelty print completion");
+    check((await (await fetch("/__test/prints")).json()).count===2,"official and novelty print count");
+    return {ok:true,report:app.state.report,printed:2,verifiedAnonymous:true,view:heading()};
 })().then(result=>window.v082Result=JSON.stringify(result),
           error=>window.v082Result=JSON.stringify({ok:false,error:String(error)}))

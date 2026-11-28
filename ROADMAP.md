@@ -2,6 +2,13 @@
 
 The station has a physically validated v0.6.2 baseline for Class I output. The v0.7 branch adds bilingual operation and has a separate [physical acceptance checklist](hmi/VALIDATION-v07.md). Older milestones remain below.
 
+## v0.8.3 physical acceptance fixes
+
+- [x] Keypad interactions, shared examination ownership, native scroll/calibration and software validation.
+- [x] BENNING slot reuse, unique PDF downloads and illustrated novelty receipts with verified raster and cut ordering.
+- [ ] Repeat physical acceptance on HDMI, browser, BENNING and Epson and run the independent operator walkthrough.
+- [ ] Reproduce and resolve any remaining cold-boot touch issues on the deployed panel.
+
 ## v0.8.2 reliability and usability
 
 - [x] Qt widget callback and revision refresh fixes.

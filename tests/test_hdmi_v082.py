@@ -3,10 +3,11 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest import TestCase, skipIf
+from unittest.mock import patch
 
 try:
-    from PyQt5.QtCore import Qt, QPoint, QPointF
-    from PyQt5.QtGui import QWheelEvent
+    from PyQt5.QtCore import QEvent, Qt, QPoint, QPointF
+    from PyQt5.QtGui import QMouseEvent, QWheelEvent
     from PyQt5.QtTest import QTest
     from PyQt5.QtWidgets import QApplication, QPushButton
 except ImportError:
@@ -42,6 +43,7 @@ class HDMIFlow(TestCase):
             packet=packet.copy()
             source=packet.pop("client")
             return self.core.command(packet,source)
+        self.transport=transport
         self.surface=Surface(transport=transport)
         self.window=RotatedSurface(self.surface,0)
         self.surface.rotation=Rotation("HDMI-A-1",self.window.change_rotation,path=root/"rotation.json")
@@ -103,8 +105,10 @@ class HDMIFlow(TestCase):
         self.wait(lambda:self.surface.overlay is not None)
         self.assertFalse(self.button("PASS"))
         self.click("Schliessen")
+        self.click("Meldung oder Unsicherheit")
         self.click("Lo LOAD")
         self.click("Geringe Last bestätigt")
+        self.click("Meldung oder Unsicherheit")
         self.click("I LEAK blinkt")
         self.click("Sicherheit bestätigt")
         self.click("PASS")
@@ -132,6 +136,11 @@ class HDMIFlow(TestCase):
         self.wait(lambda:self.surface.url.startswith("http"))
         self.assertEqual(self.surface.view,"download")
         self.assertIsNone(self.button("PDF öffnen"))
+        with patch.dict("os.environ",{"FMI_PDF_EXPORT_DIR":str(Path(self.temp.name)/"Downloads")}):
+            self.click("PDF lokal speichern")
+            self.click("Bestätigen")
+            directory=Path(self.temp.name)/"Downloads"
+            self.wait(lambda:any(directory.glob("FMI-*-V082-01-R*.pdf")))
         self.click("Zurück")
         self.click("Beleg drucken")
         self.click("Bestätigen")
@@ -180,3 +189,157 @@ class HDMIFlow(TestCase):
         wheel=QWheelEvent(p,p,QPoint(),QPoint(0,-240),Qt.NoButton,Qt.NoModifier,Qt.NoScrollPhase,False)
         QApplication.sendEvent(target,wheel)
         self.wait(lambda:self.surface.scroll.verticalScrollBar().value()>0)
+
+    def test_all_digits_on_each_keypad_with_actual_clicks(self):
+        from hdmi_keyboard import Keyboard
+        expected={"number":"0123456789","ticket":"000100020123456789","ipv4":"198.230.45.67"}
+        for mode,keys in expected.items():
+            with self.subTest(mode=mode):
+                self.surface.enter_text("Keyboard test","",32,lambda _:None,mode=mode)
+                self.app.processEvents()
+                keyboard=self.surface.overlay
+                self.assertIsInstance(keyboard,Keyboard)
+                for digit in keys:
+                    self.click(digit)
+                self.assertEqual(keyboard.edit.text(),keys)
+                self.assertTrue(keyboard.done_button.isEnabled())
+                self.click("Übernehmen")
+                self.assertIsNone(self.surface.overlay)
+
+    def test_alphabet_symbol_navigation_and_password_controls(self):
+        self.surface.enter_text("Keyboard test","",220,lambda _:None,secret=True)
+        self.app.processEvents()
+        keyboard=self.surface.overlay
+        self.click("Anzeigen")
+        self.assertEqual(keyboard.edit.echoMode(),keyboard.edit.Normal)
+        self.click("Verbergen")
+        self.assertEqual(keyboard.edit.echoMode(),keyboard.edit.Password)
+
+        def type_layer(chars):
+            for value in dict.fromkeys(chars):
+                self.wait(lambda:any(b.isVisible() and b.property("keyValue")==value
+                                     for b in keyboard.findChildren(QPushButton)))
+                key=next(b for b in keyboard.findChildren(QPushButton)
+                         if b.isVisible() and b.property("keyValue")==value)
+                keyboard.edit.clear()
+                QTest.mouseClick(key,Qt.LeftButton)
+                self.assertEqual(keyboard.edit.text(),value)
+
+        type_layer("qwertzuiopasdfghjklyxcvbnm")
+        self.click("⇧")
+        QTest.mouseClick(next(b for b in keyboard.findChildren(QPushButton)
+                             if b.isVisible() and b.text()=="A"),Qt.LeftButton)
+        self.assertTrue(keyboard.edit.text().endswith("A"))
+        self.click("←")
+        self.click("→")
+        self.click("⌫")
+        self.click("Leerzeichen")
+        self.assertTrue(keyboard.edit.text().endswith(" "))
+        self.click("123")
+        from hdmi_keyboard import MORE,SYMBOLS
+        type_layer("".join(SYMBOLS))
+        self.click("#+=")
+        type_layer("".join(MORE))
+        self.click("ABC")
+        self.app.processEvents()
+        from hdmi_keyboard import ACCENTS
+        for base,variants in ACCENTS.items():
+            for variant in variants:
+                letter=next(b for b in keyboard.findChildren(QPushButton)
+                            if b.isVisible() and b.property("keyValue")==base)
+                keyboard.edit.clear()
+                QTest.mousePress(letter,Qt.LeftButton)
+                self.wait(keyboard.accent_row.isVisible)
+                QTest.mouseRelease(letter,Qt.LeftButton)
+                accent=next(b for b in keyboard.accent_row.findChildren(QPushButton)
+                            if b.isVisible() and b.property("keyValue")==variant)
+                QTest.mouseClick(accent,Qt.LeftButton)
+                self.assertEqual(keyboard.edit.text(),variant)
+        self.click("Abbrechen")
+        self.assertIsNone(self.surface.overlay)
+
+    def test_drag_scroll_suppresses_a_click_after_90_degree_rotation(self):
+        self.surface.rotation.start(90)
+        self.surface.rotation.done(True)
+        self.surface.route("settings")
+        self.click("Prüfpersonen")
+        for i in range(24):
+            self.core.operators.rename(f"Bench {i:02}")
+        self.surface.open_people()
+        bar=self.surface.scroll.verticalScrollBar()
+        self.wait(lambda:bar.maximum()>100)
+        edit=self.button("Bearbeiten")
+        start=self.window.mapFromScene(self.window.proxy.mapToScene(
+            edit.mapTo(self.surface,edit.rect().center())))
+        viewport=self.window.viewport()
+        end=start+QPoint(115,0)
+        QTest.mousePress(viewport,Qt.LeftButton,pos=start)
+        QApplication.sendEvent(viewport,QMouseEvent(QEvent.MouseMove,QPointF(end),
+                                                    Qt.NoButton,Qt.LeftButton,Qt.NoModifier))
+        QTest.mouseRelease(viewport,Qt.LeftButton,pos=end)
+        self.assertGreater(bar.value(),70)
+        self.assertIsNone(self.surface.overlay)
+
+    def test_integrated_calibration_and_saved_cold_mapping_at_90(self):
+        from hdmi_touch import TouchManager
+        from touch_calibration import apply
+        root=Path(self.temp.name)
+        identity="usb-fixture-1"
+        self.surface.rotation.start(90)
+        self.surface.rotation.done(True)
+        choices=lambda preferred:[(identity,"/dev/input/eventFixture")]
+        def reader(*args):
+            return SimpleNamespace(close=lambda:None)
+        manager=TouchManager(self.window,self.surface,"HDMI-A-1",config=root/"touch.json",devices=choices,reader=reader)
+        self.surface.touch_manager=manager
+        self.addCleanup(manager.detach)
+        self.surface.route("display")
+        self.click("Touchscreen kalibrieren")
+        self.wait(lambda:manager.collection is not None)
+        for _ in range(5):
+            page=manager.collection[0]
+            dest=self.window.mapFromScene(self.window.proxy.mapToScene(QPointF(page.mapTo(self.surface,page.target()))))
+            x=dest.x()/self.window.viewport().width()
+            y=dest.y()/self.window.viewport().height()
+            manager.point(QEvent.TouchEnd,(1-x,y))
+        match=self.button("Bestätigen")
+        self.assertIsNotNone(match)
+        actual=self.window.mapFromScene(self.window.proxy.mapToScene(QPointF(match.mapTo(self.surface,match.rect().center()))))
+        point=(1-actual.x()/self.window.viewport().width(),actual.y()/self.window.viewport().height())
+        manager.point(QEvent.TouchBegin,point)
+        manager.point(QEvent.TouchEnd,point)
+        self.assertTrue((root/"touch.json").exists())
+        manager.timer.stop()
+        manager.detach()
+        rebooted=TouchManager(self.window,self.surface,"HDMI-A-1",config=root/"touch.json",devices=choices,reader=reader)
+        self.addCleanup(rebooted.detach)
+        self.assertTrue(rebooted.raw)
+        for point in ((0,0),(1,0),(1,1),(0,1)):
+            actual=apply(rebooted.matrix,point)
+            self.assertAlmostEqual(actual[0],1-point[0])
+            self.assertAlmostEqual(actual[1],point[1])
+
+    def test_frontend_close_and_expired_owner_can_resume_with_widget_click(self):
+        from hdmi_frontend import RotatedSurface, Surface
+        from time import monotonic
+        self.click("Geführte Prüfung")
+        self.enter("Prüfnummer","0014")
+        self.enter("Gerätebeschreibung","Bench kettle")
+        self.click("Prüfung beginnen")
+        self.wait(lambda:self.core.phase=="guide" and self.core.live_owner()==self.surface.client)
+        old=self.surface.client
+        self.window.close()
+        self.surface=Surface(transport=self.transport)
+        self.window=RotatedSurface(self.surface,0)
+        self.window.resize(480,800)
+        self.window.show()
+        self.addCleanup(self.window.close)
+        self.wait(lambda:self.surface.state.get("control")=="other")
+        self.assertIsNone(self.button("Ohne Befund"))
+        with patch("station_core.monotonic",return_value=monotonic()+21):
+            self.click("An dieser Anzeige fortsetzen")
+            self.click("Bestätigen")
+            self.click("Ohne Befund")
+            self.wait(lambda:self.core.guide.step=="kind")
+            self.assertNotEqual(old,self.core.live_owner())
+            self.assertEqual(self.core.draft["ticket"],"0014")

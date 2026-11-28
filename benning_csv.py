@@ -101,7 +101,7 @@ def text_fields(line):
         raise ImportErrorDetail("Ungültige CSV-Feldbegrenzung.") from None
 
 
-def parse_csv(data, encoding="auto", *, wire=False):
+def parse_csv(data, encoding="auto", *, wire=False, allow_empty=False):
     """Return encoding evidence and validated records. Live payloads require CRLF."""
     if not data or len(data)>MAX_BYTES:
         raise ImportErrorDetail("CSV-Export leer oder zu gross.")
@@ -155,7 +155,7 @@ def parse_csv(data, encoding="auto", *, wire=False):
             seen.add(slot)
         except ImportErrorDetail as exc:
             raise ImportErrorDetail(f"CSV-Zeile {index+1}: {exc}") from None
-    if not records:
+    if not records and not allow_empty:
         raise ImportErrorDetail("CSV enthält keine Messungen.")
     return name,records
 

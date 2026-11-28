@@ -8,11 +8,11 @@ import sys
 from time import monotonic
 from uuid import uuid4
 
-from PyQt5.QtCore import QEvent, QRect, QSize, Qt, QTimer
+from PyQt5.QtCore import QEvent, QRect, QSize, Qt, QTimer, QStandardPaths
 from PyQt5.QtGui import QColor, QIcon, QPainter, QPixmap, QTransform
 from PyQt5.QtWidgets import (
     QApplication, QFrame, QGridLayout, QHBoxLayout, QLabel,
-    QGraphicsScene, QGraphicsView, QPushButton, QScrollArea, QScroller, QSizePolicy, QStackedLayout,
+    QGraphicsScene, QGraphicsView, QPushButton, QScrollArea, QSizePolicy, QStackedLayout,
     QStyle, QStyleOptionButton, QStylePainter, QVBoxLayout, QWidget,
 )
 
@@ -20,8 +20,10 @@ from benning_output import RESULTS, result_kind, measurement_summary, visible_me
 from benning_store import PHASES
 from i18n import tr
 from hdmi_keyboard import Keyboard
+from hdmi_touch import DragScroll, TouchManager
+from pdf_export import pdf_filename, save_pdf
 from display_rotation import ANGLES, Rotation
-from novelty import ITEMS
+from novelty import ITEMS, preview_path
 from station_ipc import DEFAULT_SOCKET, request
 
 ROOT=Path(__file__).resolve().parent
@@ -145,6 +147,9 @@ class Surface(QWidget):
         self.last_signature=None
         self.debounce=0
         self.interacting=False
+        self.dragging_pointer=False
+        self.touch_manager=None
+        self.export_job=None
         self.edit_depth=0
         self.editor_draft=None
         self.lease_at=0
@@ -213,7 +218,6 @@ class Surface(QWidget):
         self.scroll=QScrollArea()
         self.scroll.setWidgetResizable(True)
         self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        QScroller.grabGesture(self.scroll.viewport(),QScroller.TouchGesture)
         layout.addWidget(self.scroll,1)
         self.toast=label("")
         self.toast.setStyleSheet("color:#ffcf94")
@@ -287,6 +291,13 @@ class Surface(QWidget):
             self.notify("Helligkeit wird von diesem Display nicht unterstützt.")
 
     def pump(self):
+        if self.export_job and self.export_job.done():
+            try:
+                dest=self.export_job.result()
+                self.notify(self.t("PDF gespeichert: {path}",path=dest))
+            except (OSError,ValueError):
+                self.notify("PDF konnte nicht gespeichert werden.")
+            self.export_job=None
         config=self.state.get("settings",{})
         if config:
             self.dim(config["brightness"])
@@ -392,11 +403,11 @@ class Surface(QWidget):
                 self.pet_amount.setText(self.t("Streicheleinheiten: {count}",count=personality.get("pets") or 0))
                 self.pet_response.setText(self.t(personality["pet_reply"]))
             return
-        if (signature!=self.last_signature and not self.edit_depth and
+        if (signature!=self.last_signature and not self.edit_depth and not self.dragging_pointer and
                 (not self.interacting or monotonic()>self.debounce) and
                 self.scroll.verticalScrollBar().isSliderDown() is False):
             self.last_signature=signature
-            if self.view in ("pet","novelty","achievements") and (state.get("settings",{}).get("professional") or work.get("stage") in ACTIVE):
+            if self.view in ("pet","novelty","novelty_preview","achievements") and (state.get("settings",{}).get("professional") or work.get("stage") in ACTIVE):
                 self.view="work"
             self.render()
 
@@ -486,7 +497,6 @@ class Surface(QWidget):
         text=QScrollArea()
         text.setWidgetResizable(True)
         text.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        QScroller.grabGesture(text.viewport(),QScroller.TouchGesture)
         content=label(self.t(body))
         content.setAlignment(Qt.AlignTop|Qt.AlignLeft)
         text.setWidget(content)
@@ -537,7 +547,6 @@ class Surface(QWidget):
         scroll=QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        QScroller.grabGesture(scroll.viewport(),QScroller.TouchGesture)
         inner=QWidget()
         choices=QVBoxLayout(inner)
         selected=[current]
@@ -611,14 +620,18 @@ class Surface(QWidget):
     def actions(self,layout,items,limit=2):
         layout.addWidget(self.columns([button(self.t(name),fn,primary) for name,fn,primary in items],limit=limit))
 
-    def art(self,key):
+    def art(self,key,*,card=False):
         lang=self.state.get("language")
         path=NATIVE/f"g_{key}_en.png"
         if lang!="en" or not path.exists():
             path=NATIVE/f"g_{key}.png"
         item=QLabel()
         item.setAlignment(Qt.AlignCenter)
-        item.setPixmap(QPixmap(str(path)).scaled(min(420,max(320,self.width()-54)),115,Qt.KeepAspectRatio,Qt.SmoothTransformation))
+        icon=ROOT/"assets/benning"/f"{key}.png"
+        if icon.is_file():
+            path=icon
+        size=(114,114) if card else (min(700,max(250,self.width()-62)),180)
+        item.setPixmap(QPixmap(str(path)).scaled(*size,Qt.KeepAspectRatio,Qt.SmoothTransformation))
         item.setAccessibleName("BENNING ST 725")
         return item
 
@@ -646,7 +659,7 @@ class Surface(QWidget):
                    "connection":self.render_connection,"download":self.render_download,"achievements":self.render_achievements,
                    "printer":self.render_printer,"display":self.render_display,
                    "tester":self.render_tester,"personality":self.render_personality,"system":self.render_system,
-                   "report":self.render_report,"pet":self.render_pet,"info":self.render_info,"novelty":self.render_novelty}
+                   "report":self.render_report,"pet":self.render_pet,"info":self.render_info,"novelty":self.render_novelty,"novelty_preview":self.render_novelty_preview}
             if self.view in menus:
                 menus[self.view](v)
             else:
@@ -666,15 +679,31 @@ class Surface(QWidget):
     def render_work(self,v):
         d=self.state.get("draft")
         stage=d.get("stage") if d else None
+        if stage in ACTIVE and self.state.get("control") in ("other","available"):
+            self.section(v,"Aktive Prüfung")
+            if self.state["control"]=="other":
+                v.addWidget(label(self.t("Diese Prüfung wird an einer anderen Anzeige bedient.")))
+                v.addWidget(label(self.t("Bei Verbindungsverlust wird Fortsetzen nach 20 Sekunden angeboten.")))
+            else:
+                v.addWidget(label(self.t("Prüfaufbau und Anzeige am Tester vor dem Fortsetzen erneut prüfen.")))
+                self.actions(v,[("An dieser Anzeige fortsetzen",lambda:self.question(
+                    "Prüfung auf dieser Anzeige fortsetzen?",lambda:self.draft_action(
+                    "draft.control",{"action":"resume","confirmed":True})),True)])
+            return
         if stage=="entry":
             return self.render_entry(v,d)
         if stage=="guide":
-            return self.render_guide(v,d)
-        if stage in ("waiting","review"):
-            return self.render_import(v,d,stage=="review")
-        if stage=="report" and self.state.get("report")!=getattr(self,"dismissed",None):
-            return self.render_report(v)
-        self.render_home(v)
+            self.render_guide(v,d)
+        elif stage in ("waiting","review"):
+            self.render_import(v,d,stage=="review")
+        elif stage=="report" and self.state.get("report")!=getattr(self,"dismissed",None):
+            self.render_report(v)
+        else:
+            self.render_home(v)
+        if stage in ACTIVE and self.state.get("control")=="yours":
+            self.actions(v,[("Anzeige wechseln",lambda:self.question(
+                "Prüfung für eine andere Anzeige freigeben?",lambda:self.draft_action(
+                "draft.control",{"action":"release","confirmed":True})),False)])
 
     def render_home(self,v):
         self.section(v,"FMI Printstation","Prüfprotokolle")
@@ -727,17 +756,22 @@ class Surface(QWidget):
             v.addWidget(self.art(g["art"]))
         if not (g["step"]=="start" and g.get("rows")):
             v.addWidget(label(g["instruction"][self.state["language"]]))
+        cards=[]
+        horizontal=self.width()>=760
         for art,title,body in g.get("rows",()):
-            row=QHBoxLayout()
+            card=QWidget()
+            row=QVBoxLayout(card) if horizontal else QHBoxLayout(card)
+            row.setContentsMargins(0,0,0,0)
             if art:
-                image=self.art(art)
-                image.setPixmap(image.pixmap().scaled(88,48,Qt.KeepAspectRatio,Qt.SmoothTransformation))
+                image=self.art(art,card=True)
                 row.addWidget(image)
             copy=QVBoxLayout()
             copy.addWidget(label(self.t(title),role="section"))
             copy.addWidget(label(self.t(body)))
             row.addLayout(copy,1)
-            v.addLayout(row)
+            cards.append(card)
+        if cards:
+            v.addWidget(self.columns(cards,limit=3) if horizontal else self.columns(cards,limit=1))
         if g["step"]=="exam":
             if not self.people and d["examiner"] and not getattr(self,"people_requested",False):
                 self.people_requested=True
@@ -755,9 +789,20 @@ class Surface(QWidget):
             self.actions(v,[("Zum Import" if g["stored"] and not g["blocked"] else "Unvollständig speichern",
                              lambda:self.draft_action("exam.submit"),True)])
         else:
-            self.actions(v,[(choice,lambda i=i,step=g["step"]:self.call("guide.choose",dict(ref,choice=i,step=step)),
-                             i==0 and g["step"] not in ("start","running","low_continue","energise","warnings"))
-                            for i,choice in enumerate(g["choices"])],limit=3)
+            def choose(index):
+                self.call("guide.choose",dict(ref,choice=index,step=g["step"]))
+            options=g.get("actions")
+            if options:
+                indices=options["observations"]
+                actions=[(g["choices"][i],lambda i=i:choose(i),False) for i in options["primary"]]
+                actions.append(("Meldung oder Unsicherheit",lambda:self.select(
+                    "Anzeige am BENNING",tuple(g["choices"][i] for i in indices),-1,
+                    lambda n:choose(indices[n])),False))
+                self.actions(v,actions,limit=3)
+                v.addWidget(label(self.t("Während der Messung warten. Danach Ergebnis oder Meldung wählen."),role="muted"))
+            else:
+                self.actions(v,[(choice,lambda i=i:choose(i),i==0)
+                                for i,choice in enumerate(g["choices"])],limit=3)
         self.actions(v,[("Zurück",lambda:self.draft_action("guide.back"),False),
                         ("Hilfe",lambda:self.dialog("Hilfe",g["help"]),False),
                         ("Abbrechen",lambda:self.question("Prüfung abbrechen?",
@@ -774,6 +819,13 @@ class Surface(QWidget):
         note=self.state.get("wait_note")
         if note:
             v.addWidget(label(self.t(note),role="muted"))
+        reset=self.state["receiver"].get("reset")
+        if self.state["receiver"].get("state")=="reset-pending" and reset:
+            self.actions(v,[("Speicher-Reset bestätigen",lambda:self.question(
+                "Speicher am BENNING geleert und USB-Export vollständig empfangen?",
+                lambda:self.draft_action("import.reset",{"reset":reset,"confirmed":True})),False)])
+            self.actions(v,[("Zurück",lambda:self.draft_action("review.back"),False)])
+            return
         selected=self.state.get("selected")
         if review:
             if selected:
@@ -786,7 +838,11 @@ class Surface(QWidget):
                 key=row["key"]
                 entries.append(button(tag,lambda _=False,k=key:self.draft_action("review.select",{"record":k})))
             if selected:
-                self.actions(v,[("Messung bestätigen",lambda:self.draft_action("review.confirm",{"record":selected["key"]}),True)])
+                same=selected.get("origin")=="identical"
+                def accept():
+                    self.draft_action("review.confirm",{"record":selected["key"],"same_reading_confirmed":same})
+                self.actions(v,[("Messung bestätigen",lambda:self.question(
+                    "Identischer Datensatz. Wurde die Prüfung neu durchgeführt?",accept) if same else accept(),True)])
             if entries:
                 v.addWidget(self.columns(entries))
                 controls=[]
@@ -897,7 +953,19 @@ class Surface(QWidget):
             v.addWidget(label(self.t("Bitte warten ..." if base else "PDF-Link nicht verfügbar. Bitte erneut öffnen.")))
             if base:
                 v.addWidget(button(self.t("Aktualisieren"),lambda:self.open_download(self.url_report)))
+        if self.report and self.loaded_report==self.url_report:
+            self.actions(v,[("PDF lokal speichern",self.confirm_export,True)])
         self.actions(v,[("Zurück",self.go_back,False)])
+
+    def confirm_export(self):
+        if self.export_job or self.loaded_report!=self.url_report:
+            return
+        directory=Path(os.environ.get("FMI_PDF_EXPORT_DIR") or
+                       QStandardPaths.writableLocation(QStandardPaths.DownloadLocation))
+        report,ident=self.report,self.url_report
+        target=directory/pdf_filename(report,ident)
+        self.question(self.t("PDF hier speichern? {path}",path=target),
+                      lambda:setattr(self,"export_job",self.pool.submit(save_pdf,directory,report,ident)))
 
     def render_connection(self,v):
         self.section(v,"Web-Verbindung")
@@ -1040,8 +1108,27 @@ class Surface(QWidget):
         if self.rotation:
             self.actions(v,[(f"{n}°"+(" ✓" if n==self.rotation.saved else ""),
                              lambda n=n:self.preview_rotation(n),False) for n in ANGLES])
-        self.actions(v,[("Touchscreen kalibrieren",lambda:self.dialog("Touchscreen kalibrieren",
-                        "Kalibrierung am Linux-Gerät mit tools/touch_calibrate.py starten."),False)])
+        self.actions(v,[("Touchscreen kalibrieren",self.calibrate_touch,False)])
+        if self.touch_manager and self.touch_manager.raw:
+            self.actions(v,[("Touch-Kalibrierung zurücksetzen",lambda:self.question(
+                "Gespeicherte Touch-Kalibrierung zurücksetzen?",self.reset_touch),False)])
+
+    def reset_touch(self):
+        try:
+            self.touch_manager.reset()
+        except OSError:
+            self.notify("Anzeigeeinstellung konnte nicht gespeichert werden.")
+
+    def calibrate_touch(self):
+        manager=self.touch_manager
+        devices=manager.devices(manager.preferred) if manager else []
+        if not devices:
+            self.dialog("Touchscreen kalibrieren","Kein unterstützter Linux-Touchscreen gefunden.")
+        elif len(devices)==1:
+            manager.start(*devices[0])
+        else:
+            self.select("Touchscreen auswählen",tuple(d[1]+" · "+d[0] for d in devices),-1,
+                        lambda n:manager.start(*devices[n]))
 
     def preview_rotation(self,angle):
         if self.overlay or not self.rotation:
@@ -1161,9 +1248,27 @@ class Surface(QWidget):
         if self.state.get("novelty_note"):
             v.addWidget(label(self.t(self.state["novelty_note"]),role="muted"))
         for kind,title in ITEMS.items():
-            v.addWidget(button(title,lambda _=False,k=kind:self.question("Spassbeleg drucken?",
-                                      lambda:self.call("novelty.print",{"kind":k,"confirmed":True}))))
-        self.actions(v,[("Zurück",lambda:self.route("pet"),False)])
+            v.addWidget(button(self.t(title),lambda kind=kind:self.open_novelty(kind)))
+        self.actions(v,[("Zurück",self.go_back,False)])
+
+    def open_novelty(self,kind):
+        self.novelty_kind=kind
+        self.route("novelty_preview")
+
+    def render_novelty_preview(self,v):
+        kind=self.novelty_kind
+        self.section(v,ITEMS[kind],"Kein Prüfprotokoll oder Nachweis.")
+        image=QLabel()
+        image.setAlignment(Qt.AlignCenter)
+        bitmap=QPixmap(str(preview_path(kind,self.state["language"])))
+        image.setPixmap(bitmap.scaledToWidth(min(375,self.width()-65),Qt.SmoothTransformation))
+        image.setAccessibleName(self.t("Spassbeleg-Vorschau"))
+        v.addWidget(image)
+        self.actions(v,[("Spassbeleg drucken",lambda:self.question("Spassbeleg drucken?",
+            lambda:self.call("novelty.print",{"kind":kind,"confirmed":True})),True),
+            ("Zurück",self.go_back,False)])
+        if self.state.get("novelty_note"):
+            v.addWidget(label(self.t(self.state["novelty_note"]),role="muted"))
 
     def resizeEvent(self,event):
         self.brand.setVisible(self.width()>=650)
@@ -1188,6 +1293,7 @@ class RotatedSurface(QGraphicsView):
         self.setFrameShape(QFrame.NoFrame)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.gesture=DragScroll(self,surface)
 
     def change_rotation(self,angle):
         self.angle=angle
@@ -1216,6 +1322,7 @@ def main():
     p.add_argument("--window",action="store_true")
     p.add_argument("--screen",default="")
     p.add_argument("--size")
+    p.add_argument("--touch-device",default=os.environ.get("FMI_HDMI_TOUCH_DEVICE",""))
     p.add_argument("--rotation",type=int,choices=(0,90,180,270),default=0)
     p.add_argument("--backlight",default=os.environ.get("FMI_HDMI_BACKLIGHT",""))
     a=p.parse_args()
@@ -1235,7 +1342,11 @@ def main():
             window.winId()
             window.windowHandle().setScreen(screen)
     window.show() if a.window else window.showFullScreen()
-    return app.exec()
+    surface.touch_manager=TouchManager(window,surface,a.screen,a.touch_device)
+    try:
+        return app.exec()
+    finally:
+        surface.touch_manager.detach()
 
 
 if __name__=="__main__":

@@ -3,10 +3,12 @@ from dataclasses import dataclass, replace
 import os
 from pathlib import Path
 import sqlite3
-from threading import Event, Lock, Thread
+from threading import Event, Lock, RLock, Thread
 import time
+from uuid import uuid4
 
 from benning_csv import ImportErrorDetail, MAX_BYTES, validate_encoding
+from benning_store import StorageReset
 from benning_serial import ONBOARD, PrintReceiver, onboard_reserved
 
 USB_PATH = "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0"
@@ -87,6 +89,7 @@ class ReceiverStatus:
     detail: str = ""
     batch: int | None = None
     transport: str | None = None
+    reset: str | None = None
 
 
 class Receiver:
@@ -106,6 +109,8 @@ class Receiver:
         self.accept_reset=accept_reset
         self._stop=Event()
         self._lock=Lock()
+        self._frames=RLock()
+        self._pending_reset=None
         self._thread=None
         self._status=ReceiverStatus(mode if mode in ("file","simulation") else "searching")
 
@@ -117,8 +122,9 @@ class Receiver:
     def set_mode(self, mode):
         if mode not in MODES:
             raise ValueError("Ungültige Eingabe.")
-        with self._lock:
+        with self._frames,self._lock:
             if self._mode!=mode:
+                self._pending_reset=None
                 self._mode=mode
                 self._generation+=1
                 self._status=ReceiverStatus(mode if mode in ("file","simulation") else "searching")
@@ -194,8 +200,10 @@ class Receiver:
                 if generation!=self._generation:
                     return
                 if chunk:
-                    frame.feed(chunk,at)
-                    self._set("receiving",received=len(frame.data),detail="")
+                    with self._frames:
+                        self._pending_reset=None
+                        frame.feed(chunk,at)
+                        self._set("receiving",received=len(frame.data),detail="",reset=None)
                 elif frame.last is not None and at-frame.last>=self.idle:
                     self._finish(frame,source)
                     frame=Capture()
@@ -213,14 +221,30 @@ class Receiver:
             else:
                 raise
 
+    def confirm_reset(self,ident):
+        with self._frames:
+            if (not self._pending_reset or self.status.state!="reset-pending" or
+                    ident!=self._pending_reset[0]):
+                raise ValueError("Kein aktueller Speicher-Reset zur Bestätigung.")
+            _,data=self._pending_reset
+            result=self.store.import_bytes(data,"usb",self.encoding,accept_reset=True)
+            self._pending_reset=None
+            self._set("imported",received=len(data),batch=result.batch,detail="",reset=None)
+
     def _finish(self,frame,source):
-        try:
-            data=frame.take()
-            if self.raw_capture:
-                self.raw_capture(data)
-            result=self.store.import_bytes(data,source,self.encoding,accept_reset=self.accept_reset)
-            self.accept_reset=False
-            self._set("imported",received=len(data),batch=result.batch,detail="")
-        except (ImportErrorDetail,sqlite3.Error,OSError) as exc:
-            message=str(exc) if isinstance(exc,ImportErrorDetail) else "Import konnte nicht gespeichert werden."
-            self._set("error",detail=message)
+        with self._frames:
+            self._pending_reset=None
+            try:
+                data=frame.take()
+                if self.raw_capture:
+                    self.raw_capture(data)
+                result=self.store.import_bytes(data,source,self.encoding,accept_reset=self.accept_reset)
+                self.accept_reset=False
+                self._set("imported",received=len(data),batch=result.batch,detail="",reset=None)
+            except StorageReset as exc:
+                ident=uuid4().hex
+                self._pending_reset=(ident,data)
+                self._set("reset-pending",detail=str(exc),reset=ident)
+            except (ImportErrorDetail,sqlite3.Error,OSError) as exc:
+                message=str(exc) if isinstance(exc,ImportErrorDetail) else "Import konnte nicht gespeichert werden."
+                self._set("error",detail=message,reset=None)

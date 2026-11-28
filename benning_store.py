@@ -53,6 +53,10 @@ class ImportResult:
     modified: tuple[str,...]
 
 
+class StorageReset(ImportErrorDetail):
+    """A structurally valid USB export omits previously observed slots."""
+
+
 class Measurements:
     def __init__(self,path):
         self.path=path
@@ -73,7 +77,7 @@ class Measurements:
             raise ValueError("Unbekannte BENNING-Quelle.")
         is_csv=source in ("usb","file-csv")
         if is_csv:
-            code,records=parse_csv(data,encoding,wire=source=="usb")
+            code,records=parse_csv(data,encoding,wire=source=="usb",allow_empty=source=="usb")
         else:
             code,records=parse_printout(data,"cp437" if encoding=="auto" else encoding,
                                         wire=source=="rs232")
@@ -90,12 +94,12 @@ class Measurements:
             prev={row["slot"]:row["record_id"] for row in conn.execute(
                 "SELECT slot,record_id FROM benning_slots WHERE source=?",(source,))}
             removed=prev.keys()-new.keys()
-            if is_csv and source=="usb" and removed and not accept_reset:
-                raise ImportErrorDetail("USB-Export enthält weniger Slots. RECALL wiederholen oder Reset prüfen.")
+            if is_csv and source=="usb" and (removed or not new) and not accept_reset:
+                raise StorageReset("USB-Export enthält weniger Slots. RECALL wiederholen oder Reset prüfen.")
             added=tuple(sorted(new.keys()-prev.keys()))
             modified=tuple(sorted(slot for slot in new.keys() & prev.keys() if new[slot][1]!=prev[slot]))
             changes=added+modified
-            suggested=max(changes or new.keys(), key=lambda slot:(new[slot][0].iso_date,slot))
+            suggested=max(changes or new.keys(), key=lambda slot:(new[slot][0].iso_date,slot),default=None)
             if not prev or removed and is_csv:
                 reason="baseline"
             elif not changes:
@@ -169,7 +173,7 @@ class Measurements:
             record_use(conn,device,examiner_id,report["created"])
         return ident,report
 
-    def create_report(self,ticket,device,phase,selection,*,require_current=False,examination=None,examiner_id=None,language="de"):
+    def create_report(self,ticket,device,phase,selection,*,require_current=False,examination=None,examiner_id=None,language="de",measurement_source=None):
         ticket,device,phase=self.repair_fields(ticket,device,phase)
         # Resolve from the immutable batch, not from mutable slot metadata or UI fields.
         with closing(self.db()) as conn,conn:
@@ -190,7 +194,9 @@ class Measurements:
             report={"ticket":ticket,"device":device,"source":"BENNING","phase":phase,
                     "created":now(),"language":locale(language),"verdict":record["verdict"],"measurements":record["measurements"],
                     "record":record,"record_id":row["id"],"imported":row["imported"],
-                    "import_source":row["source"]}
+                    "import_source":row["source"],"import_batch":selection["batch"]}
+            if measurement_source:
+                report["measurement_confirmation"]=measurement_source
             if examination:
                 report["examination"]=examination
             ident=conn.execute("INSERT INTO reports(data) VALUES(?)",(json.dumps(report),)).lastrowid

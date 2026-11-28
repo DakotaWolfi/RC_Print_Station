@@ -19,7 +19,8 @@ class AddressValidator(QValidator):
             not field or field.isascii() and field.isdecimal() and len(field) <= 3 and int(field) <= 255
             for field in fields
         )
-        state = self.Invalid if not valid else self.Acceptable if len(fields) == 4 and all(fields) else self.Intermediate
+        complete=len(fields)==4 and all(field and (len(field)==1 or not field.startswith("0")) for field in fields)
+        state=self.Invalid if not valid else self.Acceptable if complete else self.Intermediate
         return state, value, position
 
 
@@ -122,7 +123,8 @@ class Keyboard(QWidget):
         self.eye.setText(self.t("Verbergen" if visible else "Anzeigen"))
 
     def key(self, text, action):
-        key = QPushButton(text)
+        key = QPushButton(text.replace("&","&&"))
+        key.setProperty("keyValue",text)
         key.setAccessibleName(text)
         key.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Expanding)
         key.setFocusPolicy(Qt.NoFocus)
@@ -133,7 +135,7 @@ class Keyboard(QWidget):
 
     def char(self, value):
         self.edit.insert(value)
-        if self.upper and not self.caps and not self.layer:
+        if self.upper and not self.caps and not (self.layer - 1 if self.mode == "ticket" else self.layer):
             self.upper = False
             self.update_cases()
 
@@ -153,6 +155,7 @@ class Keyboard(QWidget):
         for key in self.letters:
             raw = key.property("letter")
             key.setText(raw.upper() if self.upper else raw)
+            key.setProperty("keyValue",key.text())
 
     def change(self, layer):
         self.layer = layer
@@ -160,7 +163,7 @@ class Keyboard(QWidget):
 
     def add_letter(self, letter, row, col, span):
         key = self.key(letter.upper() if self.upper and not self.layer else letter,
-                       lambda: self.char(key.text()))
+                       lambda: self.char(key.property("keyValue")))
         if self.embedded and not self.layer and letter in ACCENTS:
             timer=QTimer(key,singleShot=True,interval=450)
             key.pressed.connect(timer.start)
@@ -218,7 +221,7 @@ class Keyboard(QWidget):
         self.letters = []
         if self.mode in ("number", "ipv4", "ticket") and self.layer == 0:
             for index, digit in enumerate("123456789"):
-                self.grid.addWidget(self.key(digit, lambda _, digit=digit: self.char(digit)), index//3, index%3)
+                self.grid.addWidget(self.key(digit, lambda digit=digit: self.char(digit)), index//3, index%3)
             if self.mode == "ipv4":
                 self.grid.addWidget(self.key(".", lambda: self.char(".")), 3, 0)
             elif self.mode == "ticket":

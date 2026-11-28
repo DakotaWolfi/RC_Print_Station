@@ -133,6 +133,8 @@ def supervise(args, stop, detection=inspect, launch=subprocess.Popen):
                 command=["/usr/bin/python3",str(root/"hdmi_frontend.py"),"--socket",args.socket,"--rotation",str(args.rotation)]
                 if status["connector"] and args.backend in ("xcb","wayland"):
                     command+=["--screen",status["connector"]]
+                if args.touch:
+                    command+=["--touch-device",args.touch]
                 if args.window:
                     command+=["--window"]
                 LOG.info("Starting HDMI (%s, modes=%s, touchscreen=%d)",args.backend,

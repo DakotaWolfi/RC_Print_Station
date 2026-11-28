@@ -129,7 +129,7 @@ async function poll(force=false) {
         app.online=true;
         if(app.note==="Verbindung zur Station unterbrochen.") app.note="";
         app.state=next;
-        if ((["pet","novelty","achievements"].includes(app.view)) && !leisure()) {
+        if ((["pet","novelty","novelty-preview","achievements"].includes(app.view)) && !leisure()) {
             app.view="work"; app.nav=[];
             if (dialog.open) dialog.close();
         }
@@ -298,7 +298,10 @@ function entry(d) {
 function art(key,parent=main) {
     if(!key || key==="lcd") return;
     const image=node("img","guide");
-    image.src="/art/g_"+key+(lang()==="en"?"_en":"")+".png";
+    if (["key_i","key_ii","key_leak"].includes(key)) {
+        image.src="/symbol/"+key+".png";
+        image.classList.add("symbol");
+    } else image.src="/art/g_"+key+(lang()==="en"?"_en":"")+".png";
     image.onerror=()=>{if(image.src.endsWith("_en.png")) image.src="/art/g_"+key+".png";else image.remove();};
     image.alt="BENNING ST 725"; parent.append(image);
 }
@@ -306,13 +309,15 @@ function guide(d,g) {
     title(g.title); para(t("Phase {step}  ·  BENNING ST 725 CH",{step:g.phase}),"badge");
     if(!g.rows?.length) art(g.art);
     if(g.step!=="start" || !g.rows?.length) para(g.instruction[lang()]);
+    const cards=node("div","guide-cards");
     for(const [image,heading,body] of g.rows || []) {
         const row=node("div","guide-row");
         art(image,row);
         const words=node("div");
         words.append(node("strong","badge",t(heading)),node("p","",t(body)));
-        row.append(words);main.append(row);
+        row.append(words);cards.append(row);
     }
+    if(g.rows?.length) main.append(cards);
     if(g.step==="exam") {
         const panel=node("section");
         panel.append(group(action(t("Prüfperson")+(d.examiner && app.people.find(p=>p.id===d.examiner) ?
@@ -321,10 +326,26 @@ function guide(d,g) {
         const values=["Offen","Ohne Befund","Mangel","Nicht geprüft"];
         options(panel,"Funktion",values,values.indexOf(g.functional),i=>draft("exam.function",{value:values[i]}));
         main.append(panel,group(B(g.stored&&!g.blocked?"Zum Import":"Unvollständig speichern",
-            ()=>confirm(g.stored&&!g.blocked?"Zum Import":"Unvollständig speichern",()=>draft("exam.submit")),true)));
+            ()=>g.stored&&!g.blocked ? draft("exam.submit") :
+                confirm("Unvollständig speichern",()=>draft("exam.submit")),true)));
     } else {
-        main.append(group(...g.choices.map((key,i)=>B(key,()=>draft("guide.choose",{step:g.step,choice:i}),
-            i===0&&!["start","running","low_continue","energise","warnings"].includes(g.step)))));
+        const choose=i=>draft("guide.choose",{step:g.step,choice:i});
+        if (g.actions) {
+            para(t("Während der Messung warten. Danach Ergebnis oder Meldung wählen."),"badge");
+            main.append(group(...g.actions.primary.map(i=>B(g.choices[i],()=>choose(i))),
+                B("Meldung oder Unsicherheit",()=>{
+                    if(dialog.open) return;
+                    const observed=ref();
+                    replace(dialog,node("h2","",t("Anzeige am BENNING")),
+                        group(...g.actions.observations.map(i=>B(g.choices[i],()=>{
+                            dialog.close();
+                            cmd("guide.choose",{...observed,step:g.step,choice:i});
+                        }))),B("Abbrechen",()=>dialog.close()));
+                    dialog.showModal();
+                })));
+        } else {
+            main.append(group(...g.choices.map((key,i)=>B(key,()=>choose(i),i===0))));
+        }
     }
     main.append(group(B("Zurück",()=>draft("guide.back")),B("Hilfe",()=>help(g.help)),
         B("Abbrechen",()=>confirm("Prüfung abbrechen?",()=>draft("guide.cancel",{confirmed:true})))));
@@ -335,13 +356,22 @@ function importView(review) {
     if(!review) { art(s.import_art); para(t(s.import_body)); }
     if(s.wait_note) para(t(s.wait_note),"badge");
     if(s.receiver.detail) para(t(s.receiver.detail));
+    if(s.receiver.state==="reset-pending"&&s.receiver.reset) {
+        main.append(group(B("Speicher-Reset bestätigen",()=>confirm(
+            "Speicher am BENNING geleert und USB-Export vollständig empfangen?",
+            ()=>draft("import.reset",{confirmed:true,reset:s.receiver.reset}))),
+            B("Zurück",()=>draft("review.back"))));
+        return;
+    }
     const selected=s.selected;
     const brief = row => [row.slot,row.date,t(row.verdict),t(row.class || "")].filter(Boolean).join(" · ");
     if(review) {
         if(selected) {
             para(brief(selected),"badge");
-            main.append(group(B("Messung bestätigen",()=>confirm("Messung bestätigen",
-                ()=>draft("review.confirm",{record:selected.key})),true)));
+            const same=selected.origin==="identical";
+            main.append(group(B("Messung bestätigen",()=>confirm(
+                same?"Identischer Datensatz. Wurde die Prüfung neu durchgeführt?":"Messung bestätigen",
+                ()=>draft("review.confirm",{record:selected.key,same_reading_confirmed:same})),true)));
         }
         const start=Math.min(app.slots, Math.max(0, Math.ceil(s.slots.length/12)-1))*12;
         main.append(group(...s.slots.slice(start,start+12).map(row=>action(brief(row),
@@ -420,7 +450,7 @@ function showReport(id) {
     for (const message of [app.state.print_note]) { if(message) para(t(message)); }
 }
 function openPDF(id) {
-    app.pdf=null;app.pdfId=id;
+    app.pdf=null;app.pdfId=id;app.showReportQR=false;
     navigate("download");
     loadPDF();
 }
@@ -440,8 +470,15 @@ function downloadView() {
         }
     }
     if(app.pdf && /^https?:\/\//.test(app.pdf.url)) {
-        const link=node("a","button",t("PDF öffnen"));
-        link.href=app.pdf.url;link.rel="noopener noreferrer";link.target="_blank";main.append(link);
+        const link=node("a","button",t("PDF herunterladen"));
+        const target=new URL(app.pdf.url);
+        target.searchParams.set("download","1");
+        link.href=target.href;link.rel="noopener noreferrer";
+        main.append(group(link,B(app.showReportQR?"QR-Code ausblenden":"QR-Code anzeigen",()=>{
+            app.showReportQR=!app.showReportQR;
+            render();
+        })));
+        if(app.showReportQR) {
         const n=app.pdf.modules.length, canvas=node("canvas","qr");
         canvas.width=canvas.height=(n+8)*4;canvas.setAttribute("aria-label","PDF QR");
         const ctx=canvas.getContext("2d");
@@ -449,6 +486,7 @@ function downloadView() {
         ctx.fillStyle="#000";
         app.pdf.modules.forEach((row,y)=>row.forEach((black,x)=>{if(black)ctx.fillRect((x+4)*4,(y+4)*4,4,4);}));
         main.append(canvas);para(app.pdf.url);
+        }
     } else {
         para(t(app.state.download_base?"Bitte warten ...":"PDF-Link nicht verfügbar. Bitte erneut öffnen."));
         if(app.state.download_base) main.append(B("Aktualisieren",loadPDF));
@@ -567,12 +605,54 @@ function achievements() {
         main.append(panel);
     }
 }
+function examinationControl(state) {
+    if(state.control==="yours") {
+        main.append(B("Anzeige wechseln",()=>confirm("Prüfung für eine andere Anzeige freigeben?",
+            ()=>draft("draft.control",{action:"release",confirmed:true}))));
+        return true;
+    }
+    if(!state.control) return true;
+    title("Aktive Prüfung");
+    if(state.control==="other") {
+        para(t("Diese Prüfung wird an einer anderen Anzeige bedient."));
+        para(t("Bei Verbindungsverlust wird Fortsetzen nach 20 Sekunden angeboten."));
+    } else {
+        para(t("Prüfaufbau und Anzeige am Tester vor dem Fortsetzen erneut prüfen."));
+        main.append(B("An dieser Anzeige fortsetzen",()=>confirm("Prüfung auf dieser Anzeige fortsetzen?",
+            ()=>draft("draft.control",{action:"resume",confirmed:true})),true));
+    }
+    return false;
+}
+function noveltyMenu() {
+    title("Spassbeleg");
+    para(t("SPASSBELEG · OHNE GÜLTIGKEIT"),"badge");
+    if(app.noveltyItems) {
+        main.append(group(...Object.entries(app.noveltyItems).map(([kind,name])=>B(name,()=>{
+            app.noveltyKind=kind;navigate("novelty-preview");
+        }))));
+    } else if(!app.noveltyLoading) {
+        app.noveltyLoading=true;
+        http("/novelty.json").then(value=>{app.noveltyItems=value;if(app.view==="novelty") render();})
+            .catch(()=>{app.note="Verbindung zur Station unterbrochen.";setStatus();})
+            .finally(()=>{app.noveltyLoading=false;});
+    }
+}
+function noveltyPreview() {
+    const kind=app.noveltyKind;
+    title(app.noveltyItems[kind]);
+    const image=node("img","novelty-preview");
+    image.src="/novelty/"+kind+"-"+lang()+".png";image.alt=t("Spassbeleg-Vorschau");
+    main.append(image,group(B("Spassbeleg drucken",()=>confirm("Spassbeleg drucken?",
+        ()=>cmd("novelty.print",{kind,confirmed:true})),true),B("Zurück",back)));
+    if(app.state.novelty_note) para(t(app.state.novelty_note));
+}
 function render() {
     if(!app.state) return;
     $("home").hidden=$("back").hidden=$("settings").hidden=false;
     replace(main);
     const s=app.state, d=s.draft;
     if(app.view==="work") {
+        if(active()&&!examinationControl(s)) {setStatus();return;}
         if(d?.stage==="entry") entry(d);
         else if(d?.stage==="guide") guide(d,s.guide);
         else if(d?.stage==="waiting"||d?.stage==="review") importView(d.stage==="review");
@@ -593,13 +673,9 @@ function render() {
     else if(app.view==="achievements"&&leisure()) achievements();
     else if(app.view==="download") downloadView();
     else if(app.view==="connection") connectionView();
-    else if(app.view==="novelty"&&leisure()) {
-        title("Spassbeleg");para(t("SPASSBELEG · OHNE GÜLTIGKEIT"),"badge");
-        main.append(group(...Object.entries({awoo:"Awoo Permit",pointless:"Certificate of Pointlessness",jank:"Certified Jank",
-            engineer:"Emotional Support Engineer"}).map(([kind,name])=>action(name,()=>confirm("Spassbeleg drucken?",
-                ()=>cmd("novelty.print",{kind,confirmed:true}))))));
-        if(s.novelty_note) para(t(s.novelty_note));
-    } else if(app.view==="info") {
+    else if(app.view==="novelty"&&leisure()) noveltyMenu();
+    else if(app.view==="novelty-preview"&&leisure()) noveltyPreview();
+    else if(app.view==="info") {
         if(!app.admin) return adminLogin();
         title("Engineering-Modus");
         main.append(group(B("Aktualisieren",()=>read("system.info",{},data=>{app.details=data;render();}),true)));

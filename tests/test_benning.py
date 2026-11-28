@@ -167,7 +167,7 @@ class StoreTests(unittest.TestCase):
         base=f"http://127.0.0.1:{server.server_port}"
         url=publish(self.path,report,base)
         with urlopen(url,timeout=3) as result:
-            self.assertIn("benning-report.pdf",result.headers["Content-Disposition"])
+            self.assertRegex(result.headers["Content-Disposition"],r'FMI-\d{4}-\d{2}-\d{2}-.+-R[a-zA-Z0-9]+\.pdf')
         for path,method in (("/benning","GET"),("/history","GET"),("/print","POST"),("/benning","POST")):
             with self.subTest(path=path,method=method),self.assertRaises(HTTPError):
                 urlopen(Request(base+path,method=method),timeout=3)

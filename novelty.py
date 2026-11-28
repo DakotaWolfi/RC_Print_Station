@@ -1,17 +1,41 @@
-"""Static entertainment receipts with no report or database inputs."""
-from i18n import tr
+"""Non-official workshop souvenirs and their exact printer raster payloads."""
+from functools import lru_cache
+import base64
+import json
+from pathlib import Path
+import struct
+import zlib
 
-ITEMS = {
-    "awoo":"Awoo Permit",
-    "pointless":"Certificate of Pointlessness",
-    "jank":"Certified Jank",
-    "engineer":"Emotional Support Engineer",
+from escpos import feed_and_cut
+
+ART=Path(__file__).resolve().parent/"assets/novelty"
+ITEMS={
+    "awoo":"Awoo-Busse",
+    "paw":"Werkstattpfoten-Akte",
+    "survivor":"Werkbank überlebt",
 }
+MIN_FEED_MM=45
 
 
-def render(kind, language):
-    title=ITEMS[kind]
-    text=tr(language,"SPASSBELEG · OHNE GÜLTIGKEIT")
-    disclaimer=tr(language,"Kein Prüfprotokoll oder Nachweis.")
-    body=(text+"\n"+"-"*34+"\n"+title+"\n"+"-"*34+"\n"+disclaimer+"\nFMI Printstation\n").encode("cp850")
-    return b"\x1b@\x1bt\x02\x1ba\x01"+body+b"\x1bJ\x78\x1dV\x00"
+@lru_cache(maxsize=6)
+def raster(kind, language):
+    if kind not in ITEMS:
+        raise ValueError("Unbekannter Spassbeleg.")
+    language="en" if language=="en" else "de"
+    values=json.loads((ART/"rasters.json").read_text(encoding="ascii"))
+    w,h,payload=values[f"{kind}-{language}"]
+    dots=zlib.decompress(base64.b64decode(payload))
+    if w!=504 or not 1<=h<=1200 or len(dots)!=w//8*h:
+        raise ValueError("Ungültige Spassbeleg-Grafik.")
+    return b"\x1dv0\x00"+struct.pack("<HH",w//8,h)+dots
+
+
+def render(kind, language, feed_mm=MIN_FEED_MM):
+    # Fully packed raster, line termination, paper clear of the cutter, then one cut.
+    return b"\x1b@"+raster(kind,language)+b"\n"+feed_and_cut(max(MIN_FEED_MM,feed_mm))
+
+
+def preview_path(kind,language):
+    if kind not in ITEMS or language not in ("de","en"):
+        raise ValueError("Unbekannter Spassbeleg.")
+    return ART/f"{kind}-{language}.png"

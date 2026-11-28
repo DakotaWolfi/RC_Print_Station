@@ -20,6 +20,7 @@ from time import monotonic
 from urllib.parse import urlsplit
 
 from i18n import catalogue
+from novelty import ITEMS
 from station_ipc import DEFAULT_SOCKET, request
 from web_access import HOSTNAME, LocalAccess, serve_status, status_path
 
@@ -30,7 +31,7 @@ MAX_BODY = 8192
 LOG=logging.getLogger(__name__)
 READ = frozenset(("state", "history", "people", "templates", "report.view", "system.info"))
 MUTATE = frozenset("""
-    draft.new draft.edit draft.editor draft.discard
+    draft.new draft.edit draft.editor draft.discard draft.control import.reset
     exam.start exam.submit exam.function guide.choose guide.back guide.cancel
     review.find review.manual review.back review.select review.confirm language.report
     settings.save person.pick person.save person.active report.qr report.print
@@ -292,7 +293,15 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_payload(200,gateway.session_data(session),cookie=gateway.cookie(token))
         if path == "/locale.json":
             return self.send_payload(200, catalogue())
+        if path=="/novelty.json":
+            return self.send_payload(200,ITEMS)
         asset = ASSETS.get(path)
+        match=re.fullmatch(r"/novelty/([a-z]+)-(de|en)\.png",path)
+        if match and match[1] in ITEMS:
+            asset=("image/png",ROOT/"assets/novelty"/f"{match[1]}-{match[2]}.png")
+        match=re.fullmatch(r"/symbol/(key_i|key_ii|key_leak)\.png",path)
+        if match:
+            asset=("image/png",ROOT/"assets/benning"/f"{match[1]}.png")
         if not asset and (match := ART.fullmatch(path)):
             asset = ("image/png", ROOT/"hmi/native/pictures"/f"{match[1]}.png")
         if not asset and (match := WOLF.fullmatch(path)):

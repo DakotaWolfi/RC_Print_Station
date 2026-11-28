@@ -88,11 +88,10 @@ class CoreTests(unittest.TestCase):
         self.call("novelty.print",{"kind":"awoo","confirmed":True})
         self.core.jobs["printer"][1].result(timeout=2)
         self.core.tick()
-        self.assertIn(b"SPASSBELEG",self.sent[0][2])
-        self.assertIn(b"Awoo Permit",self.sent[0][2])
+        self.assertTrue(self.sent[0][2].startswith(b"\x1b@\x1dv0\x00"))
         self.assertEqual(self.call("history"),[])
         self.call("settings.save",{"values":{"professional":True}})
-        self.call("novelty.print",{"kind":"jank","confirmed":True},wanted=False)
+        self.call("novelty.print",{"kind":"paw","confirmed":True},wanted=False)
 
     def test_two_clients_merge_different_fields_reject_same_stale_edit(self):
         self.call("draft.new",{"mode":"guided"})

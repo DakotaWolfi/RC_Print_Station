@@ -169,9 +169,9 @@ class Guide:
             )
         if self.step=="start" and self.procedure=="I" and self.mode=="Netz":
             return (
-                ("key_i","Start","Prüfling sichern und einschalten. Erdzeichen (2) am BENNING drücken."),
-                ("key_i","Lo LOAD","Schalter, Anschluss und Last prüfen. Bei erwarteter geringer Last dieselbe Taste (2) erneut drücken."),
-                ("key_leak","I LEAK blinkt","Nur bei gesichertem Netzaufbau Taste IPE/IB (4) drücken. Die Prüfsteckdose führt dann 230 V. Beide Polaritäten abwarten."),
+                ("key_i","Start","Prüfling sichern, einschalten und Erdzeichen (2) drücken."),
+                ("key_i","Lo LOAD","Schalter, Anschluss und Last prüfen. Nur bei erwarteter geringer Last erneut (2) drücken."),
+                ("key_leak","I LEAK blinkt","IPE/IB (4) schaltet 230 V auf die Prüfsteckdose. Nur bei gesichertem Netzaufbau drücken. Beide Polaritäten abwarten."),
             )
         return ()
 
