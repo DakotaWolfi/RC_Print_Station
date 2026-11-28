@@ -192,7 +192,7 @@ class WorkflowPanel:
             self.ui.cmd("gAdvance.val=2")
 
     def save_selection(self,selected):
-        validate_selection(self.exam,selected["original"])
+        validate_selection(self.exam,selected["original"],selected["source"])
         return self.store.create_report(*self.tester.pending,selected,require_current=True,examination=self.exam,examiner_id=self.examiner_id if self.exam else None,language=self.report_language)
 
     def handle(self,frame):

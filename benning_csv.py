@@ -20,6 +20,9 @@ NUMBER = re.compile(r"[<>≤≥]?[ ]*[+-]?(?:[0-9]+(?:[.,][0-9]+)?|[.,][0-9]+)")
 VOLTAGE = re.compile(r"[0-9]+(?:[.,][0-9]+)?[ ]*V")
 PASS = frozenset(("bestanden","pass"))
 FAIL = frozenset(("nicht bestanden","fehlgeschlagen","fail","fehlerhaft"))
+CABLE_OUTCOMES = {"gut":"PASS","good":"PASS","open":"FAIL","shor":"FAIL",
+                  "cross":"FAIL","schlecht":"FAIL"}
+CABLE_TEXT = re.compile(r"[^\W\d_]+(?:[ ./-][^\W\d_]+)*[.?]?|\?")
 
 
 class ImportErrorDetail(ValueError):
@@ -33,6 +36,16 @@ def outcome(verdict):
     if folded in FAIL:
         return "FAIL"
     return None
+
+
+def cable_outcome(value):
+    return CABLE_OUTCOMES.get((value or "").strip().casefold())
+
+
+def cable_text(value):
+    # Normalize only for validation. Unknown textual statuses remain visible
+    # as unknown evidence and never become a successful cable measurement.
+    return CABLE_TEXT.fullmatch(value.strip()) is not None
 
 
 def date_value(raw, style):
@@ -140,7 +153,8 @@ def parse_csv(data, encoding="auto", *, wire=False, allow_empty=False):
             tests=[]
             for label,position in groups:
                 value,unit,result=fields[position:position+3]
-                if value and not NUMBER.fullmatch(value.strip()):
+                if value and not NUMBER.fullmatch(value.strip()) and not (
+                        label=="Kabel" and not unit and cable_text(value)):
                     raise ImportErrorDetail(f"Ungültiges Messwertformat ({label}).")
                 tests.append(Measurement(label,value or None,unit or None,result or None,
                                          test=(fields[24] or None) if label=="FI/RCD" else None))

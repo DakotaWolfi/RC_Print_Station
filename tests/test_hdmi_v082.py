@@ -9,7 +9,7 @@ try:
     from PyQt5.QtCore import QEvent, Qt, QPoint, QPointF
     from PyQt5.QtGui import QMouseEvent, QWheelEvent
     from PyQt5.QtTest import QTest
-    from PyQt5.QtWidgets import QApplication, QPushButton
+    from PyQt5.QtWidgets import QApplication, QLabel, QPushButton
 except ImportError:
     QApplication=None
 
@@ -161,6 +161,59 @@ class HDMIFlow(TestCase):
         self.assertEqual(self.surface.view,"pet")
         self.wait(lambda:self.core.pet_count==1)
         self.assertEqual(self.core.achievement_stats["pets"],1)
+
+    def test_real_class_mismatch_adopts_only_as_documentation_through_hdmi_widgets(self):
+        import os
+        from benning_hardware import USB_COMPLETE
+        from benning_output import report_checks
+
+        self.click("Geführte Prüfung")
+        self.enter("Prüfnummer","HDMI084")
+        self.enter("Gerätebeschreibung","Bench fixture")
+        for caption in ("Prüfung beginnen","Ohne Befund","Schutzklasse I",
+                        "Netz + 500 V geprüft","PASS","STORE + Slot gesehen",
+                        "Prüfperson","Bench Operator","Funktion","Ohne Befund","Zum Import"):
+            self.click(caption)
+        self.wait(lambda:self.core.phase=="waiting")
+        pulled=self.core.store.import_bytes(USB_COMPLETE,"usb")
+        self.rx.status=ReceiverStatus("imported","usb",batch=pulled.batch)
+        self.click("Vorhandene Messung")
+        self.click("033")
+        self.wait(lambda:self.button("Geprüfte Prüfart übernehmen") is not None)
+
+        def copy():
+            return "\n".join(widget.text() for widget in self.surface.findChildren(QLabel) if widget.isVisible())
+
+        self.assertIn("Im Leitfaden gewählt: Klasse I",copy())
+        self.assertIn("BENNING-Prüfart: Klasse II (übertragen)",copy())
+        self.assertIsNone(self.button("Messung bestätigen"))
+        if directory:=os.environ.get("FMI_V084_HDMI_PREVIEW"):
+            path=Path(directory)
+            path.mkdir(parents=True,exist_ok=True)
+            self.surface.scroll.verticalScrollBar().setValue(0)
+            self.app.processEvents()
+            self.assertTrue(self.window.grab().save(str(path/"hdmi-480x800-class-warning.png")))
+        self.click("Andere Messung wählen")
+        self.wait(lambda:self.core.selected is None)
+        self.click("044")
+        self.wait(lambda:"Kabel · Gut" in copy())
+        self.click("Abbrechen")
+        self.wait(lambda:self.core.phase=="guide")
+        self.assertIsNone(self.core.report)
+        self.click("Zum Import")
+        self.click("Vorhandene Messung")
+        self.click("033")
+        self.click("Geprüfte Prüfart übernehmen")
+        self.wait(lambda:self.surface.overlay is not None)
+        self.assertIsNone(self.core.report)
+        self.click("Bestätigen")
+        self.wait(lambda:self.core.phase=="report")
+        self.assertEqual(self.core.report["record"]["protection_class"],"Klasse II")
+        self.assertEqual(self.core.report["record"]["verdict"],"bestanden")
+        exam=self.core.report["examination"]
+        self.assertEqual((exam["procedure"],exam["class_reconciliation"]["selected"]),("II","I"))
+        self.assertNotIn("voltage_confirmed",exam)
+        self.assertIn("Keine Freigabe",dict(report_checks(self.core.report))["Freigabe"])
 
     def test_rotated_overlay_resizes_scrolls_and_rolls_back(self):
         self.click("☰")

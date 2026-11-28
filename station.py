@@ -7,6 +7,7 @@ import sqlite3
 import subprocess
 from datetime import datetime, timezone
 import textwrap
+from itertools import zip_longest
 import base64
 import zlib
 from station_config import load as receipt_settings, DENSITIES
@@ -33,6 +34,16 @@ def graphic_header(language="de"):
     if len(data) != 63 * 168:
         raise ValueError("Invalid receipt header")
     return b"\x1d\x76\x30\x00\x3f\x00\xa8\x00" + data + b"\n"
+
+
+def measurement_lines(name,value,limit):
+    """Wrap each cell inside the installed printer's 42-column text mode."""
+    widths=(11,18,11)
+    columns=[[line for part in cell.splitlines() for line in textwrap.wrap(part,width)]
+             for cell,width in zip((name,value,limit),widths)]
+    for row in zip_longest(*columns,fillvalue=""):
+        yield " ".join(cell.ljust(width) for cell,width in zip(row,widths)).rstrip()
+
 
 def receipt(report, settings=None):
     """80 mm ESC/POS demo receipt, 42 columns, PC850."""
@@ -72,14 +83,14 @@ def receipt(report, settings=None):
         data.extend(field(t(key),value) for key,value in selected_fields(report))
         rows=visible_measurements(report)
         if rows:
-            data.extend((rule,bold,line(t("MESSWERTE")),normal))
+            heading=next(measurement_lines(t("Messung"),t("Messwert"),t("Grenzwert")))
+            data.extend((rule,bold,line(heading),normal))
         for item in rows:
             name,value,limit,state,_=measurement_summary(item,csv_source=report.get("import_source") in ("usb","file-csv"),language=language)
-            # Keep the measured value and individual verdict together whenever
-            # they fit. Wrap long entries rather than truncating test data.
-            data.append(field(name,"  ".join(filter(None,(value,state)))))
-            if limit:
-                data.append(field(t("Grenzwert"),limit))
+            value,state=clean(value),clean(state)
+            both="  ".join(filter(None,(value,state)))
+            reading="\n".join((value,state)) if value and state and len(both)>18 else both
+            data.extend(line(row) for row in measurement_lines(clean(name),reading,clean(limit)))
         data.append(rule)
         data.extend(field(t(key),value) for key,value in compact_checks(report))
         data.extend((heavy,

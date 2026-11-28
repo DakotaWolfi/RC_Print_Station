@@ -28,6 +28,10 @@ python3 station.py display-test --port /dev/ttyUSB0 --baud 9600
 
 `station.py simulate` writes a visibly marked simulation. Imported BENNING records preserve the original tester verdict and do not constitute independent certification by the station. The installed Epson is at `169.254.25.23:9100`. The Pi Ethernet address is `169.254.100.1/16`.
 
+## v0.8.4 measurement accuracy and paper efficiency
+
+Cable imports, class review and the compact receipt measurement table are covered by genuine BENNING captures. See the [migration, evidence and physical acceptance guide](docs/measurement-fixes-v084.md).
+
 ## v0.8.3 physical acceptance candidate
 
 The HDMI keypad, examination handoff, touch calibration, downloads and illustrated novelty receipts have targeted bench fixes. See the [v0.8.3 migration guide, test matrix and physical checklist](docs/physical-fixes-v083.md).

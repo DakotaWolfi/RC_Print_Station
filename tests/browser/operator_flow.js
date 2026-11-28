@@ -45,7 +45,6 @@
     await click("Netz + 500 V geprüft");
     await wait(()=>app.state.guide?.step==="start","start step");
     check(document.querySelectorAll('.guide-row').length===3,"Class I instruction rows missing");
-    window.v083Guide=JSON.stringify(app.state);
     await click("Hilfe");
     check(dialog.open,"Help overlay did not open");
     await click("Schliessen",dialog);
@@ -129,6 +128,42 @@
     await click("Bestätigen",dialog);
     await wait(()=>app.state.novelty_note.includes("gesendet"),"novelty print completion");
     check((await (await fetch("/__test/prints")).json()).count===2,"official and novelty print count");
-    return {ok:true,report:app.state.report,printed:2,verifiedAnonymous:true,view:heading()};
+    document.getElementById("home").click();
+    await click("Geführte Prüfung");
+    await enter("Prüfnummer","WEB084");
+    await enter("Gerätebeschreibung","Report fixture");
+    for(const label of ["Prüfung beginnen","Ohne Befund","Schutzklasse II","Netz + 500 V geprüft",
+                        "PASS","STORE + Slot gesehen","Zum Import"]) await click(label);
+    await wait(()=>app.state.draft.stage==="waiting","guided USB import");
+    check((await (await fetch("/__test/import-usb")).json()).count===44,"expected real USB fixture");
+    await wait(()=>app.state.batch?.source==="usb","USB snapshot");
+    await click("Vorhandene Messung");
+    await click("039");
+    await wait(()=>document.querySelector(".class-warning"),"missing mismatch warning");
+    check(main.innerText.includes("Im Leitfaden gewählt: Klasse II")&&
+          main.innerText.includes("BENNING-Prüfart: Klasse I (übertragen)"),"both classes and provenance");
+    check(!all().some(b=>b.textContent==="Messung bestätigen"),"mismatch exposed normal commit");
+    window.v084ClassReview=JSON.stringify(app.state);
+    await click("Andere Messung wählen");
+    await wait(()=>!app.state.selected,"selection cleared");
+    await click("044");
+    await wait(()=>main.innerText.includes("Kabel · Gut"),"categorical cable review");
+    await click("Ohne Freigabe dokumentieren");
+    await click("Abbrechen",dialog);
+    check(app.state.draft.stage==="review","cancel must preserve review without committing");
+    await click("Andere Messung wählen");
+    await click("039");
+    await click("Ohne Freigabe dokumentieren");
+    await click("Bestätigen",dialog);
+    await wait(()=>main.innerText.includes("Keine Freigabe · Prüfung wiederholen"),"saved report has no release");
+    check(main.innerText.includes("BESTANDEN"),"imported verdict must be preserved");
+    await click("Beleg drucken");
+    await click("Bestätigen",dialog);
+    await wait(()=>app.state.print_note.includes("gesendet"),"document print completion");
+    await click("Beleg drucken");
+    await click("Bestätigen",dialog);
+    await wait(()=>statusbar.innerText.includes("Doppelter Druckauftrag"),"duplicate print guard");
+    check((await (await fetch("/__test/prints")).json()).count===3,"exactly one documented mismatch print");
+    return {ok:true,report:app.state.report,printed:3,verifiedAnonymous:true,view:heading()};
 })().then(result=>window.v082Result=JSON.stringify(result),
           error=>window.v082Result=JSON.stringify({ok:false,error:String(error)}))

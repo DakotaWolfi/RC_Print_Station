@@ -3,7 +3,8 @@ from datetime import date, datetime
 import re
 from zoneinfo import ZoneInfo
 
-from benning_csv import outcome
+from benning_csv import cable_outcome, outcome
+from examination_rules import PROCEDURE_LABELS, class_review
 from i18n import locale, tr
 
 RESULTS = {
@@ -77,6 +78,9 @@ def verdict_text(value,language):
 def selected_fields(report,language=None):
     language=language or report_language(report)
     record=report.get("record") or {}
+    matched=(report.get("examination") or {}).get("class_reconciliation")
+    reconciliation=(("Im Leitfaden gewählt",tr(language,PROCEDURE_LABELS[matched["selected"]])),
+                    ("BENNING-Prüfart", review_type(matched,language))) if matched else ()
     return tuple((label,value) for label,value in (
         ("Prüfnummer",report.get("ticket")),("Gerät",report.get("device")),
         ("Speicherplatz",record.get("slot")),("Prüfart",tr(language,report.get("phase",""))),
@@ -84,7 +88,16 @@ def selected_fields(report,language=None):
         ("Schutzklasse",protection_class(record.get("protection_class"),language)),
         ("Prüfspannung",voltage_text(record.get("voltage"))),
         ("Protokoll erstellt",report_timestamp(report,language) if not record else ""))
-        if value)
+        if value)+reconciliation
+
+
+def review_type(review,language):
+    name=review.get("measured")
+    if not name:
+        return tr(language,"Nicht übertragen oder nicht eindeutig")
+    type_name=tr(language,PROCEDURE_LABELS[name])
+    evidence=tr(language,"abgeleitet" if review["evidence"]=="inferred" else "übertragen")
+    return f"{type_name} ({evidence})"
 
 
 def examination_fields(report):
@@ -103,6 +116,17 @@ def visible_measurements(report):
 def measurement_state(measurement):
     """Preserve supplied verdicts. Missing individual verdicts in RS232 are normal."""
     result=measurement.get("result")
+    if measurement["name"]=="Kabel":
+        kind=cable_outcome(measurement.get("value"))
+        # The cable value is the original wiring status on the printer port.
+        # A contradictory explicit failure must remain visible.
+        explicit=outcome(result or "")
+        if kind is None:
+            state="Kabelstatus unbekannt" if measurement.get("value") else "Kabelstatus fehlt"
+            return " / ".join(filter(None,(result,state))),"FAIL" if explicit=="FAIL" else "partial"
+        if result and explicit is None and kind!="FAIL":
+            return result,"partial"
+        return result or "","FAIL" if "FAIL" in (kind,explicit) else kind
     if result:
         partial=measurement["name"] not in ("Sichtprüfung","Kabel") and not (
             measurement.get("value") and measurement.get("unit"))
@@ -129,48 +153,55 @@ def electrical_check(report):
     rows={row["name"]:row for row in visible_measurements(report)}
     verdict=outcome(record.get("verdict") or "")
     exam=report.get("examination") or {}
-    protection=(record.get("protection_class") or "").upper()
-    procedure=exam.get("procedure")
-    csv=report.get("import_source") in ("usb","file-csv")
-    required=set()
-    leakage=set()
-    if procedure in ("IEC","Verlängerung") or "Kabel" in rows:
-        required={"RPE","RISO","Kabel"}
-    elif procedure=="I" or protection=="KLASSE I":
-        required={"RPE","RISO"}
-        leakage={"IPE","IEA"}
-        # Published CSV maps BER/IBer independently. Older BENNING exports may
-        # put the replacement current in IEA and the protective current in IPE.
-    elif procedure in ("II","III") or protection in ("KLASSE II","KLASSE III"):
-        required={"RISO"}
-        leakage={"IPE","IBer","IEA"} if not csv else {"IBer","IEA"}
+    source=report.get("import_source")
+    csv=source in ("usb","file-csv")
+    review=class_review(exam,record,source)
+    procedure=review["measured"] or review["selected"]
+    stages=()
+    if procedure in ("IEC","Verlängerung","Kabel"):
+        stages=(("RPE",),("RISO",),("Kabel",))
+    elif procedure=="I":
+        stages=(("RPE",),("RISO",),("IPE","IEA"))
+    elif procedure in ("II","III"):
+        stages=(("RISO",),("IBer","IB","IEA"))
     elif "FI/RCD" in rows:
-        required={"FI/RCD"}
-    selected_leakage=rows.keys() & leakage
-    missing=sorted(required-rows.keys())
-    if leakage and not selected_leakage:
-        missing.append("Ableitstrom")
-    relevant=required | selected_leakage
-    if not relevant:
-        relevant=rows.keys() & {"RPE","RISO","IPE","IBer","IEA","Kabel","FI/RCD"}
-    issues=[f"{name} fehlt" for name in missing]
-    for name in sorted(relevant & rows.keys()):
-        row=rows[name]
-        result=row.get("result")
-        if name!="Kabel" and (not row.get("value") or not row.get("unit")):
-            issues.append(f"{name}: Messwert oder Einheit fehlt")
-        elif csv and not result:
-            issues.append(f"{name}: Einzelurteil fehlt")
-    if verdict=="PASS" and any(outcome(row.get("result") or "")=="FAIL" for row in rows.values()):
+        stages=(("FI/RCD",),)
+    issues=[]
+    aborted=unreached=False
+    for stage in stages or tuple((name,) for name in rows if name!="Sichtprüfung"):
+        applicable=rows.keys() & set(stage)
+        if not applicable:
+            if aborted:
+                unreached=True
+            else:
+                issues.append(f"{stage[0] if len(stage)==1 else 'Ableitstrom'} fehlt")
+        for name in sorted(applicable):
+            row=rows[name]
+            raw_verdict=row.get("result")
+            individual=outcome(raw_verdict or "")
+            if name=="Kabel":
+                status=cable_outcome(row.get("value"))
+                if status is None:
+                    issues.append("Kabelstatus unbekannt" if row.get("value") else "Kabelstatus fehlt")
+                elif individual and individual!=status:
+                    issues.append("Kabelstatus widerspricht Einzelurteil")
+            elif not row.get("value") or not row.get("unit"):
+                issues.append(f"{name}: Messwert oder Einheit fehlt")
+            if (csv or raw_verdict) and individual is None:
+                issues.append(f"{name}: Einzelurteil unbekannt" if raw_verdict else f"{name}: Einzelurteil fehlt")
+            aborted |= verdict=="FAIL" and measurement_state(row)[1]=="FAIL"
+    if verdict=="PASS" and any(measurement_state(row)[1]=="FAIL" for row in rows.values()):
         issues.append("Einzelurteil widerspricht BENNING-Gesamturteil")
     if issues:
         return "Messdaten unvollständig", tuple(issues)
-    if not relevant:
+    if not rows:
         return "Umfang nicht beurteilbar", ()
     if not verdict:
         return "Messwerte vorhanden", ()
-    if not required and not leakage:
+    if not stages:
         return "Messwerte vorhanden · Umfang nicht beurteilbar", ()
+    if unreached:
+        return "Abbruch nach Fehler · Folgeprüfungen nicht erfasst", ()
     return "Messdaten vollständig", ()
 
 
@@ -187,6 +218,9 @@ def report_checks(report, language=None):
                                       if row["name"]=="Sichtprüfung" and row.get("result")),None)
     function=exam.get("functional")
     missing=[]
+    reconcile=exam.get("class_reconciliation")
+    if reconcile:
+        missing.append("Abweichende Prüfart · Prüfung wiederholen")
     if not record:
         missing.append("BENNING-Messung fehlt")
     elif not outcome(record.get("verdict") or ""):
@@ -206,6 +240,7 @@ def report_checks(report, language=None):
     translated_issues=[]
     for issue in issues:
         for suffix,key in ((": Messwert oder Einheit fehlt","{name}: reading or unit missing"),
+                           (": Einzelurteil unbekannt","{name}: individual verdict unknown"),
                            (": Einzelurteil fehlt","{name}: individual verdict missing"),
                            (" fehlt","{name} missing")):
             if issue.endswith(suffix) and language=="en":
@@ -219,7 +254,8 @@ def report_checks(report, language=None):
             ("Sichtprüfung", t(verdict_text(visual,language) or "Nicht erfasst")),
             ("Funktion", t(function or "Nicht erfasst")),
             ("Protokoll", t("Offen: {reasons}",reasons=", ".join(missing)) if missing else t("Dokumentiert")),
-            ("Freigabe", t(exam.get("release") or "Nicht erfasst · Entscheid der Prüfperson")))
+            ("Freigabe", t("Keine Freigabe · Prüfung wiederholen" if reconcile else
+                           exam.get("release") or "Nicht erfasst · Entscheid der Prüfperson")))
 
 
 def compact_checks(report,language=None):
@@ -247,10 +283,6 @@ def measurement_summary(row, *, csv_source=False, language="de"):
     limit=show_value(row.get("limit"),row.get("limit_unit"))
     value=show_value(row.get("value"),row.get("unit"))
     if language=="en":
-        if row.get("result") and outcome(row["result"]):
-            partial=state.endswith(" / unvollständig")
-            state=verdict_text(row["result"],language)+(tr(language," / unvollständig") if partial else "")
-        else:
-            state=tr(language,state)
+        state=" / ".join(tr(language,verdict_text(part,language)) for part in state.split(" / "))
     name=" / ".join(filter(None,(tr(language,row["name"]),row.get("test"))))
     return name,value,limit,state,kind

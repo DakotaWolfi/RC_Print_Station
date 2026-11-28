@@ -190,7 +190,7 @@ function back() {
 function confirm(message,fn) {
     if (dialog.open) return;
     const observed=app.state?.draft ? ref() : null;
-    replace(dialog,node("h2","",t("Bestätigen")),node("p","",t(message)),
+    replace(dialog,node("h2","",t("Bestätigen")),node("p","",message.split("\n").map(part=>t(part)).join(" ")),
         group(B("Abbrechen",()=>dialog.close()),B("Bestätigen",()=>{dialog.close();app.confirmedRef=observed;try{fn();}finally{app.confirmedRef=null;}},true)));
     dialog.showModal();
 }
@@ -368,10 +368,7 @@ function importView(review) {
     if(review) {
         if(selected) {
             para(brief(selected),"badge");
-            const same=selected.origin==="identical";
-            main.append(group(B("Messung bestätigen",()=>confirm(
-                same?"Identischer Datensatz. Wurde die Prüfung neu durchgeführt?":"Messung bestätigen",
-                ()=>draft("review.confirm",{record:selected.key,same_reading_confirmed:same})),true)));
+            classReview(selected);
         }
         const start=Math.min(app.slots, Math.max(0, Math.ceil(s.slots.length/12)-1))*12;
         main.append(group(...s.slots.slice(start,start+12).map(row=>action(brief(row),
@@ -382,6 +379,38 @@ function importView(review) {
         main.append(group(...pager));
     } else main.append(group(B("Vorhandene Messung",()=>draft("review.manual"))));
     main.append(group(B("Zurück",()=>draft("review.back"))));
+}
+const procedureLabels={I:"Klasse I",II:"Klasse II",III:"Klasse III",
+    Kabel:"Kabelprüfung",IEC:"Kaltgeräteleitung",Verlängerung:"Verlängerungskabel"};
+function classReview(selected) {
+    const {selected:chosen,measured,evidence,mismatch}=selected.class_review;
+    const measuredLabel=measured ? t(procedureLabels[measured])+
+        " ("+t(evidence==="explicit"?"übertragen":"abgeleitet")+")" : t("Nicht übertragen oder nicht eindeutig");
+    if(chosen) para(t("Im Leitfaden gewählt: {name}",{name:t(procedureLabels[chosen])}));
+    para(t("BENNING-Prüfart: {name}",{name:measuredLabel}));
+    for(const [name,value,limit,state] of selected.measurements) {
+        para([name,value,state].filter(Boolean).join(" · "));
+    }
+    const same=selected.origin==="identical", sameMessage="Identischer Datensatz. Wurde die Prüfung neu durchgeführt?";
+    const args={record:selected.key,same_reading_confirmed:same};
+    if(!mismatch) {
+        main.append(group(B("Messung bestätigen",()=>confirm(same?sameMessage:"Messung bestätigen",
+            ()=>draft("review.confirm",args)),true)));
+        return;
+    }
+    const warning=node("p","class-warning",t("Die Prüfart weicht ab. Bisherige Sicherheitsbestätigungen gelten für diese Messung nicht."));
+    warning.setAttribute("role","alert");
+    main.append(warning);
+    const resolve=(decision,prompt)=>confirm(prompt+(same?"\n"+sameMessage:""),()=>draft("review.confirm",
+        {...args,class_resolution:decision,class_confirmed:true}));
+    const choices=[
+        B("Ohne Freigabe dokumentieren",()=>resolve("document","Abweichung dokumentieren und ohne Freigabe speichern?")),
+        B("Andere Messung wählen",()=>draft("review.manual"),true),
+        B("Abbrechen",()=>draft("review.back")),
+    ];
+    if(evidence==="explicit") choices.unshift(B("Geprüfte Prüfart übernehmen",()=>resolve("adopt",
+        "Schutzklasse und Messung am Gerät geprüft? Vollständige Prüfung danach neu durchführen.")));
+    main.append(group(...choices));
 }
 async function read(op,args,done) {
     if(!app.online) return;

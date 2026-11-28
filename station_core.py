@@ -18,7 +18,7 @@ from benning_guide import Guide, STEPS
 from benning_output import measurement_summary, report_checks, result_kind, selected_fields, visible_measurements
 from benning_receiver import Receiver
 from benning_store import Measurements, PHASES, SOURCES
-from examination_rules import fresh_slot, validate_selection
+from examination_rules import class_review, fresh_slot, validate_selection
 from operator_store import Operators
 from novelty import ITEMS, render as novelty_receipt
 from personality import PET_REPLIES, report_counts, system_metrics
@@ -31,7 +31,7 @@ from station_network import NetworkError, NetworkManager
 from web_access import read_status
 
 LOG = logging.getLogger(__name__)
-VERSION = "0.8.3"
+VERSION = "0.8.4"
 FORMAT = 1
 STATES = ("entry","guide","waiting","review","report")
 MODES = {"auto":("usb","rs232"),"usb":("usb",),"rs232":("rs232",),
@@ -213,8 +213,11 @@ class StationCore:
             note,slot=fresh_slot(self.baseline,batch["source"],self.store.snapshot((batch["source"],)))
             self.wait_note=note
             if slot and batch["reason"]!="baseline":
-                self.selected=next((r for r in self.slots if r["slot"]==slot and r["batch"]==batch["id"]),None)
-                if self.selected:
+                candidate=next((r for r in self.slots if r["slot"]==slot and r["batch"]==batch["id"]),None)
+                if candidate and self.measurement_origin(candidate,check_raw=True)=="identical":
+                    self.wait_note="Kein neuer Datensatz erkennbar. Vorhandenen Slot nur bewusst wählen."
+                elif candidate:
+                    self.selected=candidate
                     self.advance("review")
 
     @staticmethod
@@ -334,13 +337,20 @@ class StationCore:
                          examiner_id=self.draft["examiner"],language=self.report_language())
             self.finish(ident,report)
 
-    def measurement_origin(self,row):
+    def measurement_origin(self,row,*,check_raw=False):
         prior=self.baseline.get(row["source"])
         if not prior:
             return "operator-selected"
         if row["batch"]<=prior[0]:
             return "existing"
-        return "identical" if prior[1].get(row["slot"])==row["record_id"] else "changed"
+        previous=prior[1].get(row["slot"])
+        if previous==row["record_id"]:
+            return "identical"
+        # A parser upgrade can add a field to the same physical printout.
+        raw=row["original"].get("raw_b64")
+        if check_raw and previous and raw and raw==self.store.encoded_record(previous):
+            return "identical"
+        return "changed"
 
     def save_selected(self,args):
         self.require_draft(args,("review",),version=True)
@@ -348,12 +358,15 @@ class StationCore:
         if (not self.selected or args.get("record")!=list(self.identity(self.selected)) or
                 self.receiver.status.state=="receiving"):
             raise ValueError("Import läuft oder Auswahl geändert. Bitte erneut auswählen.")
-        validate_selection(self.examination,self.selected["original"])
-        origin=self.measurement_origin(self.selected)
+        origin=self.measurement_origin(self.selected,check_raw=True)
         if origin=="identical" and args.get("same_reading_confirmed") is not True:
             raise ValueError("Identische Messung ausdrücklich als neue Prüfung bestätigen.")
         examiner_id=self.draft["examiner"]
-        examination=self.examination
+        resolution=args.get("class_resolution")
+        if resolution is not None and (not isinstance(resolution,str) or args.get("class_confirmed") is not True):
+            raise ValueError("Bitte zuerst bestätigen.")
+        examination=validate_selection(self.examination,self.selected["original"],self.selected["source"],
+                                       resolution=resolution)
         if examination is None and examiner_id is not None:
             examination={"examiner":self.operators.active_name(examiner_id)}
         ident,report=self.store.create_report(*self.fields(),self.selected,require_current=True,
@@ -899,6 +912,14 @@ class StationCore:
         get_row=lambda row: {"key":list(self.identity(row)),"slot":row["slot"],
                  "date":row["original"]["tester_date"],"verdict":row["original"]["verdict"],
                  "class":row["original"]["protection_class"],"origin":self.measurement_origin(row)}
+        selected=get_row(self.selected) if self.selected else None
+        if selected:
+            original=self.selected["original"]
+            selected["origin"]=self.measurement_origin(self.selected,check_raw=True)
+            selected["class_review"]=class_review(self.examination,original,self.selected["source"])
+            selected["measurements"]=[measurement_summary(row,
+                csv_source=self.selected["source"] in ("usb","file-csv"),language=self.language)
+                for row in visible_measurements(original) if row["name"]=="Kabel"]
         import_source=state.source or self.receiver.mode
         art,body=WAIT_BODY.get(import_source,WAIT_BODY["usb"])
         return {"format":FORMAT,"epoch":self.epoch,"sequence":self.sequence,"language":self.language,
@@ -907,7 +928,7 @@ class StationCore:
                 "report_language":self.report_language() if self.draft else self.language,
                 "receiver":dict(asdict(state),mode=self.receiver.mode),"batch":self.batch,
                 "slots":[get_row(r) for r in self.slots[:999]],"import_art":art,"import_body":body,
-                "selected":get_row(self.selected) if self.selected else None,"wait_note":self.wait_note,
+                "selected":selected,"wait_note":self.wait_note,
                 "report":self.report_id,"report_kind":result_kind(self.report) if self.report else None,
                 "download_base":self.base_url,"web":self.web_connection,"recovery_note":self.recovery_note,"novelty_note":self.novelty_note,
                 "printing":"printer" in self.jobs,"print_note":self.print_note,"probe_note":self.probe_note,

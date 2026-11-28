@@ -4,6 +4,7 @@ from threading import Event, Thread
 from types import SimpleNamespace
 from urllib.request import urlopen
 
+from benning_hardware import USB_COMPLETE
 from benning_receiver import ReceiverStatus
 from report_web import start_server
 from slogan_store import SloganStore
@@ -42,6 +43,11 @@ with tempfile.TemporaryDirectory() as directory:
                 result=core.store.import_bytes(RS232,"rs232")
                 rx.status=ReceiverStatus("imported","rs232",batch=result.batch)
                 self.send_payload(200,{"slot":result.batch})
+            elif self.path=="/__test/import-usb":
+                result=core.store.import_bytes(USB_COMPLETE,"usb")
+                rx.mode="usb"
+                rx.status=ReceiverStatus("imported","usb",batch=result.batch)
+                self.send_payload(200,{"count":result.count})
             elif self.path=="/__test/downloads":
                 self.send_payload(200,{"count":len(pdf_downloads)})
             elif self.path=="/__test/prints":

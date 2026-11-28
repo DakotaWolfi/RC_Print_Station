@@ -151,6 +151,12 @@ class Measurements:
                     slots[row["source"]][row["slot"]]=row["record_id"]
         return {source:(batch,slots[source]) for source,batch in imports.items()}
 
+    def encoded_record(self, ident):
+        with closing(self.db()) as conn:
+            row=conn.execute("SELECT json_extract(original,'$.raw_b64') FROM benning_records WHERE id=?",
+                             (ident,)).fetchone()
+        return row[0] if row else None
+
     @staticmethod
     def repair_fields(ticket,device,phase):
         if not isinstance(ticket,str) or not isinstance(device,str):

@@ -16,8 +16,9 @@ from PyQt5.QtWidgets import (
     QStyle, QStyleOptionButton, QStylePainter, QVBoxLayout, QWidget,
 )
 
-from benning_output import RESULTS, result_kind, measurement_summary, visible_measurements, report_checks, selected_fields
+from benning_output import RESULTS, result_kind, measurement_summary, visible_measurements, report_checks, review_type, selected_fields
 from benning_store import PHASES
+from examination_rules import PROCEDURE_LABELS
 from i18n import tr
 from hdmi_keyboard import Keyboard
 from hdmi_touch import DragScroll, TouchManager
@@ -830,6 +831,7 @@ class Surface(QWidget):
         if review:
             if selected:
                 v.addWidget(label(f"{selected['slot']}  ·  {selected['date']}  ·  {selected['verdict']}",role="section"))
+                self.render_class_review(v,selected)
             entries=[]
             slots=self.state["slots"]
             self.review_page=min(self.review_page,max(0,(len(slots)-1)//16))
@@ -837,12 +839,6 @@ class Surface(QWidget):
                 tag=f"{row['slot']} · {row['date']} · {row['verdict']}"
                 key=row["key"]
                 entries.append(button(tag,lambda _=False,k=key:self.draft_action("review.select",{"record":k})))
-            if selected:
-                same=selected.get("origin")=="identical"
-                def accept():
-                    self.draft_action("review.confirm",{"record":selected["key"],"same_reading_confirmed":same})
-                self.actions(v,[("Messung bestätigen",lambda:self.question(
-                    "Identischer Datensatz. Wurde die Prüfung neu durchgeführt?",accept) if same else accept(),True)])
             if entries:
                 v.addWidget(self.columns(entries))
                 controls=[]
@@ -855,6 +851,40 @@ class Surface(QWidget):
         else:
             self.actions(v,[("Vorhandene Messung",lambda:self.draft_action("review.manual"),False)])
         self.actions(v,[("Zurück",lambda:self.draft_action("review.back"),False)])
+
+    def render_class_review(self,v,selected):
+        review=selected["class_review"]
+        if review["selected"]:
+            v.addWidget(label(self.t("Im Leitfaden gewählt: {name}",
+                                      name=self.t(PROCEDURE_LABELS[review["selected"]]))))
+        v.addWidget(label(self.t("BENNING-Prüfart: {name}",name=review_type(review,self.state["language"]))))
+        for name,value,limit,state,_ in selected["measurements"]:
+            v.addWidget(label(" · ".join(filter(None,(name,value,state)))))
+        same=selected["origin"]=="identical"
+        if not review["mismatch"]:
+            def accept():
+                self.draft_action("review.confirm",{"record":selected["key"],"same_reading_confirmed":same})
+            self.actions(v,[("Messung bestätigen",lambda:self.question(
+                "Identischer Datensatz. Wurde die Prüfung neu durchgeführt?",accept) if same else accept(),True)])
+            return
+        warning="Die Prüfart weicht ab. Bisherige Sicherheitsbestätigungen gelten für diese Messung nicht."
+        v.addWidget(label(self.t(warning),role="section"))
+
+        def resolve(action):
+            message=("Schutzklasse und Messung am Gerät geprüft? Vollständige Prüfung danach neu durchführen."
+                     if action=="adopt" else "Abweichung dokumentieren und ohne Freigabe speichern?")
+            body=self.t(message)
+            if same:
+                body+="\n"+self.t("Identischer Datensatz. Wurde die Prüfung neu durchgeführt?")
+            self.question(body,lambda:self.draft_action("review.confirm",{"record":selected["key"],
+                "same_reading_confirmed":same,"class_resolution":action,"class_confirmed":True}))
+
+        actions=[("Ohne Freigabe dokumentieren",lambda:resolve("document"),False),
+                 ("Andere Messung wählen",lambda:self.draft_action("review.manual"),True),
+                 ("Abbrechen",lambda:self.draft_action("review.back"),False)]
+        if review["evidence"]=="explicit":
+            actions.insert(0,("Geprüfte Prüfart übernehmen",lambda:resolve("adopt"),False))
+        self.actions(v,actions)
 
     def change_slot_page(self,delta):
         self.review_page+=delta

@@ -2,11 +2,13 @@
 import base64
 import re
 
-from benning_csv import ImportErrorDetail, MAX_BYTES, Measurement, Record, date_value, outcome, slot_value
+from benning_csv import (ImportErrorDetail, MAX_BYTES, Measurement, Record, cable_text,
+                         date_value, outcome, slot_value)
 
 PREAMBLE = b"\x18\x1bc5\x01\x1b!\x04"
 VALUE = r"([<>]?[0-9]+(?:[,.][0-9]+)?)[ ]*([^\s0-9]+)"
 ROW = re.compile(rf"^(RPE|RISO|IPE|IB|IBer|IEA):\s*{VALUE}(?:\s+{VALUE})?\s*$")
+CABLE = re.compile(r"^Kabelprüfung(?:\s*:\s*|\s+)(.+)$")
 
 
 def parse_printout(data, encoding="cp437", *, wire=False):
@@ -46,12 +48,20 @@ def parse_printout(data, encoding="cp437", *, wire=False):
     for line in lines:
         if match:=ROW.fullmatch(line):
             label,value,unit,limit,limit_unit=match.groups()
-            if label in seen:
-                raise ImportErrorDetail("Doppelte Messung im Druckbericht.")
-            tests.append(Measurement(label,value,unit,limit=limit,limit_unit=limit_unit))
-            seen.add(label)
+            measurement=Measurement(label,value,unit,limit=limit,limit_unit=limit_unit)
+        elif line.startswith("Kabelprüfung"):
+            match=CABLE.fullmatch(line)
+            if not match or not cable_text(match[1]):
+                raise ImportErrorDetail("Ungültiger Kabelstatus im Druckbericht.")
+            measurement=Measurement("Kabel",match[1])
         elif re.match(r"[A-Za-z][A-Za-z0-9 /-]*:",line) and not re.match(r"^[VU]ISO:",line):
             raise ImportErrorDetail("Unbekannte Messzeile im Druckbericht.")
+        else:
+            continue
+        if measurement.name in seen:
+            raise ImportErrorDetail("Doppelte Messung im Druckbericht.")
+        tests.append(measurement)
+        seen.add(measurement.name)
     if not tests:
         raise ImportErrorDetail("Druckbericht enthält keine erkannten Messwerte.")
     voltage=None

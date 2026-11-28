@@ -36,12 +36,12 @@ class PreviewSerial:
             self.sim.send(command.decode(ENCODING))
 
 
-def receipt_preview(data):
+def receipt_preview(data, typeface=TYPEFACE):
     """Display the receipt's raster blocks and text sent to the Epson."""
     width=576
     paper=Image.new("1",(width,2200),1)
     draw=ImageDraw.Draw(paper)
-    font=ImageFont.truetype(str(TYPEFACE),19)
+    font=ImageFont.truetype(str(typeface),19)
     y=10
     centred=False
     codepage="cp850"
